@@ -1,3 +1,27 @@
+/* $Id$ */
+/* Copyright (c) 2001 Alex Hioreanu.  All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+ * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+ * SUCH DAMAGE.
+ */
 /*
  * This stuff is speed-critical, so we pull all the stops.  The most
  * unfortunate thing is the latency involved with the gettimeofday
@@ -9,11 +33,6 @@
  * have to go through all of them on timer_run.  I think using a heap
  * would work out best for this.  However, we don't expect to have
  * more than four or five timers, so using a simple array is a win.
- */
-
-/*
- * FIXME: keep variable which is last used index, don't search through
- * all of array on timer_run
  */
 
 #include "timer.h"
@@ -87,15 +106,6 @@ timer_t *timer_new(int msecs, timer_fn fn, void *arg)
     }
 }
 
-#if 0
-/* FIXME, find minimum, first_free */
-void timer_cancel(timer_t *timer)
-{
-    timer->state = FREE;
-    /* FIXME: can also calculate array index, set first_free */
-}
-#endif
-
 /* assumes both members are positive */
 static void timeval_normalize(struct timeval *tv)
 {
@@ -123,7 +133,6 @@ static int timeval_compare(struct timeval *tv1, struct timeval *tv2)
 }
 
 /* this is also bogus, keep track of next time */
-/* FIXME: this should return difference with gettimeofday() */
 /* FIXME: timer_run and timer_next_time will many times be run
  * together, reduce number of calls to gettimeofday() */
 int timer_next_time(struct timeval *tv)
@@ -131,20 +140,7 @@ int timer_next_time(struct timeval *tv)
     struct timeval now;
 
     gettimeofday(&now);
-#if 0
-    min = -1;
-    for (i = 0; i < NTIMERS; i++) {
-        if (array[i].state == ACTIVE) {
-            if (min == -1) {
-                min = i;
-            } else {
-                if (timeval_compare(&array[min].tv, &array[i].tv) > 0) {
-                    min = i;
-                }
-            }
-        }
-    }
-#endif
+    timer_run_with_tv(&now);
     if (minimum == -1) return 0;
     tv->tv_sec = array[minimum].tv.tv_sec - now.tv_sec;
     if (now.tv_usec > array[minimum].tv.tv_usec) {
@@ -155,24 +151,43 @@ int timer_next_time(struct timeval *tv)
     return 1;
 }
 
-void timer_run()
+/* small optimization, don't call gettimeofday twice if possible */
+static void timer_run_with_tv(struct timeval *now)
 {
-    int i;
-    struct timeval now;
+    int i, prev_min;
 
-    gettimeofday(&now, NULL);
-//    timeval_normalize(&now);
+    prev_min = -1;
     for (i = 0; i < NTIMERS; i++) {
         if (array[i].state == ACTIVE) {
-            if (timeval_compare(&now, &array[i].tv) <= 0) {
+            if (timeval_compare(now, &array[i].tv) <= 0) {
                 array[i].state = FREE;
                 first_free = i;
                 (array[i].fn)(array[i].arg);
+                if (i == minimum) {
+                    minimum = prev_min;
+                }
             } else if (minimum == -1) {
                 minimum = i;
             } else if (timeval_compare(&array[minimum].tv, &array[i].tv) > 0) {
+                prev_min = minimum;
                 minimum = i;
             }
         }
     }
+}
+
+void timer_run()
+{
+    struct timeval now;
+
+    gettimeofday(&now, NULL);
+    timer_run_with_tv(&now);
+}
+
+void timer_run_first()
+{
+    struct timeval now;
+
+    now = array[minimum].tv;
+    timer_run_with_tv(&now);
 }
