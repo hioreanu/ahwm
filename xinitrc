@@ -9,6 +9,7 @@ xsetroot -cursor_name left_ptr
 #exec xterm
 #xterm &
 
+#exec /home/ach/tmp/wmaker-inst/bin/wmaker
 #exec ./9wm
 #exec wmaker
 exec ./xwm

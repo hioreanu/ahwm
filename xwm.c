@@ -188,19 +188,12 @@ int main(int argc, char **argv)
     scan_windows();
 
     XSetInputFocus(dpy, root_window, RevertToPointerRoot, CurrentTime);
-    focus_ensure();             /* focus.c */
+    focus_ensure(CurrentTime);  /* focus.c */
     
     xfd = ConnectionNumber(dpy);
     fcntl(xfd, F_SETFD, FD_CLOEXEC);
 
     XSync(dpy, 0);
-
-#ifdef DEBUG
-    if (fork() == 0) {
-        sleep(1);
-        execlp("/usr/X11R6/bin/xterm", "xterm", NULL);
-    }
-#endif /* DEBUG */
 
     for (;;) {
         event_get(xfd, &event); /* event.c */
@@ -233,13 +226,13 @@ static void scan_windows()
 void alt_tab(XEvent *e)
 {
     focus_next();
-    focus_ensure();
+    focus_ensure(event_timestamp(e));
 }
 
 void alt_shift_tab(XEvent *e)
 {
     focus_prev();
-    focus_ensure();
+    focus_ensure(event_timestamp(e));
 }
 
 void control_alt_shift_t(XEvent *e)

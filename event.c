@@ -32,6 +32,7 @@ static void event_colormap(XColormapEvent *);
 static void event_clientmessage(XClientMessageEvent *);
 static void event_circulaterequest(XCirculateRequestEvent *);
 static void event_expose(XExposeEvent *);
+static void event_focus(XFocusChangeEvent *);
 
 /*
  * FIXME:  every window manager I've seen does this by sitting a
@@ -148,7 +149,11 @@ void event_dispatch(XEvent *event)
             break;
             
 /*        case LeaveNotify: */  /* ignored */
-/*        case FocusIn: */      /* TODO */
+            
+        case FocusIn:           /* frame FocusChangeMask, client.c */
+            event_focus(&event->xfocus);
+            break;
+            
 /*        case FocusOut: */     /* TODO */
 /*        case KeymapNotify: */ /* TODO */
             
@@ -247,7 +252,7 @@ static void event_enter_leave(XCrossingEvent *xevent)
 #endif /* DEBUG */
     if (client != NULL && focus_canfocus(client)) {
         focus_set(client);      /* focus.c */
-        focus_ensure();
+        focus_ensure(event_timestamp((XEvent *)xevent));
     }
 }
 
@@ -282,7 +287,7 @@ static void event_destroy(XDestroyWindowEvent *xevent)
         return;
     }
     focus_remove(client);
-    focus_ensure();
+    focus_ensure(event_timestamp((XEvent *)xevent));
     client_destroy(client);
 }
 
@@ -338,7 +343,7 @@ static void event_unmap(XUnmapEvent *xevent)
     error_unignore(BadWindow, X_ChangeProperty);
 
     focus_remove(client);
-    focus_ensure();
+    focus_ensure(event_timestamp((XEvent *)xevent));
 }
 
 static void event_maprequest(XMapRequestEvent *xevent)
@@ -377,7 +382,7 @@ static void event_maprequest(XMapRequestEvent *xevent)
         keyboard_grab_keys(client);
         mouse_grab_buttons(client);
         focus_set(client);
-        focus_ensure();
+        focus_ensure(event_timestamp((XEvent *)xevent));
     } else {
 #ifdef DEBUG
         printf("\tsigh...client->state = %d\n", client->state);
@@ -516,7 +521,7 @@ static void event_clientmessage(XClientMessageEvent *xevent)
             client->state = IconicState;
             client_inform_state(client);
             focus_remove(client);
-            focus_ensure();
+            focus_ensure(event_timestamp((XEvent *)xevent));
         }
     }
 }
@@ -536,6 +541,22 @@ static void event_expose(XExposeEvent *xevent)
     client = client_find(xevent->window);
     if (client != NULL)
         client_paint_titlebar(client);
+}
+
+/*
+ * We only care about focus change events when the focus changes from
+ * one top-level window to another; we listen for focus in events on
+ * the frame, and map the frame when we receive such an event.
+ */
+static void event_focus(XFocusChangeEvent *xevent)
+{
+    printf("FOCUS EVENT (%d,%d)\n", xevent->mode, xevent->detail);
+    if (xevent->type == FocusIn &&
+//        xevent->mode == NotifyNormal &&
+        xevent->detail == NotifyNonlinearVirtual) {
+        printf("RAISING WINDOW\n");
+        XMapRaised(dpy, xevent->window);
+    }
 }
 
 /* all events defined by Xlib have common first few members,

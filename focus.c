@@ -92,7 +92,7 @@ int focus_canfocus(client_t *client)
     return 1;
 }
 
-void focus_ensure()
+void focus_ensure(Time timestamp)
 {
     if (focus_current == focus_stacks[workspace_current - 1])
         return;
@@ -107,7 +107,29 @@ void focus_ensure()
            (unsigned int)focus_current->window);
 #endif /* DEBUG */
 
-    XSetInputFocus(dpy, focus_current->window,
-                   RevertToPointerRoot, CurrentTime);
-    XMapRaised(dpy, focus_current->frame);
+    /* see ICCCM 4.1.7 */
+    if (focus_current->xwmh != NULL &&
+        focus_current->xwmh->flags & InputHint &&
+        focus_current->xwmh->input == False) {
+        XSetInputFocus(dpy, root_window, RevertToPointerRoot, CurrentTime);
+        printf("DOESN'T WANT FOCUS\n");
+        if (focus_current->protocols & PROTO_TAKE_FOCUS) {
+            client_sendmessage(focus_current, WM_TAKE_FOCUS,
+                               timestamp, 0, 0, 0);
+            printf("GLOBALLY ACTIVE FOCUS\n");
+        }
+    } else {
+        printf("WANTS FOCUS\n");
+        if (focus_current->protocols & PROTO_TAKE_FOCUS) {
+            printf("WILL TAKE FOCUS\n");
+            client_sendmessage(focus_current, WM_TAKE_FOCUS,
+                               timestamp, 0, 0, 0);
+        }
+        XSetInputFocus(dpy, focus_current->window,
+                       RevertToPointerRoot, timestamp);
+    }
+    XSync(dpy, False);
+    XFlush(dpy);
+    /* We raise the window when we get back the FocusIn event, not here: */
+/*    XMapRaised(dpy, focus_current->frame); */
 }

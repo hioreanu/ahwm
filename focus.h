@@ -55,9 +55,11 @@ void focus_next();
 void focus_prev();
 
 /*
- * Ensure some window in the current workspace is focused if possible
+ * Ensure some window in the current workspace is focused if possible;
+ * the timestamp should be the timestamp of the event that caused the
+ * focus change, or CurrentTime if the event doesn't have a timestamp.
  */
-void focus_ensure();
+void focus_ensure(Time);
 
 /*
  * returns one if the client accepts keyboard focus, zero o/w
