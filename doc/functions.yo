@@ -127,6 +127,12 @@ not resized.
 tt(MoveResize("100x200+300+400")) nl()
 This has the effect of combining the above two examples; the window is
 both moved and resized.
+function(Nop)(void)
+Do nothing.  You can bind this function to a keystroke, and then the
+keystroke will be lq()eaten+rq() by AHWM.
+function(Quit)(void)
+Exit AHWM with zero (successful) status.  This will most likely end
+your X session.
 function(Quote)(void)
 Enter or exit quote mode.  You can use quote mode to pass an
 application a keystroke or mouse click that would normally be used by
@@ -137,12 +143,6 @@ window, so binding this to a keystroke may not be very useful.
 function(ResizeInteractively)(void)
 Resize a window interactively, either with the mouse or keyboard.  See
 the section entitled doc(Moving and Resizing)(moving) for details.
-function(Nop)(void)
-Do nothing.  You can bind this function to a keystroke, and then the
-keystroke will be lq()eaten+rq() by AHWM.
-function(Quit)(void)
-Exit AHWM with zero (successful) status.  This will most likely end
-your X session.
 function(Restart)(void)
 Restart AHWM.  When AHWM stops and then starts again, it should return
 to the exact same state.  AHWM reads the file q(~/.ahwmrc) when it
