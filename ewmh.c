@@ -39,6 +39,7 @@
 #include "kill.h"
 #include "move-resize.h"
 #include "stacking.h"
+#include "keyboard-mouse.h"
 
 /*
  * TODO:
@@ -121,7 +122,7 @@
  * "hints."
  */
 
-#define NO_SUPPORTED_HINTS 35
+#define NO_SUPPORTED_HINTS 33
 
 static Atom _NET_CURRENT_DESKTOP, _NET_SUPPORTED, _NET_CLIENT_LIST;
 static Atom _NET_CLIENT_LIST_STACKING, _NET_NUMBER_OF_DESKTOPS;
@@ -241,7 +242,6 @@ void ewmh_init()
     _NET_DESKTOP_NAMES = XInternAtom(dpy, "_NET_DESKTOP_NAMES", False);
     _NET_WM_WINDOW_TYPE = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE", False);
     _NET_WM_STATE = XInternAtom(dpy, "_NET_WM_STATE", False);
-    _NET_WM_STRUT = XInternAtom(dpy, "_NET_WM_STRUT", False);
 
     _WIN_SUPPORTING_WM_CHECK =
         XInternAtom(dpy, "_WIN_SUPPORTING_WM_CHECK", False);
@@ -296,9 +296,9 @@ void ewmh_init()
     supported[29] = _NET_WM_STATE_REMOVE;
     supported[30] = _NET_WM_STATE_ADD;
     supported[31] = _NET_WM_STATE_TOGGLE;
-    supported[32] = _NET_WM_STRUT;
-    supported[33] = _NET_WM_PING;
-    supported[34] = _NET_DESKTOP_NAMES;
+    supported[32] = _NET_DESKTOP_NAMES;
+    /* supported[33] = _NET_WM_STRUT; */
+    /* supported[34] = _NET_WM_PING; */
 
     XChangeProperty(dpy, root_window, _NET_SUPPORTED,
                     XA_ATOM, 32, PropModeReplace,

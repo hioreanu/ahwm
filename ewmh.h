@@ -85,4 +85,10 @@ void ewmh_active_window_update();
 /* proxy click for GNOME, used by keyboard-mouse.c */
 void ewmh_proxy_buttonevent(XEvent *e);
 
+/* FIXME: document these */
+void ewmh_wm_strut_apply(client_t *client);
+void ewmh_wm_state_apply(client_t *client);
+void ewmh_window_type_apply(client_t *client);
+void ewmh_wm_desktop_apply(client_t *client);
+
 #endif /* EWMH_H */

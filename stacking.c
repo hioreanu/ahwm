@@ -33,6 +33,7 @@
 #include "malloc.h"
 #include "workspace.h"
 #include "debug.h"
+#include "ewmh.h"
 
 /*
  * We use parallel arrays to keep track of the stacking order.  I
@@ -94,8 +95,11 @@ static Bool grow();
 static int order(client_t *client1, client_t *client2);
 static void restack(client_t *client, Bool move_up);
 static void commit();
-static void dump();
 static void raise_tree(client_t *client, client_t *ignore, Bool go_up);
+
+#if 0
+static void dump(); /* defined out to get rid of warning */
+#endif
 
 /* easy way to maintain invariants */
 static void set(client_t *client, int index)
@@ -199,6 +203,8 @@ void stacking_restack(client_t *client)
     commit();
 }
 
+#if 0
+/* defined out to get rid of warning */
 static void dump()
 {
     int i;
@@ -220,6 +226,7 @@ static void dump()
     }
     fprintf(stderr, "----\n");
 }
+#endif
 
 /*
  * Ensures arrays have room enough for one more member.  Returns True
@@ -326,7 +333,6 @@ static void restack(client_t *client, Bool move_up)
 {
     int i;
     client_t *ctmp;
-    Window wtmp;
     int c;
 
     i = client->stacking;
@@ -376,6 +382,8 @@ static void restack(client_t *client, Bool move_up)
  * to hold the following invariant:
  * 
  * A client's transient windows are always on top of the client.
+ *
+ * This calls for a subtle combination of mathematics and extreme violence.
  * 
  * Consider the following tree, with the root node being 'A', and the
  * node we want raised being 'D' (with 'B' and 'C' being the path from

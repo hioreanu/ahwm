@@ -62,6 +62,7 @@
 #include "paint.h"
 #include "mwm.h"
 #include "colormap.h"
+#include "prefs.h"
 
 Display *dpy;
 int scr;
@@ -92,7 +93,7 @@ int shape_supported;
 int shape_event_base;
 #endif
 
-static char *argv0;
+static char *argv0;             /* used by segfault handler for exec() */
 
 static int already_running_windowmanager;
 static int (*default_error_handler)(Display *, XErrorEvent *);
@@ -102,6 +103,8 @@ static int error_handler(Display *dpy, XErrorEvent *error);
 static void scan_windows();
 static void remove_titlebars();
 static void sigterm(int signo);
+static void sigsegv(int signo);
+static void crash_handler();
 
 #ifdef DEBUG
 static void mark(XEvent *e, struct _arglist *ignored);
@@ -113,7 +116,36 @@ int main(int argc, char **argv)
     int xfd, junk;
     XGCValues xgcv;
     XColor xcolor, junk2;
-    
+    sigset_t set;
+
+/* 
+ * We may enter main() with SIGSEGV or SIGBUS blocked.  If we get a
+ * SEGV, we jump into our segfault handler function.  Just before
+ * jumping into this function, kernel blocks SIGSEGV to avoid signal
+ * loops within signal handlers.  Blocked signals are inherited across
+ * exec(), so we may be running with SEGV blocked.  We might also be
+ * able to do the sigprocmask in the SEGV handler, but I don't like
+ * that idea - we don't know what sigprocmask might do (it might try a
+ * malloc when we just corrupted our entire heap).
+ * 
+ * Now we unblock SIGSEGV and SIGBUS.  Want to do very first thing in
+ * program, just in case one of our initialization segfaults (and if
+ * we're ignoring SIGSEGV when that happens, program simply "freezes"
+ * at point of failure).
+ * 
+ * I lost a couple hours trying to figure out why my segfault handler
+ * was only called on the first (original) invocation and the program
+ * was freezing upon segfaulting in the second invocation (after the
+ * exec).  Well, now you also know the trick, and you won't lose those
+ * two hours.
+ * 
+ * Here's a nice discussion of the topic:
+ * http://lists.community.tummy.com/pipermail/linux-ha-dev/ \
+ * 2001-September/002464.html
+ */
+
+    sigemptyset(&set);
+    sigprocmask(SIG_SETMASK, &set, NULL);
     argv0 = argv[0];
 #ifdef DEBUG
     /* set non-buffered */
@@ -121,7 +153,8 @@ int main(int argc, char **argv)
 #endif /* DEBUG */
     dpy = XOpenDisplay(NULL);
     if (dpy == NULL) {
-        fprintf(stderr, "AHWM: Could not open display '%s'\n", XDisplayName(NULL));
+        fprintf(stderr,
+                "AHWM: Could not open display '%s'\n", XDisplayName(NULL));
         exit(1);
     }
     xfd = ConnectionNumber(dpy);
@@ -132,6 +165,10 @@ int main(int argc, char **argv)
     scr_width = DisplayWidth(dpy, scr);
     black = BlackPixel(dpy, scr);
     white = WhitePixel(dpy, scr);
+
+    if (argc > 1 && strcmp(argv[1], "--segv") == 0) {
+        crash_handler();
+    }
 
     already_running_windowmanager = 0;
     XSetErrorHandler(tmp_error_handler);
@@ -282,6 +319,8 @@ int main(int argc, char **argv)
     atexit(remove_titlebars);
     atexit(focus_save_stacks);
     signal(SIGTERM, sigterm);
+    signal(SIGSEGV, sigsegv);
+    signal(SIGBUS, sigsegv);
     
     scan_windows();
     focus_load_stacks();
@@ -416,7 +455,8 @@ static void remove_titlebars()
             client_remove_titlebar(client);
         }
     }
-    if (wins != NULL) XFree(wins); /* not needed, but oh well */
+    /* 'wins' may be junk if connection already closed */
+    /* if (wins != NULL) XFree(wins); */
     XCloseDisplay(dpy);
     close(ConnectionNumber(dpy));
 }
@@ -425,10 +465,12 @@ static void remove_titlebars()
  * call atexit() functions instead of terminating immediately on SIGTERM.
  * 
  * Problem is that we aren't supposed to call any Xlib functions in a
- * signal handler as Xlib isn't reentrant.  This way, we just do all
- * the Xlib stuff in the atexit functions instead of in the signal
- * handler.  We still get all sorts of X IO errors doing it like this,
- * however.  Not sure what's going on with that.
+ * signal handler as Xlib isn't reentrant.  This might screw things up
+ * royally.  We could simply set a flag for the event-dispatcher
+ * function.  However, someone might have sent us SIGTERM because AHWM
+ * is hung, and we may never get back to the dispatcher function.
+ * Can't really come up with an optimal solution, but going ahead and
+ * calling the Xlib functions works *some* of the time.
  */
 
 static void sigterm(int signo)
@@ -445,3 +487,204 @@ static void mark(XEvent *e, struct _arglist *ignored)
     printf("-------------------------------------\n");
 }
 #endif
+
+/*
+ * Well, this is just beautiful.  My friends, we have crashed.
+ * 
+ * It would be most unfortunate if the user is actually working in
+ * some window and our crash makes the user lose their work.  In fact,
+ * that would really piss me off.
+ * 
+ * Instead, we pop up an extremely primitive "dialog" box asking the
+ * user if they would like to restart.  Restarting generally restores
+ * AHWM to the previous state.
+ * 
+ * Simply 'exec'ing AHWM again with a special hidden argument seems
+ * like the most reliable way to ensure we have a sane memory map and
+ * that we can use Xlib et al. again.
+ * 
+ * Hopefully, our libc's 'exec' function depends on very little.  Our
+ * entire memory map may be corrupt.  A good example is FreeBSD's libc
+ * version of execlp, which does only a couple of stack-based memory
+ * allocations, examines the PATH (which may, in fact be corrupt) and
+ * jumps into kernel fairly quickly.
+ * 
+ * Possible problems:
+ * 
+ * 1.  'argv0' is corrupted.
+ * 2.  '*argv0' is corrupted.
+ * 3.  heap is corrupted and libc's execlp needs to use heap.
+ * 4.  PATH environment variable is corrupted.
+ */
+static void sigsegv(int signo)
+{
+    /* third arg points into ro-data segment */
+    execlp(argv0, argv0, "--segv", NULL);
+}
+
+/*
+ * depends on:
+ * 
+ * dpy
+ * scr
+ * root_window
+ * scr_width
+ * scr_height
+ * white
+ * black
+ */
+
+#define CRASHWIN_WIDTH 400
+#define CRASHWIN_HEIGHT 500
+#define CRASHBUTTON_WIDTH 100
+#define CRASHBUTTON_HEIGHT 35
+#define CRASHWIN_SPACING 20
+
+static void crashwin_draw(GC gc, Window toplevel, Window button1,
+                          Window button2, Window button3,
+                          int height, int width);
+
+/*
+ * Not very elegant.
+ * 
+ * When AHWM crashes, it exec's itself with a special argument.  The
+ * exec ensures we have a clean memory map, etc.  We then pop up a
+ * dialog asking user if they want to continue (in which case we
+ * simply exec again with the special argument), quit, or start TWM
+ * instead.
+ * 
+ * In practice, I haven't seen any place where restarting does not
+ * work.  AHWM is mostly stateless, so restarting is pretty
+ * transparent.
+ * 
+ * This "dialog" is butt-ugly.
+ */
+
+static void crash_handler()
+{
+    Window toplevel, button1, button2, button3;
+    XSetWindowAttributes xswa;
+    GC gc;
+    XGCValues xgcv;
+    XFontStruct *xfs;
+    XEvent ev;
+    
+    xswa.background_pixel = white;
+    xswa.border_pixel = black;
+    xswa.event_mask = ButtonPressMask;
+    toplevel = XCreateWindow(dpy, root_window,
+                             scr_width / 2 - CRASHWIN_WIDTH / 2,
+                             scr_height / 2 - CRASHWIN_HEIGHT / 2,
+                             CRASHWIN_WIDTH, CRASHWIN_HEIGHT,
+                             0, DefaultDepth(dpy, scr),
+                             InputOutput, DefaultVisual(dpy, scr),
+                             CWBackPixel, &xswa);
+    button1 = XCreateWindow(dpy, toplevel,
+                            CRASHWIN_WIDTH / 2 - CRASHBUTTON_WIDTH / 2,
+                            CRASHWIN_HEIGHT - CRASHWIN_SPACING
+                                            - CRASHBUTTON_HEIGHT,
+                            CRASHBUTTON_WIDTH,
+                            CRASHBUTTON_HEIGHT,
+                            3, DefaultDepth(dpy, scr),
+                            InputOutput, DefaultVisual(dpy, scr),
+                            CWBackPixel | CWBorderPixel | CWEventMask,
+                            &xswa);
+    button2 = XCreateWindow(dpy, toplevel,
+                            CRASHWIN_WIDTH / 2 - CRASHBUTTON_WIDTH / 2,
+                            CRASHWIN_HEIGHT - CRASHWIN_SPACING * 2
+                                            - CRASHBUTTON_HEIGHT * 2,
+                            CRASHBUTTON_WIDTH,
+                            CRASHBUTTON_HEIGHT,
+                            3, DefaultDepth(dpy, scr),
+                            InputOutput, DefaultVisual(dpy, scr),
+                            CWBackPixel | CWBorderPixel | CWEventMask,
+                            &xswa);
+    button3 = XCreateWindow(dpy, toplevel,
+                            CRASHWIN_WIDTH / 2 - CRASHBUTTON_WIDTH / 2,
+                            CRASHWIN_HEIGHT - CRASHWIN_SPACING * 3
+                                            - CRASHBUTTON_HEIGHT * 3,
+                            CRASHBUTTON_WIDTH,
+                            CRASHBUTTON_HEIGHT,
+                            3, DefaultDepth(dpy, scr),
+                            InputOutput, DefaultVisual(dpy, scr),
+                            CWBackPixel | CWBorderPixel | CWEventMask,
+                            &xswa);
+
+    xfs = XLoadQueryFont(dpy, "fixed"); /* should always be safe */
+    xgcv.function = GXcopy;
+    xgcv.foreground = black;
+    xgcv.background = white;
+    xgcv.font = xfs->fid;
+    gc = XCreateGC(dpy, toplevel,
+                   GCForeground | GCBackground | GCFont | GCFunction, &xgcv);
+
+    crashwin_draw(gc, toplevel, button1, button2, button3,
+                  xfs->ascent + xfs->descent, xfs->max_bounds.width);
+    XMapRaised(dpy, toplevel);
+    XMapRaised(dpy, button1);
+    XMapRaised(dpy, button2);
+    XMapRaised(dpy, button3);
+                                 
+    for (;;) {
+        crashwin_draw(gc, toplevel, button1, button2, button3,
+                      xfs->ascent + xfs->descent, xfs->max_bounds.width);
+        XNextEvent(dpy, &ev);
+
+        if (ev.xany.type == ButtonPress) {
+            if (ev.xbutton.window == button3) {
+                remove_titlebars();
+                execlp(argv0, argv0, NULL);
+                _exit(1);
+            } else if (ev.xbutton.window == button2) {
+                _exit(1);
+            } else if (ev.xbutton.window == button1) {
+                execlp("twm", "twm", NULL);
+                _exit(1);
+            }
+        }
+    }
+}
+
+static void crashwin_draw(GC gc, Window toplevel, Window button1,
+                          Window button2, Window button3,
+                          int height, int width)
+{
+    int i;
+    static char *message[] = {
+        "Don't Panic!",
+        "",
+        "AHWM (your window manager) has crashed.",
+        "",
+        "Click on the top button to attempt to restart AHWM.",
+        "This will hopefully allow you to continue where you left off.",
+        "",
+        "Click on the middle button to exit AHWM.",
+        "This will allow you to restart your X session, but you",
+        "may lose your work in any open applications.",
+        "",
+        "Click on the bottom button to start the TWM window manager.",
+        "This will allow you to use TWM to save your work in",
+        "any open applications and then exit your X session cleanly.",
+        "",
+        "Please send an email to hioreanu+ahwm@uchicago.edu.",
+        "",
+        "Seriously, please send me an email so I can fix this." 
+    };
+    
+    XDrawString(dpy, button3, gc,
+                CRASHBUTTON_WIDTH / 2 - strlen("Restart") * width / 2,
+                CRASHBUTTON_HEIGHT / 2 + height / 2,
+                "Restart", strlen("Restart"));
+    XDrawString(dpy, button2, gc,
+                CRASHBUTTON_WIDTH / 2 - strlen("Exit") * width / 2,
+                CRASHBUTTON_HEIGHT / 2 + height / 2,
+                "Exit", strlen("Exit"));
+    XDrawString(dpy, button1, gc,
+                CRASHBUTTON_WIDTH / 2 - strlen("TWM") * width / 2,
+                CRASHBUTTON_HEIGHT / 2 + height / 2,
+                "TWM", strlen("TWM"));
+    for (i = 0; i < sizeof(message) / sizeof(char *); i++) {
+        XDrawString(dpy, toplevel, gc, 5, 5 + height + i * height,
+                    message[i], strlen(message[i]));
+    }
+}

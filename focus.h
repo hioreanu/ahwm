@@ -41,6 +41,14 @@
 extern client_t *focus_current;
 
 /*
+ * The window which we focus when there are no clients or the current
+ * focus client does not take keyboard input.  Needs to be exported
+ * for keyboard_handle_event().
+ */
+
+extern Window focus_revert_window;
+
+/*
  * Initialize the focus module
  * Depends on number of workspaces being set
  */

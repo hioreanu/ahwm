@@ -1,13 +1,15 @@
 TODO before release:
-- 'make install' should work and 'make clean' shouldn't remove parser.c
+- window placement wrt. old titlebars on restart, use X property
+- on first start, pop up dialog explaining what's going on
+- resize and restart bound to same key
+- documentation to cvs
+- default-message.h to cvs
 - placement, use corner with least overlap first
 - _NET_WORKAREA and STRUT
 - keep _WM_STATE, _WIN_LAYER updated
 - implement "ping" protocol
 - transient for self means something?  Directory property window in konq
-- use XInternAtoms for ewmh.c
 - figure out what the hell 'sticky' means to EWMH
-- zombies on FreeBSD
 - start xwm from an xterm, that xterm doesn't get _NET_DESKTOP prop
 - test with a modern version of Sun's X implementation
 - test final build with various options at least two weeks before initial release
@@ -21,16 +23,15 @@ Wishlist:
 - may need fake client struct for revert_to window for dynamic bindings
 - contact author of 'kpager', figure out what the problem is
 - allow binding to click and drag on same place
+- use XInternAtoms for ewmh.c
 - 'mouse' map_policy placement algorithm - map window under mouse
 - finish support for DontRaise for CycleBehaviour
 - for focus click, grab all combinations of click and modifier?
 - cascade placement algorithm
-- change window according to prefs when changes ws, becomes shaped, etc.
 - deal with window "strut"
 - placement algos to config file
 - 2-bit struct fields not portable, use autoconf
 - grab pointer on MOUSE_DEPRESS, ungrab when receive ButtonRelease?
-- raise delay, need better timer handler
 - session management (WM_SAVE_YOURSELF, WM_CLIENT_LEADER, etc.)
 - old KDE 1.1 hints?
 - we assume that focused window is somehow raised (eg, on window cycling)
@@ -42,9 +43,8 @@ Wishlist:
 - compress ConfigureRequest events, and others if possible
 - buttons on titlebars
 - optional window sizing frame?
-- gui frontend for .xwmrc
+- gui frontend for .ahwmrc
 - window positions persist across sessions
-- have a "reset" function that resets colormap installation, etc.
 - add saveunder option (where would I use this?)
 - keep bottom 1 pixel free of windows, bind menu there (separate program?)
 - profile, optimize, create benchmarks
@@ -137,6 +137,7 @@ Finished, no longer TODO:
 - manage client on first maprequest, not window creation
 - on alt tab, perceptible delay between titlebar color change and raise
 - colormaps
+- change window according to prefs when changes ws, becomes shaped, etc.
 - user-settable font, global option
 - titlebar height depends on font height or user pref, experiment
 - set workspace_current from _NET_CURRENT_DESKTOP, for restarting
@@ -146,6 +147,11 @@ Finished, no longer TODO:
 - ask about KEEP_ON_TOP WM_STATE
 - deal with autoconf problems on Debian and Solaris
 - xwm -> ahwm
+- raise delay, need better timer handler
+- handle SEGV, BUS
+- 'make install' should work and 'make clean' shouldn't remove parser.c
+- zombies on FreeBSD
+- timestamp focus issue
 
 Abandoned, no longer TODO:
 - "stop" focus, detect when pointer stops in a window (no timeout) -
@@ -161,6 +167,8 @@ Abandoned, no longer TODO:
 - ungrab mouse, keyboard on unmapped clients - point being?
 - deal with old border width in places ICCCM requires it - already doing it
 - use automake? - don't see the point, doesn't help me in any way
+- have a "reset" function that resets colormap installation as per
+  ICCCM 2.0 - restart has same effect
 
 BUG - badwindow on XSetInputFocus, deleting one window kills a sibling which
 was to be the next focused window.  Easiest to ignore this error and other
@@ -231,8 +239,12 @@ code no longer seems to honor client's height/width increment hints.
 Looks like xterm bug off-hand, need to check - FIXED: problem seems
 gone on recent builds
 
+BUG - run xload or xeyes, they don't take keyboard input, doesn't bind
+keys - FIXED
+
 BUG - sometimes when xterm loses focus, it doesn't update its cursor; looks
-like an xterm bug, other window managers do same thing
+like an xterm bug, other window managers do same thing - FIXED:  definitely
+xterm bug
 
 BUG - strange interaction in window moving edge-resistance, sometimes
 pointer leaves window when moving quickly, can't reproduce

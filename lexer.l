@@ -175,6 +175,7 @@ Invoke { return TOK_INVOKE; }
 ShowMenu { return TOK_SHOWMENU; }
 Refresh { return TOK_REFRESH; }
 Restart { return TOK_RESTART; }
+Crash { return TOK_CRASH; }
 
 Define { return TOK_DEFINE; }
 

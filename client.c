@@ -32,6 +32,7 @@
 #include <X11/Xatom.h>
 #include <X11/Xutil.h>
 #include <X11/Xproto.h>
+#include <X11/Xresource.h>      /* needed for XUniqueContext in Xutil.h */
 
 #ifdef SHAPE
 #include <X11/extensions/shape.h>
@@ -50,6 +51,7 @@
 #include "stacking.h"
 #include "prefs.h"
 #include "mwm.h"
+#include "colormap.h"
 
 int TITLE_HEIGHT = 15;
 

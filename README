@@ -1,13 +1,14 @@
 $Id$
 
-This is release 1.0 of AHWM, an X11 window manager.
+This is release 0.90 of AHWM, an X11 window manager.
 
 The installation of AHWM is the same as many other autoconf-based
 builds and does not take any special options or steps; please see the
 file "INSTALL" for details.
 
-The documentation for AHWM is in two manual pages, which you can view
-by invoking "man ahwm" and "man ahwmrc".
+The documentation for AHWM is in manual page format; you can view it by
+typing "man ahwmrc".  In addition, the manual page can be found in HTML
+format on the AHWM homepage.
 
 You can obtain the latest version of AHWM from the AHWM homepage which
 is located at:

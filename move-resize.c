@@ -189,8 +189,6 @@ void resize_maximize_client(client_t *client,
                             enum max_horiz_vert hv,
                             enum max_toggle_ensure toggle_ensure)
 {
-    void (*fn)(client_t *);
-    
     if (client->sticky) return;
 
     if (hv == MAX_BOTH) {

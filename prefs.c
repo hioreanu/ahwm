@@ -43,6 +43,9 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <unistd.h>
 
 #include "compat.h"
 #include "prefs.h"
@@ -54,8 +57,14 @@
 #include "kill.h"
 #include "move-resize.h"
 #include "malloc.h"
+#include "ewmh.h"
+#include "paint.h"
+#include "stacking.h"
 
 #include "default-ahwmrc.h"
+#include "default-message.h"
+
+extern void yyparse();
 
 #define CHECK_BOOL(x) ((x)->type_type == BOOLEAN ? True : False)
 #define CHECK_STRING(x) ((x)->type_type == STRING ? True : False)
@@ -142,6 +151,7 @@ static Bool type_check_mousebinding(mousebinding *mb);
 static Bool type_check_keyunbinding(keyunbinding *kub);
 static Bool type_check_mouseunbinding(mouseunbinding *mub);
 static Bool type_check_function(function *fn);
+static Bool type_check_definition(definition *def);
 static void keybinding_apply(client_t *client, keybinding *kb);
 static void keyunbinding_apply(client_t *client, keyunbinding *kb);
 static void mousebinding_apply(client_t *client, mousebinding *kb);
@@ -152,13 +162,14 @@ static void globally_unbind(line *lp);
 static int no_config(char *ahwmrc_path);
 static void invoke(XEvent *e, arglist *args);
 static void focus(XEvent *e, arglist *args);
+static void crash(XEvent *e, arglist *args);
+static void xmessage();
 
 void prefs_init()
 {
     char buf[PATH_MAX];
     char *home;
-    line *lp, *prev, *first_context, *last_context, *last_line, *first_line;
-    int def_number = 0;
+    line *lp, *first_context, *last_context, *last_line, *first_line;
     extern FILE *yyin;
     int i;
 
@@ -303,8 +314,13 @@ static line *type_check(line *block)
                 break;
             case DEFINITION:
                 /* we fill the "definitions" table on type checking */
-                make_definition(lp->line_value.definition);
+                line_ok = type_check_definition(lp->line_value.definition);
+                if (line_ok) {
+                    make_definition(lp->line_value.definition);
+                }
                 break;
+            case INVALID_LINE:
+                line_ok = False;
         }
         if (line_ok == True) {
             if (first_ok == NULL)
@@ -492,12 +508,17 @@ static Bool type_check_mousebinding(mousebinding *mb)
 
 static Bool type_check_keyunbinding(keyunbinding *kub)
 {
-    return True;
+    return True;                /* FIXME */
 }
 
 static Bool type_check_mouseunbinding(mouseunbinding *mub)
 {
-    return True;
+    return True;                /* FIXME */
+}
+
+static Bool type_check_definition(definition *def)
+{
+    return True;                /* FIXME */
 }
 
 static Bool type_check_function(function *fn)
@@ -521,6 +542,7 @@ static Bool type_check_function(function *fn)
         case BEEP:
         case REFRESH:
         case RESTART:
+        case CRASH:
             if (fn->function_args == NULL) {
                 return True;
             } else {
@@ -619,6 +641,8 @@ static void prefs_apply_internal(client_t *client, line *block, prefs *p)
             case MOUSEUNBINDING:
                 mouseunbinding_apply(client, lp->line_value.mouseunbinding);
                 break;
+            default:
+                /* nothing */
         }
     }
 }
@@ -814,6 +838,8 @@ static void option_apply(client_t *client, option *opt, prefs *p)
             get_int(opt->option_value, &p->raise_delay);
             p->raise_delay_set = opt->option_setting;
             break;
+        default:
+            /* nothing */
     }
 }
 
@@ -1062,6 +1088,7 @@ key_fn fn_table[] = {
 /* 19 */    NULL, /* expansion for menu system */
 /* 20 */    NULL, /* refresh/reset */
 /* 21 */    ahwm_restart,
+/* 22 */    crash,
 };
 
 static void globally_bind(line *lp)
@@ -1126,7 +1153,43 @@ static int no_config(char *ahwmrc_path)
         fprintf(yyin, "%s\n", default_ahwmrc[i]);
     }
     fseek(yyin, 0, SEEK_SET);
+    xmessage();
     return 1;
+}
+
+/*
+ * We just use xmessage to display our welcome message.  Hopefully
+ * user's system has xmessage.  Hopefully user's xmessage works the
+ * same as my version.  Hopefully we don't run into system limit on
+ * size or number of arguments.  Hopefully user isn't completely
+ * disgusted with nasty athena-based xmessage.
+ */
+
+static void xmessage()
+{
+    pid_t pid;
+    
+    /* standard double fork trick, no zombies */
+    pid = fork();
+    if (pid == 0) {
+        pid = fork();
+        if (pid == 0) {
+            sleep(1);
+            execvp("xmessage", default_message);
+            perror("AHWM: exec(xmessage)");
+            fprintf(stderr, "This is a bug in AHWM.  "
+                    "Please contact hioreanu+ahwm@uchicago.edu");
+            exit(1);
+        } else if (pid < 0) {
+            perror("AHWM: xmessage: fork");
+            exit(1);
+        }
+        exit(0);
+    } else if (pid < 0) {
+        perror("AHWM: xmessage: fork");
+        return;                 /* not really fatal */
+    }
+    wait(NULL);
 }
 
 /*
@@ -1144,7 +1207,7 @@ static void invoke(XEvent *e, arglist *args)
 {
     arglist *al;
     funclist *fl;
-    int i, j;
+    int i;
     key_fn fn;
     
     for (al = args; al != NULL; al = al->arglist_next) {
@@ -1175,3 +1238,15 @@ static void focus(XEvent *e, arglist *args)
     }
 }
 
+static void crash(XEvent *e, arglist *args)
+{
+    int *p;
+    
+    fprintf(stderr, "AHWM:  Crashing...happy now?\n");
+
+    p = NULL;
+    p[0] = 0xDECAF;
+    /* is */
+    p[1] = 0xBAD;
+    p[2] = 0xC0FFEE;
+}

@@ -89,7 +89,7 @@ void colormap_install(client_t *client)
             XInstallColormap(dpy, client->colormap);
         return;
     }
-    installed_main_colormap == False;
+    installed_main_colormap = False;
     for (i = 0; i < client->ncolormap_windows; i++) {
         if (XGetWindowAttributes(dpy, client->colormap_windows[i], &xwa) == 0)
             continue;

@@ -182,6 +182,7 @@ struct _function {
            SHOWMENU = 19,
            REFRESH = 20,
            RESTART = 21,
+           CRASH = 22,
     } function_type;
     arglist *function_args;
 };
@@ -206,6 +207,13 @@ struct _arglist {
 extern line *preferences;
 
 /* INTERFACE */
+
+/*
+ * for main()
+ * no dependencies
+ */
+
+void prefs_init();
 
 /*
  * There are only two functions to interface to this module.

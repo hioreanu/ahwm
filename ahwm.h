@@ -34,7 +34,8 @@
 /* the events we usually listen for on the root window */
 #define ROOT_EVENT_MASK PropertyChangeMask | SubstructureRedirectMask | \
                         SubstructureNotifyMask | KeyPressMask |         \
-                        KeyReleaseMask | ButtonPressMask | ButtonReleaseMask
+                        KeyReleaseMask | ButtonPressMask | ButtonReleaseMask | \
+                        FocusChangeMask
 
 extern Display *dpy;            /* standard in any X program */
 extern int scr;                 /* only one screen supported */
@@ -50,7 +51,7 @@ extern GC extra_gc1;            /* GC which changes */
 extern GC extra_gc2;            /* GC which changes */
 extern GC extra_gc3;            /* GC which changes */
 extern GC extra_gc4;            /* GC which changes */
-extern char *ahwm_fontname;      /* name of out font */
+extern char *ahwm_fontname;     /* name of our font */
 extern XFontStruct *fontstruct; /* our font */
 extern Atom WM_STATE;           /* various atoms used throughout */
 extern Atom WM_CHANGE_STATE;

@@ -34,6 +34,7 @@
 #include "debug.h"
 #include "ewmh.h"
 #include "stacking.h"
+#include "xev.h"
 
 unsigned int nworkspaces = 1;
 unsigned int workspace_current = 1;
@@ -49,8 +50,6 @@ void workspace_goto_bindable(XEvent *e, arglist *args)
 
 static Bool unmap(client_t *client, void *v)
 {
-    XSetWindowAttributes xswa;
-    
     if (client->omnipresent) {
         client->workspace = (unsigned int)v;
     } else {

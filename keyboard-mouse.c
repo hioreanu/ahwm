@@ -48,6 +48,7 @@
 #include "cursor.h"
 #include "debug.h"
 #include "stacking.h"
+#include "ewmh.h"
 
 #ifndef MIN
 #define MIN(x,y) ((x) < (y) ? (x) : (y))
@@ -603,6 +604,10 @@ Bool keyboard_handle_event(XKeyEvent *xevent)
 #endif /* DEBUG */
 
     fn = keyboard_find_function(xevent, &args);
+    if (xevent->window == focus_revert_window && focus_current != NULL) {
+        /* nasty hack, but simplifies all user-visible functions */
+        xevent->window = focus_current->window;
+    }
     if (fn == NULL) {
         return False;
     } else {

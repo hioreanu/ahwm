@@ -49,6 +49,7 @@
 #include "paint.h"
 #include "mwm.h"
 #include "colormap.h"
+#include "ewmh.h"
 
 #ifdef SHAPE
 #include <X11/extensions/shape.h>
@@ -685,7 +686,6 @@ static void event_configurerequest(XConfigureRequestEvent *xevent)
 static void configure_nonclient(XConfigureRequestEvent *xevent)
 {
     XWindowChanges xwc;
-    long mask;
 
     xwc.x = xevent->x;
     xwc.y = xevent->y;
@@ -825,6 +825,19 @@ static void event_expose(XExposeEvent *xevent)
 
 static void event_focusin(XFocusChangeEvent *xevent)
 {
+    if (xevent->type == FocusIn
+        && xevent->mode == NotifyNormal
+        && (xevent->detail == NotifyPointerRoot
+            || xevent->detail == NotifyDetailNone)) {
+        /* one of our XSetInputFocus calls barfed,
+         * try it again */
+        debug(("Setting focus to %#lx in event_focusin",
+               focus_current->window));
+        if (focus_current != NULL) {
+            XSetInputFocus(dpy, focus_current->window,
+                           RevertToPointerRoot, CurrentTime);
+        }
+    }
 #if 0 /* FIXME */
     client_t *client;
     
@@ -943,12 +956,15 @@ static Time figure_timestamp(XEvent *event)
     switch (event->type) {
         case ButtonPress:
         case ButtonRelease:
+            return event->xbutton.time;
         case KeyPress:
         case KeyRelease:
+            return event->xkey.time;
         case MotionNotify:
+            return event->xmotion.time;
         case EnterNotify:
         case LeaveNotify:
-            return event->xbutton.time;
+            return event->xcrossing.time;
         case PropertyNotify:
         case SelectionClear:
             return event->xproperty.time;
@@ -956,6 +972,29 @@ static Time figure_timestamp(XEvent *event)
             return event->xselectionrequest.time;
         case SelectionNotify:
             return event->xselection.time;
+        /* None of the following have timestamps - bad design decision */
+        case FocusIn:
+        case FocusOut:
+        case Expose:
+        case NoExpose:
+        case GraphicsExpose:
+        case VisibilityNotify:
+        case CreateNotify:
+        case DestroyNotify:
+        case UnmapNotify:
+        case MapNotify:
+        case MapRequest:
+        case ReparentNotify:
+        case ConfigureNotify:
+        case ConfigureRequest:
+        case GravityNotify:
+        case ResizeRequest:
+        case CirculateRequest:
+        case CirculateNotify:
+        case ColormapNotify:
+        case ClientMessage:
+        case MappingNotify:
+            return CurrentTime;
         default:
 #ifdef SHAPE
             if (event->type == shape_event_base + ShapeNotify)

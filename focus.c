@@ -23,6 +23,8 @@
  * SUCH DAMAGE.
  */
 
+/* FIXME: this is too complex.  This file must be rewritten. */
+
 /* FIXME: remove all comments mentioning raising */
 
 /*
@@ -79,13 +81,13 @@ typedef struct _focus_node {
 
 client_t *focus_current = NULL;
 
+Window focus_revert_window = None;
+
 static focus_node **focus_stacks;
 
 static XContext *focus_contexts;
 
 static Bool in_alt_tab = False; /* see focus_alt_tab, focus_ensure */
-
-static Window revert_to = None;
 
 static focus_node *find_node(client_t *);
 static void focus_change_current(client_t *, Time, Bool, Bool);
@@ -114,12 +116,13 @@ void focus_init()
         focus_stacks[i] = NULL;
     }
     xswa.override_redirect = True;
-    revert_to = XCreateWindow(dpy, root_window, 0, 0, 1, 1, 0, 0,
-                              InputOnly, DefaultVisual(dpy, scr),
-                              CWOverrideRedirect, &xswa);
-    XMapWindow(dpy, revert_to);
+    focus_revert_window = XCreateWindow(dpy, root_window, 0, 0, 1, 1, 0, 0,
+                                        InputOnly, DefaultVisual(dpy, scr),
+                                        CWOverrideRedirect, &xswa);
+    debug(("\focus_revert_window = %#lx\n", focus_revert_window));
+    XMapWindow(dpy, focus_revert_window);
     XSync(dpy, False);
-    keyboard_grab_keys(revert_to);
+    keyboard_grab_keys(focus_revert_window);
 }
 
 static focus_node *find_node(client_t *client)
@@ -333,7 +336,8 @@ static void focus_set_internal(focus_node *node, Time timestamp,
     if (node != NULL && node->client == focus_current) return;
 
     if (node == NULL) {
-        XSetInputFocus(dpy, revert_to, RevertToPointerRoot, CurrentTime);
+        XSetInputFocus(dpy, focus_revert_window,
+                       RevertToPointerRoot, CurrentTime);
         return;
     }
     
@@ -374,17 +378,20 @@ static void focus_set_internal(focus_node *node, Time timestamp,
  * reverting to PointerRoot on accident) is a CATASTROPHIC FAILURE.  I
  * consider that worse than crashing.  Thus, we always call
  * XSetInputFocus with CurrentTime and everything works beautifully.
+ * 
+ * FIXME:  update comment
  */
 
 void focus_ensure(Time timestamp)
 {
     if (focus_current == NULL || focus_current->focus_policy == DontFocus) {
-        XSetInputFocus(dpy, revert_to, RevertToPointerRoot, CurrentTime);
+        XSetInputFocus(dpy, focus_revert_window,
+                       RevertToPointerRoot, CurrentTime);
         return;
     }
 
     debug(("\tCalling XSetInputFocus(%#lx) ('%.10s')\n",
-           (unsigned int)focus_current->window, focus_current->name));
+           (unsigned long)focus_current->window, focus_current->name));
 
     ewmh_active_window_update();
 
@@ -401,11 +408,12 @@ void focus_ensure(Time timestamp)
         focus_current->xwmh->input == False) {
         
         debug(("\tInput hint is False\n"));
-        XSetInputFocus(dpy, revert_to, RevertToPointerRoot, CurrentTime);
+        XSetInputFocus(dpy, focus_revert_window,
+                       RevertToPointerRoot, timestamp);
     } else {
         debug(("\tInput hint is True\n"));
         XSetInputFocus(dpy, focus_current->window,
-                       RevertToPointerRoot, CurrentTime);
+                       RevertToPointerRoot, timestamp);
     }
     if (focus_current->protocols & PROTO_TAKE_FOCUS) {
         debug(("\tUses TAKE_FOCUS protocol\n"));
@@ -442,13 +450,14 @@ static void focus_change_current(client_t *new, Time timestamp,
             XGrabButton(dpy, Button1, 0, old->frame,
                         True, ButtonPressMask, GrabModeSync,
                         GrabModeAsync, None, None);
-            if (old->dont_bind_keys == 0)
-                keyboard_grab_keys(old->frame); /* FIXME */
-            mouse_grab_buttons(old);
+            /* FIXME */
+/*             if (old->dont_bind_keys == 0) */
+/*                 keyboard_grab_keys(old->frame); */
+/*             mouse_grab_buttons(old); */
         }
         if (new != NULL && new->focus_policy == ClickToFocus) {
             XUngrabButton(dpy, Button1, 0, new->frame);
-            mouse_grab_buttons(new);
+/*            mouse_grab_buttons(new); */ /* FIXME: */
         }
         XFlush(dpy);
     }
@@ -463,16 +472,17 @@ void focus_policy_to_click(client_t *client)
         XGrabButton(dpy, Button1, 0, client->frame,
                     True, ButtonPressMask, GrabModeSync,
                     GrabModeAsync, None, None);
-        if (client->dont_bind_keys == 0)
-            keyboard_grab_keys(client->frame); /* FIXME */
-        mouse_grab_buttons(client); /* FIXME */
+        /* FIXME */
+/*         if (client->dont_bind_keys == 0) */
+/*             keyboard_grab_keys(client->frame); */
+/*         mouse_grab_buttons(client); */
     }
 }
 
 void focus_policy_from_click(client_t *client)
 {
     XUngrabButton(dpy, Button1, 0, client->frame);
-    mouse_grab_buttons(client); /* FIXME */
+/*    mouse_grab_buttons(client); */ /* FIXME */
 }
 
 /*
@@ -603,6 +613,15 @@ void focus_cycle_next(XEvent *xevent, arglist *ignored)
         }
         if (state == CONTINUE) event_get(ConnectionNumber(dpy), xevent);
     }
+    
+    XUngrabKeyboard(dpy, event_timestamp);
+    /* we want to make sure server knows we've
+     * ungrabbed keyboard before calling
+     * XSetInputFocus: */
+/*     XFlush(dpy); */ /* FIXME: remove */
+    in_alt_tab = False;
+    focus_ensure(event_timestamp);
+    stacking_raise(focus_current);
 
     /* this is a speed hack.  We want this function to be as fast as
      * possible in the loop.  Whenever we change the current focus,
@@ -629,15 +648,6 @@ void focus_cycle_next(XEvent *xevent, arglist *ignored)
     if (state != QUIT && node != NULL && orig_focus != NULL) {
         permute(orig_focus, node);
     }
-    
-    XUngrabKeyboard(dpy, CurrentTime);
-    /* we want to make sure server knows we've
-     * ungrabbed keyboard before calling
-     * XSetInputFocus: */
-    XSync(dpy, False);
-    in_alt_tab = False;
-    focus_ensure(CurrentTime);
-    stacking_raise(focus_current);
                     
     if (state == REPLAY_KEYBOARD) {
         if (!keyboard_handle_event(&xevent->xkey))

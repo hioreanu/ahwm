@@ -22,7 +22,11 @@ lexer.c: lexer.l
 	flex -i -olexer.c lexer.l
 
 install: ahwm
-	@echo Simply copy the file 'ahwm' in this directory somewhere into your PATH
+	cp ./ahwm @prefix@@bindir@
+	chmod 755 @prefix@@bindir@/ahwm
+	cp ./ahwmrc.5 @prefix@@mandir@/man5
+	chmod 644 @prefix@@mandir@/man5/ahwmrc.5
+	ln -s @prefix@@mandir@/man5/ahwmrc.5 @prefix@@mandir@/man5/ahwm.5
 
 .SUFFIXES:
 .SUFFIXES: .c .@OBJEXT@
@@ -40,7 +44,7 @@ wordcount:
 wc: wordcount
 
 clean:
-	@rm -f parser.c parser.h lexer.c *.@OBJEXT@ *~ *core ahwm # TAGS
+	@rm -f *.@OBJEXT@ *~ *core ahwm # TAGS
 
 # FIXME:  just copying this over to Makefile.in, need to automate
 # DO NOT DELETE

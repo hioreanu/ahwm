@@ -136,6 +136,7 @@
 %token TOK_SHOWMENU
 %token TOK_REFRESH
 %token TOK_RESTART
+%token TOK_CRASH
 
 %token TOK_SEMI
 %token TOK_EQUALS
@@ -512,6 +513,7 @@ function_name: TOK_SENDTOWORKSPACE { $$ = SENDTOWORKSPACE; }
              | TOK_SHOWMENU { $$ = SHOWMENU; }
              | TOK_REFRESH { $$ = REFRESH; }
              | TOK_RESTART { $$ = RESTART; }
+             | TOK_CRASH { $$ = CRASH; }
 
 arglist: arglist TOK_COMMA type
          {
