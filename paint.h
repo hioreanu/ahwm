@@ -65,6 +65,16 @@ void paint_init();
 
 void paint_calculate_colors(client_t *client, char *normal, char *focused,
                             char *text, char *focused_text);
+/*
+ * Adds a button to be displayed on the titlebar.  NB, you also need
+ * to use keyboard_add_button() to make the button work.  IMAGE is one
+ * of "box" "down" "topbar" "up" "wins" "x".  If LEFT is true, the
+ * button is added to the left; if false, the button is added to the
+ * left.  The button positions are determined by the order in which
+ * this function is called.
+ */
+
+void paint_add_button(char *image, Bool left);
 
 /*
  * Paints the titlebar.  All of it.  At once.

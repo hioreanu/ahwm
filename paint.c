@@ -34,6 +34,13 @@
 
 #include <stdio.h>
 
+#include "box.xbm"
+#include "down.xbm"
+#include "topbar.xbm"
+#include "up.xbm"
+#include "wins.xbm"
+#include "x.xbm"
+
 /*
  * Color allocation only happens on startup, so we don't have to be
  * too clever here.  Just use a simple array, realloc() when needed
@@ -55,6 +62,13 @@ enum {
 
 #define NCOLORS 8
 
+typedef struct _button {
+    Pixmap pixmap;
+    int width;
+    int height;
+    struct _button *next;
+} button;
+
 #define OFFSET 4096
 
 /* 16-bit unsigned addition and subtraction without overflow */
@@ -63,6 +77,14 @@ enum {
 #define ADD(x,y) (((((x) + (y)) > 0xFFFF) || ((x) + (y) < (x))) ? \
                   0xFFFF : ((x) + (y)))
 
+#ifndef MAX
+#define MAX(x,y) ((x) > (y) ? (x) : (y))
+#endif /* MAX */
+
+#ifndef MIN
+#define MIN(x,y) ((x) < (y) ? (x) : (y))
+#endif /* MIN */
+
 static int find(unsigned long normal, unsigned long focused,
                 unsigned long text, unsigned long focused_text);
 static unsigned long calc(unsigned long orig, XColor exact, long offset,
@@ -70,6 +92,9 @@ static unsigned long calc(unsigned long orig, XColor exact, long offset,
 
 unsigned long *colors = NULL;  /* treated as a 2-D array */
 int nallocated = 0;            /* dimension of "colors" is "nallocated" by 8 */
+
+static button *left_buttons;
+static button *right_buttons;
 
 /*
  * Allocates default colors
@@ -96,6 +121,73 @@ void paint_init()
     colors[FOCUSED_HILIGHT] = white;
     colors[FOCUSED_LOLIGHT] = white;
     colors[FOCUSED_TEXT] = black;
+}
+
+void paint_add_button(char *image, Bool left)
+{
+    button *b, *tmp;
+    char *bits;
+
+    b = malloc(sizeof(button));
+    if (b == NULL) {
+        perror("XWM: add_button: malloc");
+        return;
+    }
+    b->next = NULL;
+
+    if (strcasecmp(image, "box") == 0) {
+        bits = box_bits;
+        b->width = box_width;
+        b->height = box_height;
+    } else if (strcasecmp(image, "down") == 0) {
+        bits = down_bits;
+        b->width = down_width;
+        b->height = down_height;
+    } else if (strcasecmp(image, "topbar") == 0) {
+        bits = topbar_bits;
+        b->width = topbar_width;
+        b->height = topbar_height;
+    } else if (strcasecmp(image, "up") == 0) {
+        bits = up_bits;
+        b->width = up_width;
+        b->height = up_height;
+    } else if (strcasecmp(image, "wins") == 0) {
+        bits = wins_bits;
+        b->width = wins_width;
+        b->height = wins_height;
+    } else if (strcasecmp(image, "x") == 0) {
+        bits = x_bits;
+        b->width = x_width;
+        b->height = x_height;
+    } else {
+        return;                 /* FIXME */
+    }
+        
+    b->pixmap = XCreateBitmapFromData(dpy, root_window, bits,
+                                      b->width, b->height);
+
+    if (left) {
+        if (left_buttons == NULL) {
+            left_buttons = b;
+            return;
+        } else {
+            tmp = left_buttons;
+        }
+    } else {
+        if (right_buttons == NULL) {
+            right_buttons = b;
+            return;
+        } else {
+            tmp = right_buttons;
+        }
+    }
+    for (;;) {
+        if (tmp->next == NULL) {
+            tmp->next = b;
+            return;
+        }
+        tmp = tmp->next;
+    }
 }
 
 /* see if values already seen */
@@ -238,12 +330,27 @@ void paint_calculate_colors(client_t *client, char *normal,
     /* FIXME:  might also need to repaint right now */
 }
 
+/* this is one of the few functions that is speed-critical, so it looks
+ * a bit ugly because it's somewhat optimized
+ * we use line segments because we want to reduce the number of calls
+ * to xlib (xlib calls can be very expensive) */
 void paint_titlebar(client_t *client)
 {
     unsigned long middle, hilight, lowlight, text;
     XGCValues xgcv;
-    int ndx, position;
-
+    int ndx, title_position, room_left, room_right, tmp;
+    button *b;
+    static XSegment *button_hilights = NULL, *button_lolights = NULL;
+    static int nbutton_hilights = 0;
+    int nhilights_used;
+    static XSegment main_hilight[4] = {
+        { 0, 0, 0, 0 }, { 1, 1, 1, 1 },
+        { 0, 0, 0, 0 }, { 1, 1, 1, 1 } };
+    static XSegment main_lolight[4] = {
+        { 1, 1, 1, 1 }, { 2, 2, 2, 2 },
+        { 1, 1, 1, 1 }, { 2, 2, 2, 2 } };
+    XSegment *tmp_segptr;
+    
     if (client == NULL || client->titlebar == None) return;
 
     ndx = client->color_index;
@@ -267,7 +374,7 @@ void paint_titlebar(client_t *client)
         text = colors[ndx * NCOLORS + TEXT];
     }
 
-    /* using three different GCs instead of using one and
+    /* using four different GCs instead of using one and
      * continually changing its values may or may not be faster
      * (depending on hardware) according to the Xlib docs, but
      * this seems to reduce flicker when moving windows on my
@@ -280,41 +387,183 @@ void paint_titlebar(client_t *client)
     xgcv.foreground = lowlight;
     XChangeGC(dpy, extra_gc3, GCForeground, &xgcv);
     xgcv.foreground = text;
-    XChangeGC(dpy, extra_gc4, GCForeground, &xgcv);
+    xgcv.background = middle;
+    XChangeGC(dpy, extra_gc4, GCForeground | GCBackground, &xgcv);
     
     XFillRectangle(dpy, client->titlebar, extra_gc1,
                    0, 0, client->width, TITLE_HEIGHT);
+
+    /* the commented-out assignments happen only once,
+     * in the static initializer */
+/*     main_hilight[0].x1 = 0; */
+/*     main_hilight[0].y1 = 0; */
+    main_hilight[0].x2 = client->width;
+/*     main_hilight[0].y2 = 0; */
+    
+/*     main_hilight[1].x1 = 1; */
+/*     main_hilight[1].y1 = 1; */
+    main_hilight[1].x2 = client->width - 2;
+/*     main_hilight[1].y2 = 1; */
+    
+/*     main_hilight[2].x1 = 0; */
+/*     main_hilight[2].y1 = 0; */
+/*     main_hilight[2].x2 = 0; */
+    main_hilight[2].y2 = TITLE_HEIGHT;
+    
+/*     main_hilight[3].x1 = 1; */
+/*     main_hilight[3].y1 = 1; */
+/*     main_hilight[3].x2 = 1; */
+    main_hilight[3].y2 = TITLE_HEIGHT - 2;
+    
+/*     main_lolight[0].x1 = 1; */
+    main_lolight[0].y1 = TITLE_HEIGHT - 1;
+    main_lolight[0].x2 = client->width - 1;
+    main_lolight[0].y2 = TITLE_HEIGHT - 1;
+
+/*     main_lolight[1].x1 = 2; */
+    main_lolight[1].y1 = TITLE_HEIGHT - 2;
+    main_lolight[1].x2 = client->width - 3;
+    main_lolight[1].y2 = TITLE_HEIGHT - 2;
+
+    main_lolight[2].x1 = client->width - 1;
+/*     main_lolight[2].y1 = 1; */
+    main_lolight[2].x2 = client->width - 1;
+    main_lolight[2].y2 = TITLE_HEIGHT - 1;
+
+    main_lolight[3].x1 = client->width - 2;
+/*     main_lolight[3].y1 = 2; */
+    main_lolight[3].x2 = client->width - 2;
+    main_lolight[3].y2 = TITLE_HEIGHT - 2;
+
+    /* looks ugly, but goes fast for common case */
+    room_left = room_right = 2;
+    nhilights_used = 0;
+    for (b = left_buttons; b != NULL; b = b->next) {
+        XCopyPlane(dpy, b->pixmap, client->titlebar, extra_gc4, 0, 0,
+                   b->width, MIN(b->height, TITLE_HEIGHT - 4),
+                   room_left, 2, 1);
+        if (nbutton_hilights <= nhilights_used) {
+            tmp_segptr = Realloc(button_hilights,
+                                 (nbutton_hilights + 2) * sizeof(XSegment));
+            if (tmp_segptr == NULL) {
+                perror("XWM: paint_titlebar: realloc");
+                continue;
+            } else {
+                button_hilights = tmp_segptr;
+            }
+            tmp_segptr = Realloc(button_lolights,
+                                 (nbutton_hilights + 2) * sizeof(XSegment));
+            if (tmp_segptr == NULL) {
+                perror("XWM: paint_titlebar: realloc");
+                continue;
+            } else {
+                button_lolights = tmp_segptr;
+            }
+            nbutton_hilights += 2;
+        }
+        nhilights_used += 2;
+
+        tmp = room_left + b->width;
+        room_left += b->width + 4;
+
+        button_lolights[nbutton_hilights - 2].x1 = tmp;
+        button_lolights[nbutton_hilights - 2].y1 = 2;
+        button_lolights[nbutton_hilights - 2].x2 = tmp;
+        button_lolights[nbutton_hilights - 2].y2 = TITLE_HEIGHT - 2;
+        tmp++;
+        button_lolights[nbutton_hilights - 1].x1 = tmp;
+        button_lolights[nbutton_hilights - 1].y1 = 1;
+        button_lolights[nbutton_hilights - 1].x2 = tmp;
+        button_lolights[nbutton_hilights - 1].y2 = TITLE_HEIGHT - 2;
+        tmp++;
+        button_hilights[nbutton_hilights - 2].x1 = tmp;
+        button_hilights[nbutton_hilights - 2].y1 = 0;
+        button_hilights[nbutton_hilights - 2].x2 = tmp;
+        button_hilights[nbutton_hilights - 2].y2 = TITLE_HEIGHT;
+        tmp++;
+        button_hilights[nbutton_hilights - 1].x1 = tmp;
+        button_hilights[nbutton_hilights - 1].y1 = 1;
+        button_hilights[nbutton_hilights - 1].x2 = tmp;
+        button_hilights[nbutton_hilights - 1].y2 = TITLE_HEIGHT - 2;
+    }
+    for (b = right_buttons; b != NULL; b = b->next) {
+        XCopyPlane(dpy, b->pixmap, client->titlebar, extra_gc4, 0, 0,
+                   b->width, MIN(b->height, TITLE_HEIGHT - 4),
+                   client->width - room_right - b->width, 2, 1);
+        if (nbutton_hilights <= nhilights_used) {
+            tmp_segptr = Realloc(button_hilights,
+                                 (nbutton_hilights + 2) * sizeof(XSegment));
+            if (tmp_segptr == NULL) {
+                perror("XWM: paint_titlebar: realloc");
+                continue;
+            } else {
+                button_hilights = tmp_segptr;
+            }
+            tmp_segptr = Realloc(button_lolights,
+                                 (nbutton_hilights + 2) * sizeof(XSegment));
+            if (tmp_segptr == NULL) {
+                perror("XWM: paint_titlebar: realloc");
+                continue;
+            } else {
+                button_lolights = tmp_segptr;
+            }
+            nbutton_hilights += 2;
+        }
+        nhilights_used += 2;
         
-    XDrawLine(dpy, client->titlebar, extra_gc2, 0, 0,
-              client->width, 0);
-    XDrawLine(dpy, client->titlebar, extra_gc2, 1, 1,
-              client->width - 2, 1);
-    XDrawLine(dpy, client->titlebar, extra_gc2,
-              0, 0, 0, TITLE_HEIGHT);
-    XDrawLine(dpy, client->titlebar, extra_gc2,
-              1, 1, 1, TITLE_HEIGHT - 2);
+        room_right += b->width;
+        tmp = client->width - room_right - 1;
+        room_right += 4;
 
-    XDrawLine(dpy, client->titlebar, extra_gc3,
-              1, TITLE_HEIGHT - 1, client->width - 1, TITLE_HEIGHT - 1);
-    XDrawLine(dpy, client->titlebar, extra_gc3,
-              2, TITLE_HEIGHT - 2, client->width - 3, TITLE_HEIGHT - 2);
-    XDrawLine(dpy, client->titlebar, extra_gc3,
-              client->width - 1, 1, client->width - 1, TITLE_HEIGHT - 2);
-    XDrawLine(dpy, client->titlebar, extra_gc3,
-              client->width - 2, 2, client->width - 2, TITLE_HEIGHT - 2);
+        button_hilights[nhilights_used - 2].x1 = tmp;
+        button_hilights[nhilights_used - 2].y1 = 1;
+        button_hilights[nhilights_used - 2].x2 = tmp;
+        button_hilights[nhilights_used - 2].y2 = TITLE_HEIGHT - 2;
+        tmp--;
+        button_hilights[nhilights_used - 1].x1 = tmp;
+        button_hilights[nhilights_used - 1].y1 = 0;
+        button_hilights[nhilights_used - 1].x2 = tmp;
+        button_hilights[nhilights_used - 1].y2 = TITLE_HEIGHT;
+        tmp--;
+        button_lolights[nhilights_used - 2].x1 = tmp;
+        button_lolights[nhilights_used - 2].y1 = 1;
+        button_lolights[nhilights_used - 2].x2 = tmp;
+        button_lolights[nhilights_used - 2].y2 = TITLE_HEIGHT - 2;
+        tmp--;
+        button_lolights[nhilights_used - 1].x1 = tmp;
+        button_lolights[nhilights_used - 1].y1 = 2;
+        button_lolights[nhilights_used - 1].x2 = tmp;
+        button_lolights[nhilights_used - 1].y2 = TITLE_HEIGHT - 2;
+    }
 
-    if (client->title_position == DontDisplay) {
-        return;
-    } else if (client->title_position == DisplayLeft) {
-        position = 2;
+    room_left += 2;
+    room_right += 2;
+    
+    if (client->title_position == DisplayLeft) {
+        title_position = room_left;
     } else if (client->title_position == DisplayCentered) {
         int i = XTextWidth(fontstruct, client->name, strlen(client->name));
-        i /= 2;
-        position = client->width / 2 - i + 2;
+        title_position = (client->width - room_left - room_right) / 2 - i / 2;
+        title_position += room_left;
+        if (title_position + i > client->width - room_right) {
+            /* don't want title to obscure buttons */
+            title_position -= title_position + i - (client->width - room_right);
+        }
     } else if (client->title_position == DisplayRight) {
         int i = XTextWidth(fontstruct, client->name, strlen(client->name));
-        position = client->width - i - 2;
+        title_position = client->width - i - room_right;
     }
-    XDrawString(dpy, client->titlebar, extra_gc4, position,
-                TITLE_HEIGHT - 4, client->name, strlen(client->name));
+    XDrawSegments(dpy, client->titlebar, extra_gc2,
+                  main_hilight, 4);
+    XDrawSegments(dpy, client->titlebar, extra_gc3,
+                  main_lolight, 4);
+
+    if (client->title_position != DontDisplay) {
+        XDrawString(dpy, client->titlebar, extra_gc4, title_position,
+                    TITLE_HEIGHT - 4, client->name, strlen(client->name));
+    }
+    XDrawSegments(dpy, client->titlebar, extra_gc2,
+                  button_hilights, nhilights_used);
+    XDrawSegments(dpy, client->titlebar, extra_gc3,
+                  button_lolights, nhilights_used);
 }
