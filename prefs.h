@@ -129,7 +129,8 @@ struct _option {
            DONTBINDKEYS,
            STICKY,
            TITLEPOSITION,
-           KEEPTRANSIENTSONTOP } option_name;
+           KEEPTRANSIENTSONTOP,
+           RAISEDELAY } option_name;
     option_setting option_setting;
     type *option_value;
 };

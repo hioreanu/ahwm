@@ -136,6 +136,8 @@ client_t *client_create(Window w)
     client->dont_bind_keys_set = UnSet;
     client->dont_bind_mouse_set = UnSet;
     client->keep_transients_on_top_set = UnSet;
+    client->raise_delay = 0;
+    client->raise_delay_set = UnSet;
     
     /* God, this sucks.  I want the border width to be zero on all
      * clients, so I need to change the client's border width at some

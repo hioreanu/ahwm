@@ -1,5 +1,4 @@
 TODO before release:
-- xwm -> ahwm
 - 'make install' should work and 'make clean' shouldn't remove parser.c
 - placement, use corner with least overlap first
 - _NET_WORKAREA and STRUT
@@ -146,6 +145,7 @@ Finished, no longer TODO:
 - proxy clicks for GNOME
 - ask about KEEP_ON_TOP WM_STATE
 - deal with autoconf problems on Debian and Solaris
+- xwm -> ahwm
 
 Abandoned, no longer TODO:
 - "stop" focus, detect when pointer stops in a window (no timeout) -

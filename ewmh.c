@@ -149,11 +149,16 @@ static Atom _WIN_DESKTOP_BUTTON_PROXY;
 Atom _NET_WM_STRUT, _NET_WM_STATE, _NET_WM_WINDOW_TYPE, _NET_WM_DESKTOP;
 
 /* EWMH 1.1 claims this is supposed to be "UTF-8_STRING" (which
- * is a perfectly OK atom identifier), but it's actually
+ * is a perfectly good atom identifier), but it's actually
  * "UTF8_STRING" (NB, no dash). */
 static Atom UTF8_STRING;
 
+/* used for both _NET and _WIN stuff: */
 static Window ewmh_window;
+
+/* Used by emwh_wm_strut_apply(): */
+static client_t **left_client, **right_client, **top_client, **bottom_client;
+unsigned long *top, *left, *right, *bottom, *width, *height;
 
 static void no_titlebar(client_t *client);
 static void click_to_focus(client_t *client);
@@ -161,6 +166,7 @@ static void skip_cycle(client_t *client);
 static void sticky(client_t *client);
 static void on_top(client_t *client);
 static void on_bottom(client_t *client);
+static void update_wm_workarea();
 void ewmh_to_desktop(client_t *client);
 void ewmh_to_dock(client_t *client);
 void ewmh_to_normal(client_t *client);
@@ -293,9 +299,6 @@ void ewmh_init()
     supported[32] = _NET_WM_STRUT;
     supported[33] = _NET_WM_PING;
     supported[34] = _NET_DESKTOP_NAMES;
-    supported[35] = _NET_WM_WINDOW_TYPE;
-    supported[36] = _NET_WM_STATE;
-    supported[37] = _NET_WM_STRUT;
 
     XChangeProperty(dpy, root_window, _NET_SUPPORTED,
                     XA_ATOM, 32, PropModeReplace,
@@ -366,10 +369,6 @@ void ewmh_init()
         l[i+2] = scr_width;
         l[i+3] = scr_height;
     }
-    /* FIXME:  need to see if this property is already set (for restarting) */
-    XChangeProperty(dpy, root_window, _NET_WORKAREA,
-                    XA_CARDINAL, 32, PropModeReplace,
-                    (unsigned char *)l, nworkspaces * 4);
     /* We don't really have a system for naming workspaces, so I'll
      * just name them "Workspace 1", etc. so the workspace names will
      * appear in pagers.  I would like to keep any workspace names
@@ -419,7 +418,42 @@ void ewmh_init()
     XChangeProperty(dpy, root_window, _WIN_WORKSPACE,
                     XA_CARDINAL, 32, PropModeReplace,
                     (unsigned char *)l, 1);
+
+    top_client = malloc(sizeof(client_t *) * nworkspaces);
+    bottom_client = malloc(sizeof(client_t *) * nworkspaces);
+    left_client = malloc(sizeof(client_t *) * nworkspaces);
+    right_client = malloc(sizeof(client_t *) * nworkspaces);
+    top = malloc(sizeof(unsigned long) * nworkspaces);
+    bottom = malloc(sizeof(unsigned long) * nworkspaces);
+    left = malloc(sizeof(unsigned long) * nworkspaces);
+    right = malloc(sizeof(unsigned long) * nworkspaces);
+    width = malloc(sizeof(unsigned long) * nworkspaces);
+    height = malloc(sizeof(unsigned long) * nworkspaces);
+
+    if (top_client == NULL || bottom_client == NULL ||
+        left_client == NULL || right_client == NULL ||
+        top == NULL || bottom == NULL || left == NULL ||
+        right == NULL || width == NULL || height == NULL) {
+
+        perror("AHWM: ewmh_init: malloc");
+        fprintf(stderr, "AHWM: this is a fatal error.  Quitting.\n");
+        exit(1);
+    }
+    
+    for (i = 0; i < nworkspaces; i++) {
+        top_client[i] = NULL;
+        bottom_client[i] = NULL;
+        left_client[i] = NULL;
+        right_client[i] = NULL;
+        top[i] = 0;
+        bottom[i] = scr_height;
+        left[i] = 0;
+        right[i] = scr_width;
+    }
+    
     free(l);
+    
+    update_wm_workarea();
 }
 
 /*
@@ -471,12 +505,12 @@ void ewmh_wm_state_apply(client_t *client)
     for (i = 0; i < nitems; i++) {
         if (states[i] == _NET_WM_STATE_STICKY) {
             sticky(client);
+        } else if (states[i] == _NET_WM_STATE_STAYS_ON_TOP) {
+            on_top(client);
         } else if (states[i] == _NET_WM_STATE_MAXIMIZED_HORZ) {
             max_h = 1;
         } else if (states[i] == _NET_WM_STATE_MAXIMIZED_VERT) {
             max_v = 1;
-        } else if (states[i] == _NET_WM_STATE_STAYS_ON_TOP) {
-            on_top(client);
         }
     }
     if (max_h && max_v) {
@@ -488,6 +522,144 @@ void ewmh_wm_state_apply(client_t *client)
         resize_maximize_client(client, MAX_VERT, MAX_MAXED);
     }
     if (states != NULL) XFree(states);
+}
+
+static void update_wm_workarea()
+{
+    static unsigned long *values = NULL;
+    int i;
+
+    if (values == NULL) {
+        values = malloc(sizeof(unsigned long) * 4 * nworkspaces);
+        if (values == NULL) {
+            perror("AHWM: update_wm_workarea: malloc");
+            return;
+        }
+    }
+    for (i = 0; i < nworkspaces; i++) {
+        width[i] = right[i] - left[i];
+        height[i] = bottom[i] - top[i];
+        values[i * 4] = left[i];
+        values[i * 4 + 1] = top[i];
+        values[i * 4 + 2] = width[i];
+        values[i * 4 + 3] = height[i];
+    }
+
+    XChangeProperty(dpy, root_window, _NET_WORKAREA, XA_CARDINAL,
+                    32, PropModeReplace, (unsigned char *)values,
+                    nworkspaces * 4);
+}
+
+static Bool reset(client_t *client, int ws)
+{
+    Bool changed = False;
+
+    if (client == left_client[ws]) {
+        left[ws] = 0;
+        left_client[ws] = NULL;
+        changed = True;
+    }
+    if (client == right_client[ws]) {
+        right[ws] = scr_width;
+        right_client[ws] = NULL;
+        changed = True;
+    }
+    if (client == top_client[ws]) {
+        top[ws] = 0;
+        top_client[ws] = NULL;
+        changed = True;
+    }
+    if (client == bottom_client[ws]) {
+        bottom[ws] = scr_height;
+        bottom_client[ws] = NULL;
+        changed = True;
+    }
+    return changed;
+}
+
+/* no ClientMessage for _NET_WM_STRUT, just XChangeProperty() */
+void ewmh_wm_strut_apply(client_t *client)
+{
+    Atom actual;
+    int fmt, i;
+    long bytes_after_return, nitems;
+    unsigned long *values;
+    Bool changed = False;
+
+    if (client->omnipresent == True) {
+        for (i = 0; i < nworkspaces; i++) {
+            if (reset(client, i)) {
+                changed = True;
+            }
+        }
+    } else {
+        changed = reset(client, client->workspace);
+    }
+    if (changed) {
+        /* FIXME: need to check all others except "client" */
+    }
+    
+    if (XGetWindowProperty(dpy, client->window, _NET_WM_STRUT, 0,
+                           sizeof(Atom), False, XA_ATOM,
+                           &actual, &fmt, &nitems, &bytes_after_return,
+                           (unsigned char **)&values) != Success) {
+        debug(("XGetWindowProperty(_NET_WM_STRUT) failed\n"));
+        if (changed)
+            update_wm_workarea();
+        return;
+    }
+
+    if (actual != _NET_WM_STRUT || fmt != 32 || nitems != 4) {
+        debug(("atom = %d, expected = %d, fmt = %d, nitems = %d\n",
+               actual, _NET_WM_STRUT, fmt, nitems));
+        if (changed)
+            update_wm_workarea();
+        return;
+    }
+
+    /* FIXMENOW: HERE */
+#if 0
+    /* I suppose one could use this property to set a full-screen
+     * "presentation" type window, so I'll allow resetting the
+     * workarea to zero by zero pixels (but no less). */
+    if (values[0] > left && values[0] <= scr_width) {
+        left = values[0];
+        changed = True;
+        left_client = client;
+    }
+    if (scr_width - values[1] < right && values[1] <= scr_width) {
+        right = scr_width - values[1];
+        changed = True;
+        right_client = client;
+    }
+    if (values[2] > top && values[2] <= scr_height) {
+        top = values[2];
+        changed = True;
+        top_client = client;
+    }
+    if (scr_height - values[3] < bottom && values[3] <= scr_height) {
+        bottom = scr_height - values[3];
+        changed = True;
+        bottom_client = client;
+    }
+
+    if (left + right > scr_width || top + bottom > scr_height) {
+        fprintf(stderr,
+                "AHWM: client '%s' is abusing _NET_WM_STRUT.\n"
+                "Ignoring client, resetting _NET_WORKAREA.\n",
+                client->name);
+        top = 0;
+        left = 0;
+        right = scr_width;
+        bottom = scr_height;
+        top_client = bottom_client = NULL;
+        left_client = right_client = NULL;
+        changed = True;
+    }
+
+    if (changed)
+        update_wm_workarea();
+#endif
 }
 
 /* _WIN_HINTS is only changed by the application.  Thus, the
@@ -624,12 +796,6 @@ void ewmh_win_layer_apply(client_t *client)
         on_top(client);
     }
     if (hint != NULL) XFree(hint);
-}
-
-/* client changes at any time using XChangeProperty() */
-void ewmh_wm_strut_apply(client_t *client)
-{
-    /* FIXME */
 }
 
 void ewmh_wm_desktop_apply(client_t *client)
@@ -883,6 +1049,7 @@ Bool ewmh_handle_clientmessage(XClientMessageEvent *xevent)
     } else if (xevent->message_type == _NET_ACTIVE_WINDOW) {
         if (client != NULL) {
             focus_set(client, CurrentTime);
+            stacking_raise(client);
         }
         return True;
     } else if (xevent->message_type == _NET_CLOSE_WINDOW) {

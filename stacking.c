@@ -166,26 +166,35 @@ client_t *stacking_top()
     else return clients[nused - 1];
 }
 
+/* FIXME:  remove NULL checks here, do once, further up call tree */
 client_t *stacking_prev(client_t *client)
 {
+    if (client == NULL)
+        return NULL;
     if (client->stacking <= 0) return NULL;
     else return clients[client->stacking - 1];
 }
 
 client_t *stacking_next(client_t *client)
 {
+    if (client == NULL)
+        return NULL;
     if (client->stacking >= nused - 1) return NULL;
     else return clients[client->stacking + 1];
 }
 
 void stacking_raise(client_t *client)
 {
+    if (client == NULL)
+        return;
     raise_tree(client, NULL, True);
     commit();
 }
 
 void stacking_restack(client_t *client)
 {
+    if (client == NULL)
+        return;
     restack(client, False);
     commit();
 }

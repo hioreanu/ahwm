@@ -214,6 +214,7 @@ void keyboard_init()
     }
 }
 
+/* FIXME: calculate in keyboard_init(), update on modifier change */
 int keyboard_get_modifier_mask(int keycode)
 {
     XModifierKeymap *xmkm;
@@ -646,6 +647,7 @@ Bool mouse_handle_event(XEvent *xevent)
         if (client != NULL
             && client->focus_policy == ClickToFocus) {
             focus_set(client, xevent->xbutton.time);
+            stacking_raise(client);
             set_focus = True;
         }
     }

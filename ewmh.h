@@ -33,6 +33,9 @@
  * somewhat unfinished standards document, but that document is
  * extremely clear and precise.
  *
+ * As of November 2001, these are available here:
+ * http://www.freedesktop.org/standards/wm-spec/
+ * http://developer.gnome.org/doc/standards/wm/book1.html
  */
 
 #ifndef EWMH_H
@@ -61,8 +64,13 @@ void ewmh_init();
 
 Bool ewmh_handle_clientmessage(XClientMessageEvent *xevent);
 
+/* add a client to _NET_CLIENT_LIST */
 void ewmh_client_list_add(client_t *client);
+
+/* remove a client from _NET_CLIENT_LIST */
 void ewmh_client_list_remove(client_t *client);
+
+/* update _NET_CLIENT_LIST_STACKING, used by stacking.c */
 void ewmh_stacking_list_update(Window *w, int nwindows);
 
 /* update _NET_CURRENT_DESKTOP according to 'desktop_current' */
@@ -74,7 +82,7 @@ void ewmh_desktop_update(client_t *client);
 /* update _NET_ACTIVE_WINDOW according to 'focus_current' */
 void ewmh_active_window_update();
 
-/* proxy click for GNOME */
+/* proxy click for GNOME, used by keyboard-mouse.c */
 void ewmh_proxy_buttonevent(XEvent *e);
 
 #endif /* EWMH_H */

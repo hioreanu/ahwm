@@ -23,6 +23,8 @@
  * SUCH DAMAGE.
  */
 
+/* FIXME: remove all comments mentioning raising */
+
 /*
  * OK, the stuff in here gets a little bit confusing because we have
  * to do things *just so* or client applications will misbehave.  Each
@@ -385,11 +387,13 @@ void focus_ensure(Time timestamp)
            (unsigned int)focus_current->window, focus_current->name));
 
     ewmh_active_window_update();
-    
+
+#if 0
     if (in_alt_tab) {
-        stacking_raise(focus_current);
+        stacking_raise(focus_current); /* FIXME: wtf? remove */
         return;
     }
+#endif
     
     /* see ICCCM 4.1.7 */
     if (focus_current->xwmh != NULL &&
@@ -412,7 +416,7 @@ void focus_ensure(Time timestamp)
     }
     colormap_install(focus_current);
 
-    stacking_raise(focus_current);
+//    stacking_raise(focus_current); /* FIXME: remove */
 }
 
 /*
@@ -633,6 +637,7 @@ void focus_cycle_next(XEvent *xevent, arglist *ignored)
     XSync(dpy, False);
     in_alt_tab = False;
     focus_ensure(CurrentTime);
+    stacking_raise(focus_current);
                     
     if (state == REPLAY_KEYBOARD) {
         if (!keyboard_handle_event(&xevent->xkey))

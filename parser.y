@@ -68,6 +68,7 @@
 %token TOK_STICKY
 %token TOK_TITLEPOSITION
 %token TOK_KEEPTRANSIENTSONTOP
+%token TOK_RAISEDELAY
 
 %token TOK_SLOPPY_FOCUS
 %token TOK_CLICK_TO_FOCUS
@@ -270,6 +271,7 @@ option_name: TOK_DISPLAYTITLEBAR { $$ = DISPLAYTITLEBAR; }
            | TOK_STICKY { $$ = STICKY; }
            | TOK_TITLEPOSITION { $$ = TITLEPOSITION; }
            | TOK_KEEPTRANSIENTSONTOP { $$ = KEEPTRANSIENTSONTOP; }
+           | TOK_RAISEDELAY { $$ = RAISEDELAY; }
 
 type: boolean
       {

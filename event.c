@@ -69,6 +69,8 @@ static void event_expose(XExposeEvent *);
 static void event_focusin(XFocusChangeEvent *);
 static void event_map(XMapEvent *);
 static void configure_nonclient(XConfigureRequestEvent *xevent);
+static void set_raise_timer(unsigned int milliseconds);
+static struct timeval *get_raise_timer();
 
 #ifdef SHAPE
 static void event_shape(XShapeEvent *);
@@ -113,14 +115,10 @@ static unsigned int ignore_enternotify_hack = 0;
 static void update_ignore_enternotify_hack(XEvent *event);
 static Time figure_timestamp(XEvent *event);
 
-/*
- * One could also put a timeout handler here (WindowMaker does this),
- * and pass a different timeout value to select()
- */
-
 void event_get(int xfd, XEvent *event)
 {
     fd_set fds;
+    struct timeval *timeout;
 
     for (;;) {
         if (XPending(dpy) > 0) {
@@ -130,10 +128,16 @@ void event_get(int xfd, XEvent *event)
         }
         FD_ZERO(&fds);
         FD_SET(xfd, &fds);
-        if (select(xfd + 1, &fds, NULL, NULL, NULL) > 0) {
+        timeout = get_raise_timer();
+        if (select(xfd + 1, &fds, NULL, NULL, timeout) > 0) {
             continue;
         } else if (errno != EINTR) {
-            perror("AHWM: select:");
+            if (timeout != NULL) {
+                set_raise_timer(0);
+                stacking_raise(focus_current);
+            } else {
+                perror("AHWM: select:");
+            }
         }
     }
 }
@@ -355,6 +359,11 @@ static void event_enter(XCrossingEvent *xevent)
         && client->focus_policy == SloppyFocus) {
         debug(("\tSetting focus in response to EnterNotify\n"));
         focus_set(client, CurrentTime);
+        if (client->raise_delay == 0) {
+            stacking_raise(client);
+        } else {
+            set_raise_timer(client->raise_delay);
+        }
     } else {
         debug(("\tNot setting focus\n"));
     }
@@ -954,4 +963,41 @@ static Time figure_timestamp(XEvent *event)
 #endif /* SHAPE */
             return CurrentTime;
     }
+}
+
+/*
+ * Now I was originally intending to do a gettimeofday() when the
+ * timer is set and do another gettimeofday() whenever the timer is
+ * read to ensure we have the correct timeout value.  However, this
+ * seems to work very nicely as is.  In fact, this is probably nicer
+ * than using the "correct" value as we won't raise until we run out
+ * of XEvents to deal with (ie, until the mouse stops jumping in and
+ * out of windows).  In addition, it's probably not a good idea to
+ * wrap each call to select() around two other system calls.  So I'm
+ * leaving this as it is.
+ */
+
+static unsigned int timer_val = 0;
+
+static void set_raise_timer(unsigned int msecs)
+{
+    if (msecs == 0) {
+        timer_val = 0;
+    } else {
+        timer_val = msecs;
+    }
+}
+
+static struct timeval *get_raise_timer()
+{
+    static struct timeval tv;
+    
+    if (timer_val == 0) {
+        return NULL;
+    }
+
+    tv.tv_usec = timer_val * 1000;
+    tv.tv_sec = 0;
+
+    return &tv;                 /* tv is static */
 }

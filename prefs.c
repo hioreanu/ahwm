@@ -97,6 +97,8 @@ typedef struct _prefs {
     option_setting title_position_set;
     Bool keep_transients_on_top;
     option_setting keep_transients_on_top_set;
+    int raise_delay;
+    option_setting raise_delay_set;
 } prefs;
 
 /* ADDOPT 6: set default value */
@@ -117,7 +119,8 @@ static prefs defaults = {
     False, UserSet,               /* dont_bind_keys */
     False, UserSet,               /* sticky */
     DisplayLeft, UserSet,         /* title_position */
-    True, UserSet                 /* keep_transients_on_top */
+    True, UserSet,                /* keep_transients_on_top */
+    0, UserSet,                   /* raise_delay */
 };
 
 static line *contexts;
@@ -464,6 +467,10 @@ static Bool type_check_option(option *opt)
             retval = option_check_helper(opt->option_value,
                                          BOOLEAN, "KeepTransientsOnTop");
             break;
+        case RAISEDELAY:
+            retval = option_check_helper(opt->option_value,
+                                         INTEGER, "RaiseDelay");
+            break;
         default:
             fprintf(stderr, "AHWM: unknown option type found...\n");
             retval = False;
@@ -803,6 +810,10 @@ static void option_apply(client_t *client, option *opt, prefs *p)
             get_bool(opt->option_value, &p->keep_transients_on_top);
             p->keep_transients_on_top_set = opt->option_setting;
             break;
+        case RAISEDELAY:
+            get_int(opt->option_value, &p->raise_delay);
+            p->raise_delay_set = opt->option_setting;
+            break;
     }
 }
 
@@ -1016,6 +1027,10 @@ void prefs_apply(client_t *client)
     if (client->keep_transients_on_top_set <= p.keep_transients_on_top_set) {
         client->keep_transients_on_top = p.keep_transients_on_top;
         client->keep_transients_on_top_set = p.keep_transients_on_top_set;
+    }
+    if (client->raise_delay_set <= p.raise_delay_set) {
+        client->raise_delay = p.raise_delay;
+        client->raise_delay_set = p.raise_delay_set;
     }
     
     /* ADDOPT 9: apply the option to the client */
