@@ -825,6 +825,12 @@ static void get_event_child_windows_keyboard(Window *event, Window *child,
     }
     if (!(xwa.all_event_masks & mask)) {
         debug(("\tWindow 0x%08X does not accept events\n", new));
+        if (focus_current == NULL) {
+            /* nobody to whom to replay */
+            *event = None;
+            *child = None;
+            return;
+        }
         new = focus_current->window;
     } 
     *event = new;
