@@ -94,6 +94,7 @@ client_t *client_create(Window w)
         XShapeSelectInput(dpy, client->window, ShapeNotifyMask);
         XShapeQueryExtents(dpy, client->window, &shaped, &tmp, &tmp,
                            &tmp2, &tmp2, &tmp, &tmp, &tmp, &tmp2, &tmp2);
+        client->is_shaped = (shaped ? 0 : 1);
         client->has_titlebar = (shaped ? 0 : 1);
         if (shaped) debug(("\tIs a shaped window\n"));
         else debug(("\tnot shaped\n"));

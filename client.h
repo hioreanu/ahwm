@@ -97,14 +97,15 @@ typedef struct _client_t {
 
     /* user preferences */
     enum { ClickToFocus, SloppyFocus, DontFocus } focus_policy : 2;
-    enum { Fixed, Smart, Cascade } map_policy : 2;
+    enum { Fixed, Smart, Cascade } map_policy : 2; /* FIXME: mouse */
     unsigned int has_titlebar : 1;
+    unsigned int is_shaped : 1;
     unsigned int skip_alt_tab : 1;
     unsigned int pass_focus_click : 1;
     unsigned int always_on_top : 1;
     unsigned int always_on_bottom : 1;
     unsigned int omnipresent : 1;
-    unsigned int sticky : 1;
+    /* unsigned int sticky : 1; */
 } client_t;                     /* 116 bytes on ILP-32 machines */
 
 /* the values for client->protocols, can be ORed together */
