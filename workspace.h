@@ -13,7 +13,9 @@
  * Workspaces are counted starting from one, not zero.  They are
  * implemented by simply unmapping windows not in the current
  * workspace, like most other window managers do it.  Each workspace
- * has its own focus stack.
+ * has its own focus stack.  There is no "virtual root" window, just
+ * the actual root created when X starts.  All functions exported here
+ * are meant for binding to a key or pointer event.
  */
 
 #define NO_WORKSPACES 7
@@ -22,13 +24,13 @@ extern int workspace_current;
 
 /*
  * move a client to a workspace and make it the top-level window in
- * the new workspace
+ * the new workspace; void * argument is cast to integer
  */
-void workspace_client_moveto(client_t *, int workspace);
+void workspace_client_moveto(XEvent *e, void *workspace);
 
 /*
  * make a workspace the current workspace
  */
-void workspace_goto(int workspace);
+void workspace_goto(XEvent *e, void *workspace);
 
 #endif /* WORKSPACE_H */

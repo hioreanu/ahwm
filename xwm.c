@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <fcntl.h>
+
 #include "xwm.h"
 #include "event.h"
 #include "client.h"
@@ -18,6 +19,7 @@
 #include "move-resize.h"
 #include "error.h"
 #include "kill.h"
+#include "workspace.h"
 
 #ifdef SHAPE
 #include <X11/extensions/shape.h>
@@ -49,6 +51,7 @@ int shape_event_base;
 void alt_tab(XEvent *, void *arg);
 void alt_shift_tab(XEvent *, void *arg);
 void run_program(XEvent *e, void *arg);
+void mark(XEvent *e, void *arg);
 
 static int already_running_windowmanager;
 
@@ -166,6 +169,8 @@ int main(int argc, char **argv)
     frame_context = XUniqueContext();
     title_context = XUniqueContext();
 
+    keyboard_set_function("Control | Alt | Shift | l", KEYBOARD_DEPRESS,
+                          mark, NULL);
     keyboard_set_function("Control | Alt | Shift | t", KEYBOARD_DEPRESS,
                           run_program, "xterm");
     keyboard_set_function("Control | Alt | Shift | n", KEYBOARD_DEPRESS,
@@ -181,6 +186,14 @@ int main(int argc, char **argv)
                           move_client, NULL);
     keyboard_set_function("Control | Alt | Shift | r", KEYBOARD_DEPRESS,
                           resize_client, NULL);
+    keyboard_set_function("Control | Alt | 1", KEYBOARD_DEPRESS,
+                          workspace_client_moveto, (void *)1);
+    keyboard_set_function("Control | Alt | 2", KEYBOARD_DEPRESS,
+                          workspace_client_moveto, (void *)2);
+    keyboard_set_function("Alt | 1", KEYBOARD_DEPRESS,
+                          workspace_goto, (void *)1);
+    keyboard_set_function("Alt | 2", KEYBOARD_DEPRESS,
+                          workspace_goto, (void *)2);
     mouse_set_function("Alt | Button1", MOUSE_DEPRESS, MOUSE_FRAME,
                        move_client, NULL);
     mouse_set_function("Alt | Button3", MOUSE_DEPRESS, MOUSE_FRAME,
@@ -260,4 +273,12 @@ void run_program(XEvent *e, void *arg)
         system((char *)arg);
         _exit(0);
     }
+}
+
+/* make it easier to parse debug output */
+void mark(XEvent *e, void *arg)
+{
+    printf("---------------------------------");
+    printf(" MARK ");
+    printf("---------------------------------\n");
 }

@@ -272,4 +272,10 @@ void client_print(char *, client_t *);
 void client_sendmessage(client_t *client, Atom data0, Time timestamp,
                         long data2, long data3, long data4);
 
+/*
+ * Map and raise a client and all of the client's transients
+ */
+
+void client_raise(client_t *client);
+
 #endif /* CLIENT_H */

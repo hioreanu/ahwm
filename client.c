@@ -596,3 +596,19 @@ void client_sendmessage(client_t *client, Atom data0, Time timestamp,
     xcme.data.l[4] = data4;
     XSendEvent(dpy, client->window, False, 0, (XEvent *)&xcme);
 }
+
+static int raise_transients(client_t *client, void *v)
+{
+    Window w = (Window)v;
+
+    /* might be in different workspace, but oh well */
+    if (client->transient_for == w && client->state == NormalState)
+        XMapRaised(dpy, client->frame);
+    return 1;
+}
+
+void client_raise(client_t *client)
+{
+    XMapRaised(dpy, client->frame);
+    client_foreach(raise_transients, (void *)client->window);
+}

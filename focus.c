@@ -11,7 +11,7 @@
 
 client_t *focus_current = NULL;
 
-static client_t *focus_stacks[NO_WORKSPACES] = { NULL };
+client_t *focus_stacks[NO_WORKSPACES] = { NULL };
 
 /* 
  * invariant:
@@ -30,6 +30,7 @@ void focus_add(client_t *client, Time timestamp)
     focus_remove(client, timestamp);
     old = focus_stacks[client->workspace - 1];
     if (old == NULL) {
+        printf("SETTING FOCUS STACK OF WORKSPACE %d\n", client->workspace);
         client->next_focus = client;
         client->prev_focus = client;
         focus_stacks[client->workspace - 1] = client;
@@ -58,10 +59,14 @@ void focus_remove(client_t *client, Time timestamp)
             client->next_focus->prev_focus = client->prev_focus;
             /* if was focused for workspace, update workspace pointer */
             if (focus_stacks[client->workspace - 1] == client) {
+                printf("SETTING FOCUS STACK OF WORKSPACE %d\n",
+                       client->workspace);
                 focus_stacks[client->workspace - 1] = client->next_focus;
             }
             /* if only client left on workspace, set to NULL */
             if (client->next_focus == client) {
+                printf("SETTING FOCUS STACK OF WORKSPACE %d\n",
+                       client->workspace);
                 focus_stacks[client->workspace - 1] = NULL;
                 client->next_focus = NULL;
                 client->prev_focus = NULL;
@@ -82,6 +87,12 @@ void focus_set(client_t *client, Time timestamp)
     client_t *p;
 
     if (client == focus_current) return;
+
+    if (client == NULL) {
+        XSetInputFocus(dpy, root_window, RevertToPointerRoot, CurrentTime);
+        return;
+    }
+    
     p = focus_stacks[client->workspace - 1];
     if (p == NULL) {
         fprintf(stderr, "XWM: current focus list is empty, shouldn't be\n");
@@ -89,6 +100,8 @@ void focus_set(client_t *client, Time timestamp)
     }
     do {
         if (p == client) {
+            printf("SETTING FOCUS STACK OF WORKSPACE %d\n",
+                   client->workspace);
             focus_stacks[client->workspace - 1] = client;
             if (client->workspace == workspace_current) {
                 focus_current = client;
@@ -111,16 +124,6 @@ void focus_prev(Time timestamp)
 {
     if (focus_current != NULL)
         focus_set(focus_current->prev_focus, timestamp);
-}
-
-static int raise_transients(client_t *client, void *v)
-{
-    Window w = (Window)v;
-
-    /* might be in different workspace, but oh well */
-    if (client->transient_for == w && client->state == NormalState)
-        XMapRaised(dpy, client->frame);
-    return 1;
 }
 
 void focus_ensure(Time timestamp)
@@ -166,8 +169,6 @@ void focus_ensure(Time timestamp)
     }
     XSync(dpy, False);
     XFlush(dpy);
-    
-    XMapRaised(dpy, focus_current->frame);
 
-    client_foreach(raise_transients, (void *)focus_current->window);
+    client_raise(focus_current);
 }

@@ -8,11 +8,14 @@
 #define FOCUS_H
 
 #include "client.h"
+#include "workspace.h"
 
 /*
  * The windows in a workspace which can possibly receive the input
  * focus are stored in a ring (a circular doubly-linked list).
  */
+
+extern client_t *focus_stacks[NO_WORKSPACES];
 
 /*
  * The window which contains the current input focus.  This may become

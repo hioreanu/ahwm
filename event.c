@@ -341,10 +341,14 @@ static void event_unmap(XUnmapEvent *xevent)
     client_t *client;
     
     client = client_find(xevent->window);
+
 #ifdef DEBUG
     client_print("Unmap:", client);
 #endif /* DEBUG */
     if (client == NULL) return;
+
+    /* if we unmapped it ourselves, no need to do anything */
+    if (xevent->window != client->window) return;
 
     /* well, at this point, we need to do some things to the window
      * (such as setting the WM_STATE property on the window to Withdrawn
