@@ -50,6 +50,7 @@
 %}
 
 %token TOK_DISPLAYTITLEBAR
+%token TOK_TITLEBARFONT
 %token TOK_OMNIPRESENT
 %token TOK_DEFAULTWORKSPACE
 %token TOK_FOCUS_POLICY
@@ -250,6 +251,7 @@ option: option_name TOK_EQUALS type
 
 /* ADDOPT 3: define as option */
 option_name: TOK_DISPLAYTITLEBAR { $$ = DISPLAYTITLEBAR; }
+           | TOK_TITLEBARFONT { $$ = TITLEBARFONT; }
            | TOK_OMNIPRESENT { $$ = OMNIPRESENT; }
            | TOK_DEFAULTWORKSPACE { $$ = DEFAULTWORKSPACE; }
            | TOK_FOCUS_POLICY { $$ = FOCUSPOLICY; }

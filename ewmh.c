@@ -322,6 +322,9 @@ void ewmh_init()
     XChangeProperty(dpy, root_window, _NET_NUMBER_OF_DESKTOPS,
                     XA_CARDINAL, 32, PropModeReplace,
                     (unsigned char *)l, 1);
+    XChangeProperty(dpy, root_window, _WIN_WORKSPACE_COUNT,
+                    XA_CARDINAL, 32, PropModeReplace,
+                    (unsigned char *)l, 1);
     l[0] = scr_width;
     l[1] = scr_height;
     XChangeProperty(dpy, root_window, _NET_DESKTOP_GEOMETRY,
@@ -339,10 +342,12 @@ void ewmh_init()
         l[i+2] = scr_width;
         l[i+3] = scr_height;
     }
+    /* FIXME:  need to see if this property is already set (for restarting) */
     XChangeProperty(dpy, root_window, _NET_WORKAREA,
                     XA_CARDINAL, 32, PropModeReplace,
                     (unsigned char *)l, nworkspaces * 4);
     l[0] = 0;
+    /* FIXMENOW: get this from root window if possible, set immediately */
     XChangeProperty(dpy, root_window, _NET_CURRENT_DESKTOP,
                     XA_CARDINAL, 32, PropModeReplace,
                     (unsigned char *)l, 1);
@@ -371,9 +376,6 @@ void ewmh_init()
                         i == 0 ? PropModeReplace : PropModeAppend,
                         workspace_name, strlen(workspace_name) + 1);
     }
-    l[0] = nworkspaces;
-    XChangeProperty(dpy, root_window, _WIN_WORKSPACE_COUNT, XA_CARDINAL, 32,
-                    PropModeReplace, (unsigned char *)l, 1);
 }
 
 /*

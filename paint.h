@@ -52,6 +52,8 @@
 
 #include "client.h"
 
+extern int paint_ascent;
+
 /*
  * Initialize the painting module, no dependencies
  */

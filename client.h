@@ -30,7 +30,8 @@
 #include "xwm.h"
 
 /* height of the titlebar, should probably be configurable */
-#define TITLE_HEIGHT 15
+//#define TITLE_HEIGHT 15
+extern int TITLE_HEIGHT;
 
 /* Options may be set by user or hints, or set unconditionally by
  * user.  We need to differentiate how each option was set for each

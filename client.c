@@ -51,6 +51,8 @@
 #include "prefs.h"
 #include "mwm.h"
 
+int TITLE_HEIGHT = 15;
+
 /*
  * we store the data associated with each window using Xlib's XContext
  * mechanism (which has nothing to do with X itself, it's just a hash
@@ -75,8 +77,6 @@ void client_init()
     title_context = XUniqueContext();
 }
 
-/* FIXME: candidate for optimization, move stuff into event_maprequest */
-/* no matter what, still must listen for destroy messages to prevent leak */
 client_t *client_create(Window w)
 {
     client_t *client;
@@ -247,7 +247,10 @@ client_t *client_create(Window w)
         client_inform_state(client);
         client_reparent(client);
         stacking_raise(client);
-        XMapWindow(dpy, client->frame);
+        if (client->workspace == 0)
+            client->workspace = workspace_current;
+        if (client->workspace == workspace_current)
+            XMapWindow(dpy, client->frame);
         if (client->titlebar != None)
             XMapWindow(dpy, client->titlebar);
         if (client->dont_bind_keys == 0)
@@ -398,6 +401,7 @@ void client_add_titlebar(client_t *client)
     client_create_frame(client, &ps);
     XMoveWindow(dpy, client->window, 0, TITLE_HEIGHT);
     XMapWindow(dpy, client->titlebar);
+    mouse_grab_buttons(client);
 }
 
 void client_remove_titlebar(client_t *client)

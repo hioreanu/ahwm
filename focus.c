@@ -386,7 +386,7 @@ void focus_ensure(Time timestamp)
     if (focus_current->xwmh != NULL &&
         focus_current->xwmh->flags & InputHint &&
         focus_current->xwmh->input == False) {
-        /* FIXME:  we shouldn't call XSetInputFocus here */
+        /* FIXME:  shouldn't call XSetInputFocus here? */
         debug(("\tInput hint is False\n"));
         XSetInputFocus(dpy, root_window, RevertToPointerRoot, CurrentTime);
     } else {

@@ -100,23 +100,23 @@ typedef struct _prefs {
 
 /* ADDOPT 6: set default value */
 static prefs defaults = {
-    True, UnSet,                /* titlebar */
-    False, UnSet,               /* omnipresent */
-    0, UnSet,                   /* workspace */
-    TYPE_SLOPPY_FOCUS, UnSet,   /* focus_policy */
-    False, UnSet,               /* always_on_top */
-    False, UnSet,               /* always_on_bottom */
-    True, UnSet,                /* pass_focus_click */
-    TYPE_RAISE_IMMEDIATELY, UnSet, /* cycle_behaviour */
-    NULL, UnSet,                /* titlebar_color */
-    NULL, UnSet,                /* titlebar_focused_color */
-    NULL, UnSet,                /* titlebar_text_color */
-    NULL, UnSet,                /* titlebar_text_focused_color */
-    False, UnSet,               /* dont_bind_mouse */
-    False, UnSet,               /* dont_bind_keys */
-    False, UnSet,               /* sticky */
-    DisplayLeft, UnSet,         /* title_position */
-    True, UnSet                 /* keep_transients_on_top */
+    True, UserSet,                /* titlebar */
+    False, UserSet,               /* omnipresent */
+    0, UserSet,                   /* workspace */
+    TYPE_SLOPPY_FOCUS, UserSet,   /* focus_policy */
+    False, UserSet,               /* always_on_top */
+    False, UserSet,               /* always_on_bottom */
+    True, UserSet,                /* pass_focus_click */
+    TYPE_RAISE_IMMEDIATELY, UserSet, /* cycle_behaviour */
+    NULL, UserSet,                /* titlebar_color */
+    NULL, UserSet,                /* titlebar_focused_color */
+    NULL, UserSet,                /* titlebar_text_color */
+    NULL, UserSet,                /* titlebar_text_focused_color */
+    False, UserSet,               /* dont_bind_mouse */
+    False, UserSet,               /* dont_bind_keys */
+    False, UserSet,               /* sticky */
+    DisplayLeft, UserSet,         /* title_position */
+    True, UserSet                 /* keep_transients_on_top */
 };
 
 static line *contexts;
@@ -147,6 +147,7 @@ static void globally_bind(line *lp);
 static void globally_unbind(line *lp);
 static int no_config(char *xwmrc_path);
 static void invoke(XEvent *e, arglist *args);
+static void focus(XEvent *e, arglist *args);
 
 void prefs_init()
 {
@@ -210,6 +211,10 @@ void prefs_init()
                     } else {
                         nworkspaces = i;
                     }
+                } else if (lp->line_value.option->option_name == TITLEBARFONT) {
+                    /* another global-only option */
+                    get_string(lp->line_value.option->option_value,
+                               &xwm_fontname);
                 } else {
                     option_apply(NULL, lp->line_value.option, &defaults);
                 }
@@ -373,6 +378,10 @@ static Bool type_check_option(option *opt)
         case NWORKSPACES:
             retval = option_check_helper(opt->option_value,
                                          INTEGER, "NumberOfWorkspaces");
+            break;
+        case TITLEBARFONT:
+            retval = option_check_helper(opt->option_value,
+                                         STRING, "TitlebarFont");
             break;
         case DISPLAYTITLEBAR:
             retval = option_check_helper(opt->option_value,
@@ -1021,7 +1030,7 @@ key_fn fn_table[] = {
 /* 4  */    kill_nicely,
 /* 5  */    kill_with_extreme_prejudice,
 /* 6  */    run_program,
-/* 7  */    NULL, /* focus function, only for mouse binding */
+/* 7  */    focus,
 /* 8  */    resize_maximize,
 /* 9  */    resize_maximize_vertically,
 /* 10 */    resize_maximize_horizontally,
@@ -1137,3 +1146,14 @@ static void invoke(XEvent *e, arglist *args)
         }
     }
 }
+
+static void focus(XEvent *e, arglist *args)
+{
+    client_t *client;
+    
+    if (e->type == ButtonPress || e->type == ButtonRelease) {
+        client = client_find(e->xbutton.window);
+        if (client != NULL) focus_set(client, CurrentTime);
+    }
+}
+

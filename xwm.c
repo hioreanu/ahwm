@@ -76,6 +76,8 @@ GC extra_gc1;
 GC extra_gc2;
 GC extra_gc3;
 GC extra_gc4;
+/* Give a nice default font.  Should be available almost all the time. */
+char *xwm_fontname = "-*-helvetica-bold-r-*-*-12-*-*-*-*-*-*-*";
 XFontStruct *fontstruct;
 Atom WM_STATE;
 Atom WM_CHANGE_STATE;
@@ -108,6 +110,7 @@ int main(int argc, char **argv)
     XColor xcolor, junk2;
     
 #ifdef DEBUG
+    /* set non-buffered */
     setvbuf(stdout, NULL, _IONBF, 0);
 #endif /* DEBUG */
     dpy = XOpenDisplay(NULL);
@@ -162,9 +165,46 @@ int main(int argc, char **argv)
 #ifdef SHAPE
     shape_supported = XShapeQueryExtension(dpy, &shape_event_base, &junk);
 #endif
+
+    /* call initialization functions of various modules (order matters) */
+
+    colormap_init();
+    client_init();
+    cursor_init();
+    paint_init();
+    keyboard_init();
+
+#ifdef DEBUG
+    keyboard_bind("Control | Alt | Shift | l", KEYBOARD_DEPRESS,
+                  mark, NULL);
+#endif
     
-    fontstruct = XLoadQueryFont(dpy,
-                                "-*-helvetica-bold-r-*-*-12-*-*-*-*-*-*-*");
+    prefs_init();
+    icccm_init();
+    ewmh_init();
+    mwm_init();
+    focus_init();
+
+    /* we need to set xwm_fontname (in prefs_init())
+     * before we load the font and create the GCs */
+    fontstruct = XLoadQueryFont(dpy, xwm_fontname);
+    if (fontstruct == NULL) {
+        fprintf(stderr, "XWM: Could not load font \"%s\".  "
+                "Using default font instead.\n", xwm_fontname);
+        /* now this font name should never fail */
+        xwm_fontname = "-*-*-*-*-*-*-*-*-*-*-*-*-*-*";
+        fontstruct = XLoadQueryFont(dpy, xwm_fontname);
+        if (fontstruct == NULL) {
+            /* Could not load any fonts.  Might happen if user uses
+             * and misconfigures font server or something.  Might try
+             * to continue without titlebars. */
+            fprintf(stderr, "XWM: Could not load any fonts at all.\n");
+            fprintf(stderr, "XWM: This is a fatal error, quitting.\n");
+            exit(1);
+        }
+    }
+    TITLE_HEIGHT = fontstruct->max_bounds.ascent + fontstruct->max_bounds.descent;
+    paint_ascent = fontstruct->max_bounds.ascent;
 
     if (XAllocNamedColor(dpy, DefaultColormap(dpy, scr), "#E0E0E0",
                          &xcolor, &junk2) == 0) {
@@ -236,25 +276,7 @@ int main(int argc, char **argv)
                                  | GCFont | GCFunction
                                  | GCPlaneMask | GCSubwindowMode,
                                  &xgcv);
-
-    /* call initialization functions of various modules (order matters) */
-
-    colormap_init();
-    client_init();
-    cursor_init();
-    paint_init();
-    keyboard_init();
-
-#ifdef DEBUG
-    keyboard_bind("Control | Alt | Shift | l", KEYBOARD_DEPRESS,
-                  mark, NULL);
-#endif
     
-    prefs_init();
-    icccm_init();
-    ewmh_init();
-    mwm_init();
-    focus_init();
     scan_windows();
     
     XSync(dpy, 0);

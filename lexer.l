@@ -80,6 +80,7 @@ DIGIT [0-9]
 }
 
 DisplayTitleBar { return TOK_DISPLAYTITLEBAR; /* ADDOPT 1: lexical symbol */ }
+TitlebarFont { return TOK_TITLEBARFONT; }
 Omnipresent { return TOK_OMNIPRESENT; }
 DefaultWorkspace { return TOK_DEFAULTWORKSPACE; }
 FocusPolicy { return TOK_FOCUS_POLICY; }

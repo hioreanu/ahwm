@@ -92,7 +92,7 @@ void workspace_goto(unsigned int new_workspace)
      * the windows have contrasting colors; therefore we map a
      * temporary window to cover up our actions.
      * Little things like this make a big difference. */
-    xswa.background_pixel = black; /* FIXME */
+    xswa.background_pixel = black; /* FIXME: get root background color */
     xswa.override_redirect = True;
     stacking_hiding_window = XCreateWindow(dpy, root_window, 0, 0,
                                            scr_width, scr_height,
@@ -123,26 +123,26 @@ void workspace_goto(unsigned int new_workspace)
 void move_with_transients(client_t *client, unsigned int ws)
 {
     client_t *transient;
-    
-    for (transient = client->transients;
-         transient != NULL;
-         transient = transient->next_transient) {
-        if (transient->workspace == client->workspace) {
-            move_with_transients(transient, ws);
+
+    if (client->keep_transients_on_top) {
+        for (transient = client->transients;
+             transient != NULL;
+             transient = transient->next_transient) {
+            if (transient->workspace == client->workspace) {
+                move_with_transients(transient, ws);
+            }
         }
     }
     debug(("\tMoving window %#lx ('%.10s') to workspace %d\n",
            client->window, client->name, ws));
     
     focus_remove(client, event_timestamp);
-/*     ewmh_client_list_remove(client); */ /* FIXME */
     debug(("\tUnmapping frame %#lx in workspace move\n", client->frame));
     XUnmapWindow(dpy, client->frame);
     client->workspace = ws;
     ewmh_desktop_update(client);
-    focus_add(client, event_timestamp);
-    
     prefs_apply(client);
+    focus_add(client, event_timestamp);
 }
 
 void workspace_client_moveto_bindable(XEvent *xevent, arglist *args)
@@ -176,9 +176,7 @@ void workspace_client_moveto(client_t *client, unsigned int ws)
     if (client->workspace == ws) return;
 
     /* we now move the client's transients which are in the same
-     * workspace as the client to the new workspace
-     * FIXME:  could try to ensure the focus list remains somewhat
-     * intact as we move the transients */
+     * workspace as the client to the new workspace */
 
     move_with_transients(client, ws);
 }

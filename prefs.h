@@ -109,6 +109,7 @@ struct _context {
 /* ADDOPT 4: internal representation of parsed file */
 struct _option {
     enum { DISPLAYTITLEBAR,
+           TITLEBARFONT,
            OMNIPRESENT,
            DEFAULTWORKSPACE,
            FOCUSPOLICY,
@@ -202,8 +203,9 @@ extern line *preferences;
 /* INTERFACE */
 
 /*
- * There is only one function to interface to this module.  This
- * function should be called:
+ * There are only two functions to interface to this module.
+ * 
+ * This function should be called:
  * 1. when the client is created
  * 2. after anything that can be used as a context selector changes
  *    (such as the client's window name or workspace)
