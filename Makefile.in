@@ -15,6 +15,10 @@ all: xwm
 xwm: $(OBJS)
 	$(CC) $(CFLAGS) $(LDFLAGS) $(OBJS) -o $@@EXEEXT@ $(LIBS)
 
+parsing: parser.y lexer.l prefs.h prefs.c
+    flex -i -olexer.c lexer.l
+    bison -d -o parser.c parser.y
+
 install: xwm
 	@echo Still need to figure out this part
 .SUFFIXES:
