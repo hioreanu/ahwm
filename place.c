@@ -8,6 +8,8 @@
 #include "place.h"
 #include "workspace.h"
 #include "debug.h"
+#include "focus.h"
+#include "stacking.h"
 
 #ifndef MIN
 #define MIN(x,y) ((x) < (y) ? (x) : (y))
@@ -21,15 +23,14 @@ static Bool place_corner(client_t *client, int x, int y)
 {
     client_t *c;
 
-    for (c = client_list; c != NULL; c = c->next) {
-        if (c != client
-            && c->workspace == workspace_current
-            && c->state == NormalState
-            && c->x <= x
-            && c->y <= y
-            && c->x + c->width >= x
-            && c->y + c->height >= y)
-            return False;
+    c = focus_current;
+    if (c != NULL) {
+        do {
+            if (c != client && c->x <= x && c->y <= y
+                && c->x + c->width >= x && c->y + c->height >= y)
+                return False;
+            c = c->next_focus;
+        } while (c != focus_current);
     }
 
     debug(("\tplacing in corner %d,%d\n", x, y));
@@ -131,7 +132,7 @@ void place_least_overlap(client_t *client)
 
     state = 0;
     
-    A = client_list;
+    A = stacking_top();
     for (;;) {
         /* find next interesting y position */
         y_test = -1;
@@ -148,14 +149,14 @@ void place_least_overlap(client_t *client)
                 state |= SEEN_BOTTOM;
             } else {
                 /* seen both top and bottom */
-                A = A->next;
+                A = A->next_stacking;
                 state &= ~(SEEN_TOP | SEEN_BOTTOM);
                 if (A == NULL) break;
             }
         }
         if (A == NULL) break;
         
-        B = client_list;
+        B = stacking_top();
         for (;;) {
             /* find next interesting x position */
             x_test = -1;
@@ -169,7 +170,7 @@ void place_least_overlap(client_t *client)
                     x_test = B->x + B->width;
                     state |= SEEN_RIGHT;
                 } else {
-                    B = B->next;
+                    B = B->next_stacking;
                     state &= ~(SEEN_LEFT | SEEN_RIGHT);
                     if (B == NULL) break;
                 }
@@ -180,7 +181,7 @@ void place_least_overlap(client_t *client)
             overlap_test = 0;
             client->x = x_test;
             client->y = y_test;
-            for (C = client_list; C != NULL; C = C->next) {
+            for (C = stacking_top(); C != NULL; C = C->next_stacking) {
                 if (C->workspace == workspace_current
                     && C->state == NormalState) {
                     overlap_test += find_overlap(C, client);

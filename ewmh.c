@@ -36,24 +36,6 @@ static Atom UTF8_STRING;
 
 static Window ewmh_window;
 
-/*
- * unsupported: _NET_DESKTOP_NAMES, _NET_CLIENT_LIST_STACKING, all the
- * UTF-8 crap, anything having to do with icons
- * 
- * TODO:
- * root messages:
- * _NET_CLOSE_WINDOW
- * _NET_WM_MOVERESIZE
- * 
- * client properties:
- * _NET_WM_DESKTOP,
- * _NET_WM_WINDOW_TYPE,
- * _NET_WM_STATE,
- * _NET_WM_STRUT,
- * 
- * the "ping" protocol
- */
-
 void ewmh_init()
 {
     long l[4 * NO_WORKSPACES];
@@ -193,6 +175,33 @@ void ewmh_init()
                     (unsigned char *)l, 1);
 }
 
+Bool ewmh_handle_clientmessage(XClientMessageEvent *xevent)
+{
+    client_t *client;
+    long data;
+    
+    if (xevent->message_type == _NET_CURRENT_DESKTOP) {
+        data = xevent->data.l[0] + 1;
+        workspace_goto((int)data);
+        return True;
+    } else if (xevent->message_type == _NET_ACTIVE_WINDOW) {
+        client = client_find(xevent->window);
+        if (client != NULL) {
+            focus_set(client, CurrentTime);
+        }
+        return True;
+    } else if (xevent->message_type == _NET_CLOSE_WINDOW) {
+        kill_nicely((XEvent *)xevent); /* ugly but works ok */
+        return True;
+    } else if (xevent->message_type == _NET_WM_DESKTOP) {
+        client = client_find(xevent->window);
+        data = xevent->data.l[0];
+        workspace_client_moveto(client, (int)data);
+        return True;
+    }
+    return False;
+}
+
 void ewmh_current_desktop_update()
 {
     long l = workspace_current - 1;
@@ -200,6 +209,13 @@ void ewmh_current_desktop_update()
     XChangeProperty(dpy, root_window, _NET_CURRENT_DESKTOP,
                     XA_CARDINAL, 32, PropModeReplace,
                     (unsigned char *)&l, 1);
+}
+
+void ewmh_active_window_update()
+{
+    XChangeProperty(dpy, root_window, _NET_ACTIVE_WINDOW,
+                    XA_WINDOW, 32, PropModeReplace,
+                    (unsigned char *)&(focus_current->window), 1);
 }
 
 static Window *ewmh_client_list = NULL;
@@ -256,11 +272,4 @@ void ewmh_client_list_remove(client_t *client)
     }
     debug(("\tClient not found in ewmh_client_list_remove\n"));
     return;
-}
-
-void ewmh_active_window_update()
-{
-    XChangeProperty(dpy, root_window, _NET_ACTIVE_WINDOW,
-                    XA_WINDOW, 32, PropModeReplace,
-                    (unsigned char *)&(focus_current->window), 1);
 }

@@ -41,7 +41,7 @@ void *my_realloc(void *ptr, size_t size, int line, char *file)
 
     malloc_openfile();
     retval = realloc(ptr, size);
-    fprintf(malloc_file, "REALLOC 0x%08X, %d FROM %s:%d RETURNS 0x%08X\n",
+    fprintf(malloc_file, "REALLOC 0x%08X , %d FROM %s:%d RETURNS 0x%08X\n",
             (unsigned int)ptr, size, file, line, (unsigned int)retval);
     return retval;
 }

@@ -47,6 +47,8 @@ client_t *focus_stacks[NO_WORKSPACES] = { NULL };
 static void focus_change_current(client_t *, Time, Bool);
 static void focus_set_internal(client_t *, Time, Bool);
 static void permute(client_t *, client_t *);
+static client_t *get_prev(client_t *client);
+static client_t *get_next(client_t *client);
 
 static Bool in_alt_tab = False; /* see focus_alt_tab, focus_ensure */
 
@@ -105,9 +107,9 @@ void focus_remove(client_t *client, Time timestamp)
             if (focus_stacks[client->workspace - 1] == client) {
                 debug(("\tsetting focus stack of workspace "
                        "%d to 0x%08X ('%.10s')\n",
-                       client->workspace, client->next_focus->window,
-                       client->next_focus->name));
-                focus_stacks[client->workspace - 1] = client->next_focus;
+                       client->workspace, get_next(client)->window,
+                       get_next(client)->name));
+                focus_stacks[client->workspace - 1] = get_next(client);
             }
             /* if only client left on workspace, set to NULL */
             if (client->next_focus == client) {
@@ -119,7 +121,8 @@ void focus_remove(client_t *client, Time timestamp)
             }
             /* if removed was focused window, refocus now */
             if (client == focus_current) {
-                focus_change_current(client->next_focus, timestamp, True);
+                focus_change_current(focus_stacks[client->workspace - 1],
+                                     timestamp, True);
             }
             return;
         }
@@ -348,10 +351,10 @@ void focus_alt_tab(XEvent *xevent, void *v)
             case KeyPress:
                 if (xevent->xkey.keycode == action_keycode) {
                     if (xevent->xkey.state & ShiftMask) {
-                        focus_set_internal(focus_current->prev_focus,
+                        focus_set_internal(get_prev(focus_current),
                                            event_timestamp, False);
                     } else {
-                        focus_set_internal(focus_current->next_focus,
+                        focus_set_internal(get_next(focus_current),
                                            event_timestamp, False);
                     }
                 } else {
@@ -396,6 +399,26 @@ void focus_alt_tab(XEvent *xevent, void *v)
            focus_current ? focus_current->name : "NULL"));
     dump_focus_list();
     debug(("\tLeaving alt-tab\n"));
+}
+
+static client_t *get_prev(client_t *client)
+{
+    client_t *c;
+
+    for (c = client->prev_focus; c != client; c = c->prev_focus) {
+        if (!c->prefs.skip_alt_tab) return c;
+    }
+    return client->prev_focus;
+}
+
+static client_t *get_next(client_t *client)
+{
+    client_t *c;
+
+    for (c = client->next_focus; c != client; c = c->next_focus) {
+        if (!c->prefs.skip_alt_tab) return c;
+    }
+    return client->next_focus;
 }
 
 /*

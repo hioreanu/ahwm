@@ -14,6 +14,7 @@ xsetroot -cursor_name left_ptr
 
 #exec wmaker
 #exec kwin
+#exec startkde
 #exec ./9wm
 #exec enlightenment
 #exec fvwm2

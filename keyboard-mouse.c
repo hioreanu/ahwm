@@ -474,9 +474,9 @@ Bool keyboard_handle_event(XKeyEvent *xevent)
     KeySym ks;
 
     ks = XKeycodeToKeysym(dpy, xevent->keycode, 0);
-    printf("\tWindow 0x%08X, keycode %d, state %d, keystring %s\n",
+    debug(("\tWindow 0x%08X, keycode %d, state %d, keystring %s\n",
            (unsigned int)xevent->window, xevent->keycode,
-           xevent->state, XKeysymToString(ks));
+           xevent->state, XKeysymToString(ks)));
 #endif /* DEBUG */
 
     code = xevent->keycode;

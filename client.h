@@ -8,7 +8,7 @@
 
 #include "xwm.h"
 
-/* height of the titlebar */
+/* height of the titlebar, should probably be configurable */
 #define TITLE_HEIGHT 15
 
 /*
@@ -21,8 +21,6 @@
  * you haven't played around with this, the most common kind of
  * top-level override_redirect window would be a popup menu (it can't
  * be a child of a top-level window because it shouldn't be clipped).
- * 
- * FIXME:  change comment if go with reparenting workspaces
  * 
  * Regular top-level windows are reparented to a frame window we
  * create which may or may not have an area for a titlebar.  We
@@ -50,8 +48,9 @@ typedef struct _client_t {
     int prev_y;                 /* previous position/size for maximization */
     int prev_width;             /* previous position/size for maximization */
     int prev_height;            /* previous position/size for maximization */
-    int orig_border_width;      /* client's requested border width  */
-    int workspace;              /* client's workspace  */
+    int orig_border_width;      /* client's requested border width */
+    unsigned int workspace;     /* client's workspace, see workspace.h */
+    /* FIXME:  get rid of these two */
     int window_event_mask;      /* event mask of client->window */
     int frame_event_mask;       /* event mask of client->frame */
     unsigned int protocols;     /* WM_PROTOCOLS, see below (ICCCM, 4.1.2.7) */
@@ -73,24 +72,28 @@ typedef struct _client_t {
      * The state is 'NormalState' whenever the window is mapped.
      */
 
-    /* clients are also managed as doubly linked lists */
-    struct _client_t *next;
-    struct _client_t *prev;
-
     /* if some client has this client as the transient_for hint,
      * then this client is a 'leader' (my nomenclature, nothing
      * to do with window groups).  A leader has the 'transients'
      * attribute set to one of its transient windows.  A transient
      * window has the 'next_transient' attribute set the the next
-     * transient windows.  Note that a transient window may also
+     * transient window.  Note that a transient window may also
      * be a leader. */
 
     struct _client_t *transients;
     struct _client_t *next_transient;
     
-    /* mapped clients are managed as doubly linked lists in focus.c: */
+    /* Mapped clients are managed as circular doubly linked lists in
+     * focus.c; these can be used to iterate over all mapped clients
+     * (if state == NormalState and workspace == workspace_current,
+     * the client is mapped). */
     struct _client_t *next_focus;
     struct _client_t *prev_focus;
+
+    /* All clients are managed as regular doubly linked lists in
+     * stacking.c; these can be used to iterate over all clients. */
+    struct _client_t *next_stacking;
+    struct _client_t *prev_stacking;
 
     enum { ClickToFocus, SloppyFocus, DontFocus } focus_policy;
     enum { Fixed, Smart, Cascade } map_policy;
@@ -101,14 +104,15 @@ typedef struct _client_t {
     } flags;
     
     struct _prefs {
-        unsigned int titlebar:1;
         unsigned int skip_alt_tab:1;
-        unsigned int omnipresent:1;
-        unsigned int always_on_top:1;
-        unsigned int always_on_bottom:1;
         unsigned int pass_focus_click:1;
+        unsigned int titlebar:1; /* FIXME */
+        unsigned int always_on_top:1; /* FIXME */
+        unsigned int always_on_bottom:1; /* FIXME */
+        unsigned int sticky:1;  /* FIXME */
     } prefs;
-} client_t;                     /* 124 bytes on ILP-32 machines */
+    char pad[1];
+} client_t;                     /* 140 bytes on ILP-32 machines */
 
 /* the values for client->protocols, can be ORed together */
 
@@ -116,8 +120,6 @@ typedef struct _client_t {
 #define PROTO_TAKE_FOCUS    01
 #define PROTO_SAVE_YOURSELF 02
 #define PROTO_DELETE_WINDOW 04
-
-extern client_t *client_list;
 
 typedef struct _position_size {
     int x, y, width, height;
@@ -160,21 +162,6 @@ client_t *client_find(Window);
  */
 
 void client_destroy(client_t *);
-
-/*
- * Utility to iterate over all clients
- * 
- * client_foreach_function takes a client and a pointer which is
- * passed in to client_foreach as arguments; if the function returns
- * one, processing will continue, else processing stops.
- * 
- * client_foreach will return one if all clients were processed, zero
- * if processing stopped because the client_foreach_function returned
- * zero.
- */
-
-typedef int (*client_foreach_function)(client_t *, void *);
-int client_foreach(client_foreach_function, void *);
 
 /*
  * Figure out the name of a client and set it to a newly-malloced
@@ -246,8 +233,7 @@ void client_inform_state(client_t *);
  * Create a frame window for a client and reparent the client.  If the
  * client has already been reparented, ensure the frame window
  * properly expresses the client's size and position wishes.  Frame is
- * stored in client->frame.  The second argument is True if the window
- * is going to have a titlebar, else False.
+ * stored in client->frame.
  */
 
 void client_reparent(client_t *client);
@@ -307,19 +293,5 @@ void _client_print(char *, client_t *);
 
 void client_sendmessage(client_t *client, Atom data0, Time timestamp,
                         long data2, long data3, long data4);
-
-/*
- * Map and raise a client if client is in current workspace and
- * client's state is NormalState
- * 
- * Also will map and raise all the client's transients, the client's
- * transient_for and its transient_for, and so on until entire
- * transience hierarchy which is in current workspace and is in
- * NormalState is raised (it goes depth-first which probably won't
- * look quite right with a huge transient window hierarchy, but then
- * again, I've never seen a huge transient window hierarchy).
- */
-
-void client_raise(client_t *client);
 
 #endif /* CLIENT_H */

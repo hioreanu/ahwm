@@ -12,6 +12,7 @@
 #include "event.h"
 #include "debug.h"
 #include "ewmh.h"
+#include "stacking.h"
 
 #ifndef MIN
 #define MIN(x,y) ((x) < (y) ? (x) : (y))
@@ -25,7 +26,7 @@ unsigned long workspace_dark_highlight[NO_WORKSPACES];
 unsigned long workspace_darkest_highlight[NO_WORKSPACES];
 unsigned long workspace_highlight[NO_WORKSPACES];
 
-int workspace_current = 1;
+unsigned int workspace_current = 1;
 
 static char *workspace_colors[NO_WORKSPACES] = {
     "#404040",                  /* dark gray */
@@ -39,11 +40,21 @@ static char *workspace_colors[NO_WORKSPACES] = {
 
 static void alloc_workspace_colors();
 
-void workspace_goto(XEvent *xevent, void *v)
+void workspace_goto_bindable(XEvent *e, void *v)
 {
-    int new_workspace = (int)v; /* this is always safe */
+    unsigned int new_workspace = (int)v; /* this is always safe */
+
+    workspace_goto(new_workspace);
+}
+
+/*
+ * we allow changing to the current workspace, basically has same
+ * effect as an 'xrefresh'
+ */
+
+void workspace_goto(unsigned int new_workspace)
+{
     client_t *client, *tmp;
-    Window cover_up;
     XSetWindowAttributes xswa;
 
     if (new_workspace < 1 || new_workspace > NO_WORKSPACES) {
@@ -58,17 +69,20 @@ void workspace_goto(XEvent *xevent, void *v)
      * sometimes it is possible to see the actual unmappings as
      * they happen, especially when the server is stressed or
      * the windows have contrasting colors; therefore we map a
-     * temporary window to cover up our actions.  We don't do the
-     * same when we remap the windows in the new workspace as that
-     * would require some nasty hackery. */
+     * temporary window to cover up our actions.
+     * Little things like this make a big difference. */
     xswa.background_pixel = workspace_pixels[workspace_current - 1];
     xswa.override_redirect = True;
-    cover_up = XCreateWindow(dpy, root_window, 0, 0, scr_width, scr_height,
-                             0, DefaultDepth(dpy, scr), InputOutput,
-                             DefaultVisual(dpy, scr),
-                             CWBackPixel | CWOverrideRedirect, &xswa);
-    XMapRaised(dpy, cover_up);
-    XClearWindow(dpy, cover_up);
+    stacking_hiding_window = XCreateWindow(dpy, root_window, 0, 0,
+                                           scr_width, scr_height,
+                                           0, DefaultDepth(dpy, scr),
+                                           InputOutput,
+                                           DefaultVisual(dpy, scr),
+                                           CWBackPixel | CWOverrideRedirect,
+                                           &xswa);
+    XMapRaised(dpy, stacking_hiding_window);
+    XClearWindow(dpy, stacking_hiding_window);
+    
     /* unmap windows in current workspace */
     client = focus_stacks[workspace_current - 1];
     if (client != NULL) {
@@ -85,14 +99,9 @@ void workspace_goto(XEvent *xevent, void *v)
             ewmh_client_list_remove(client);
         }
     }
-    XUnmapWindow(dpy, cover_up);
-    XDestroyWindow(dpy, cover_up);
     workspace_current = new_workspace;
     workspace_update_color();
 
-    /* FIXME:  getting multiple EnterNotify events per window when
-     * we have transients here - must use 'mapped' flag, not raise
-     * a window more than once */
     /* map windows in new workspace */
     client = focus_stacks[workspace_current - 1];
     if (client != NULL) {
@@ -101,17 +110,22 @@ void workspace_goto(XEvent *xevent, void *v)
              client != tmp;
              client = client->prev_focus) {
             debug(("\tRemapping 0x%08X ('%.10s')\n", client, client->name));
-            client_raise(client);
+            XMapWindow(dpy, client->frame);
         }
         debug(("\tRemapping 0x%08X ('%.10s')\n", client, client->name));
-        client_raise(client);
+        XMapWindow(dpy, client->frame);
     }
+    
+    XUnmapWindow(dpy, stacking_hiding_window);
+    XDestroyWindow(dpy, stacking_hiding_window);
+    stacking_hiding_window = None;
+    
     focus_current = focus_stacks[workspace_current - 1];
     focus_ensure(event_timestamp);
     ewmh_current_desktop_update();
 }
 
-void move_with_transients(client_t *client, int ws)
+void move_with_transients(client_t *client, unsigned int ws)
 {
     client_t *transient;
     XSetWindowAttributes xswa;
@@ -136,9 +150,9 @@ void move_with_transients(client_t *client, int ws)
     focus_add(client, event_timestamp);
 }
 
-void workspace_client_moveto(XEvent *xevent, void *v)
+void workspace_client_moveto_bindable(XEvent *xevent, void *v)
 {
-    int ws = (int)v;
+    unsigned int ws = (int)v;
     client_t *client;
 
     client = client_find(event_window(xevent));
@@ -148,6 +162,11 @@ void workspace_client_moveto(XEvent *xevent, void *v)
                 ws);
         return;
     }
+    workspace_client_moveto(client, ws);
+}
+
+void workspace_client_moveto(client_t *client, unsigned int ws)
+{
     if (ws < 1 || ws > NO_WORKSPACES) {
         fprintf(stderr, "XWM:  attempt to move to invalid workspace %d\n", ws);
         return;

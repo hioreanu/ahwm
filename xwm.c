@@ -108,10 +108,10 @@ static int error_handler(Display *dpy, XErrorEvent *error)
 
 int main(int argc, char **argv)
 {
-    XEvent    event;
-    int       xfd, junk;
+    XEvent event;
+    int xfd, junk;
     XGCValues xgcv;
-    XColor    xcolor, junk2;
+    XColor xcolor, junk2;
     
 #ifdef DEBUG
     setvbuf(stdout, NULL, _IONBF, 0);
@@ -147,7 +147,7 @@ int main(int argc, char **argv)
     /* get the default error handler and set our error handler */
     XSetErrorHandler(NULL);
     error_default_handler = XSetErrorHandler(error_handler);
-#ifdef DEBUG
+#ifdef DEBUG_BAD_IDEA
     XSynchronize(dpy, True);
 #endif
 
@@ -260,33 +260,33 @@ int main(int argc, char **argv)
     keyboard_bind("Control | Alt | Shift | r", KEYBOARD_DEPRESS,
                   resize_client, NULL);
     keyboard_bind("Control | Alt | 1", KEYBOARD_DEPRESS,
-                  workspace_client_moveto, (void *)1);
+                  workspace_client_moveto_bindable, (void *)1);
     keyboard_bind("Control | Alt | 2", KEYBOARD_DEPRESS,
-                  workspace_client_moveto, (void *)2);
+                  workspace_client_moveto_bindable, (void *)2);
     keyboard_bind("Control | Alt | 3", KEYBOARD_DEPRESS,
-                  workspace_client_moveto, (void *)3);
+                  workspace_client_moveto_bindable, (void *)3);
     keyboard_bind("Control | Alt | 4", KEYBOARD_DEPRESS,
-                  workspace_client_moveto, (void *)4);
+                  workspace_client_moveto_bindable, (void *)4);
     keyboard_bind("Control | Alt | 5", KEYBOARD_DEPRESS,
-                  workspace_client_moveto, (void *)5);
+                  workspace_client_moveto_bindable, (void *)5);
     keyboard_bind("Control | Alt | 6", KEYBOARD_DEPRESS,
-                  workspace_client_moveto, (void *)6);
+                  workspace_client_moveto_bindable, (void *)6);
     keyboard_bind("Control | Alt | 7", KEYBOARD_DEPRESS,
-                  workspace_client_moveto, (void *)7);
+                  workspace_client_moveto_bindable, (void *)7);
     keyboard_bind("Alt | 1", KEYBOARD_DEPRESS,
-                  workspace_goto, (void *)1);
+                  workspace_goto_bindable, (void *)1);
     keyboard_bind("Alt | 2", KEYBOARD_DEPRESS,
-                  workspace_goto, (void *)2);
+                  workspace_goto_bindable, (void *)2);
     keyboard_bind("Alt | 3", KEYBOARD_DEPRESS,
-                  workspace_goto, (void *)3);
+                  workspace_goto_bindable, (void *)3);
     keyboard_bind("Alt | 4", KEYBOARD_DEPRESS,
-                  workspace_goto, (void *)4);
+                  workspace_goto_bindable, (void *)4);
     keyboard_bind("Alt | 5", KEYBOARD_DEPRESS,
-                  workspace_goto, (void *)5);
+                  workspace_goto_bindable, (void *)5);
     keyboard_bind("Alt | 6", KEYBOARD_DEPRESS,
-                  workspace_goto, (void *)6);
+                  workspace_goto_bindable, (void *)6);
     keyboard_bind("Alt | 7", KEYBOARD_DEPRESS,
-                  workspace_goto, (void *)7);
+                  workspace_goto_bindable, (void *)7);
     keyboard_bind("Control | Alt | Shift | q", KEYBOARD_RELEASE,
                   keyboard_quote, NULL);
     mouse_bind("Alt | Button1", MOUSE_DEPRESS, MOUSE_FRAME,

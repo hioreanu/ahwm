@@ -26,13 +26,11 @@
 #include "debug.h"
 #include "ewmh.h"
 #include "move-resize.h"
+#include "stacking.h"
 
 XContext window_context;
 XContext frame_context;
 XContext title_context;
-
-/* we only keep around clients as a list to allow iteration over all clients */
-client_t *client_list = NULL;
 
 static void client_create_frame(client_t *client, Bool has_titlebar,
                                 position_size *win_position);
@@ -49,7 +47,6 @@ client_t *client_create(Window w)
     if (XGetWindowAttributes(dpy, w, &xwa) == 0) return NULL;
     if (xwa.override_redirect) {
         debug(("\tWindow has override_redirect, not creating client\n"));
-        /* FIXME:  may still need to reparent to fake root */
         return NULL;
     }
 
@@ -63,7 +60,7 @@ client_t *client_create(Window w)
     client->window = w;
     client->transient_for = None;
     client->group_leader = NULL;
-    client->workspace = workspace_current;
+    client->workspace = 0;
     client->state = WithdrawnState;
     client->frame = None;
     client->titlebar = None;
@@ -153,11 +150,8 @@ client_t *client_create(Window w)
     }
 #endif /* SHAPE */
 
-    client->next = client_list;
-    client->prev = NULL;
-    if (client_list != NULL) client_list->prev = client;
-    client_list = client;
-
+    stacking_add(client);
+    
     if (xwa.map_state != IsUnmapped) {
         /* The only time when this can happen is when we just started
          * the windowmanager and there are already some windows on
@@ -169,6 +163,7 @@ client_t *client_create(Window w)
         client->state = NormalState;
         client_inform_state(client);
         client_reparent(client);
+        stacking_raise(client);
         XMapWindow(dpy, client->frame);
         if (client->titlebar != None)
             XMapWindow(dpy, client->titlebar);
@@ -358,6 +353,7 @@ void client_destroy(client_t *client)
 {
     client_t *c, *tmp;
 
+    stacking_remove(client);
     /* apparently we need this here */
     remove_transient_from_leader(client);
     for (c = client->transients; c != NULL; c = tmp) {
@@ -381,21 +377,8 @@ void client_destroy(client_t *client)
     Free(client->name);         /* should never be NULL */
     if (client->instance != NULL) XFree(client->instance);
     if (client->class != NULL) XFree(client->class);
-    
-    if (client->next != NULL) client->next->prev = client->prev;
-    if (client->prev != NULL) client->prev->next = client->next;
-    if (client_list == client) client_list = client->next;
+
     Free(client);
-}
-
-int client_foreach(client_foreach_function fn, void *arg)
-{
-    client_t *c;
-
-    for (c = client_list; c != NULL; c = c->next) {
-        if ((*fn)(c, arg) == 0) return 0;
-    }
-    return 1;
 }
 
 /* snarfed mostly from ctwm and WindowMaker */
@@ -433,6 +416,7 @@ void client_set_name(client_t *client)
     if (xtp.value != NULL) XFree(xtp.value);
 
     debug(("\tClient 0x%08X is %s\n", (unsigned int)client, client->name));
+    if (strcmp(client->name, "aumix") == 0) client->prefs.always_on_top = 1;
 }
 
 void client_set_instance_class(client_t *client)
@@ -750,140 +734,7 @@ void client_sendmessage(client_t *client, Atom data0, Time timestamp,
     XSendEvent(dpy, client->window, False, 0, (XEvent *)&xcme);
 }
 
-/*
- * Raising a window presents a somewhat interesting problem because we
- * want to hold the following invariant:
- * 
- * A client's transient windows are always on top of the client.
- * 
- * The problem arises because one can have arbitrarily complex trees
- * of transient windows (a window may have any number of transients
- * but it will only have one or zero windows for which it is
- * transient).  In order to raise a window, we must raise the entire
- * tree, ensuring that each node along the path up from the window
- * requested to the root must be raised among all nodes at the same
- * height in the tree.
- * 
- * Consider the following tree, with the root node being 'A', and the
- * node we want raised being 'D' (with 'B' and 'C' being the path from
- * the requested window to the root window):
- * 
- * A
- * |- 1
- * |  `- 2
- * |- B
- * |  |- 10
- * |  |- C
- * |  |  |- 14
- * |  |  |- D
- * |  |  |  |- 16
- * |  |  |  |  `- 17
- * |  |  |  `- 18
- * |  |  `- 15
- * |  `- 11
- * |     |- 12
- * |     `- 13
- * `- 3
- *    |- 4
- *    |  `- 5
- *    |     |- 6
- *    |     `- 7
- *    `- 8
- *       `- 9
- * 
- * The nodes will be raised in the following order:
- * A 1 2 3 4 5 6 7 8 9 B 10 11 12 13 C 14 15 D 16 17 18
- * This holds the invariant, and ensures that each of A, B, C, D is
- * raised among its siblings.
- * 
- * The algorithm goes as follows:
- * 
- * raise(D) =
- * 
- * go up to C, ignoring D
- *     go up to B, ignoring C
- *         go up to A, ignoring B
- *             can't go any further up
- *             raise A
- *             raise all subtrees of A except B
- *         raise B
- *         raise all subtrees of B except C
- *     raise C
- *     raise all subtrees of C except D
- * raise D
- * raise all subtrees of D
- */
-
-typedef struct window_buffer {
-    Window *w;
-    int nused;
-    int nallocated;
-} window_buffer;
-
-static void raise_tree(client_t *node, client_t *ignore,
-                       Bool go_up, window_buffer *wb)
-{
-    client_t *parent, *c;
-    Window *tmp;
-
-    /* go up if needed */
-    if (go_up && node->transient_for != None) {
-        parent = client_find(node->transient_for);
-        if (parent != NULL) {
-            raise_tree(parent, node, True, wb);
-        }
-    }
-
-    /* visit node */
-    if (node->workspace == workspace_current
-        && node->state == NormalState) {
-        if (wb->nallocated == wb->nused) {
-            tmp = Realloc(wb->w, 2 * wb->nallocated * sizeof(Window));
-            if (tmp == NULL) {
-                fprintf(stderr, "XWM: Out of memory while raising window\n");
-                return;
-            }
-            wb->nallocated *= 2;
-            wb->w = tmp;
-        }
-        XMapWindow(dpy, node->frame);
-        wb->w[wb->nused++] = node->frame;
-    }
-
-    /* go down */
-    for (c = node->transients; c != NULL; c = c->next_transient) {
-        if (c != ignore)
-            raise_tree(c, NULL, False, wb);
-    }
-}
-
 void client_raise(client_t *client)
 {
-    static window_buffer wb = {NULL, 0, 0};
-    Window tmp;
-    int i;
-
-    if (wb.w == NULL) {
-        wb.w = Malloc(sizeof(Window));
-        if (wb.w == NULL) {
-            fprintf(stderr, "XWM: Out of memory while raising window\n");
-            XMapRaised(dpy, client->frame);
-            return;
-        }
-        wb.nallocated = 1;
-    }
-    wb.nused = 0;
-
-    raise_tree(client, NULL, True, &wb);
-
-    /* must reverse the array because XRestackWindows works backwards */
-    for (i = 0; 2 * i < wb.nused; i++) {
-        tmp = wb.w[i];
-        wb.w[i] = wb.w[wb.nused - i - 1];
-        wb.w[wb.nused - i - 1] = tmp;
-    }
-    
-    XRaiseWindow(dpy, wb.w[0]);
-    if (wb.nused != 1)          /* avoid spurious X request */
-        XRestackWindows(dpy, wb.w, wb.nused);
+    stacking_raise(client);
 }
