@@ -50,6 +50,7 @@
 #include "mwm.h"
 #include "colormap.h"
 #include "ewmh.h"
+#include "timer.h"
 
 #ifdef SHAPE
 #include <X11/extensions/shape.h>
@@ -119,9 +120,13 @@ static Time figure_timestamp(XEvent *event);
 void event_get(int xfd, XEvent *event)
 {
     fd_set fds;
+    struct timeval tv;
     struct timeval *timeout;
+    int have_timeout;
 
+    /* timeout "fork" at v. 1.73 */
     for (;;) {
+        have_timeout = timer_next_time(&tv);
         if (XPending(dpy) > 0) {
             event_timestamp = figure_timestamp(event);
             XNextEvent(dpy, event);
@@ -129,13 +134,13 @@ void event_get(int xfd, XEvent *event)
         }
         FD_ZERO(&fds);
         FD_SET(xfd, &fds);
-        timeout = get_raise_timer();
+        if (have_timeout) timeout = &tv;
+        else timeout = NULL;
         if (select(xfd + 1, &fds, NULL, NULL, timeout) > 0) {
             continue;
         } else if (errno != EINTR) {
             if (timeout != NULL) {
-                set_raise_timer(0);
-                stacking_raise(focus_current);
+                timer_run_first();
             } else {
                 perror("AHWM: select:");
             }
@@ -316,6 +321,13 @@ void event_dispatch(XEvent *event)
     }
 }
 
+static void raise_on_timeout(timer_t *t, void *v)
+{
+    client_t *client = (client_t *)v;
+    stacking_raise(client);
+    /* call timer_cancel in event_enter() next time around */
+}
+
 /*
  * Focus and raise if possible
  * 
@@ -338,6 +350,7 @@ void event_dispatch(XEvent *event)
 static void event_enter(XCrossingEvent *xevent)
 {
     client_t *client;
+    static timer_t *t = NULL;
     
     if (xevent->mode != NotifyNormal) {
         debug(("\tMode != NotifyNormal, ignoring event\n"));
@@ -358,12 +371,15 @@ static void event_enter(XCrossingEvent *xevent)
     if (client != NULL && client->state == NormalState
         && xevent->serial != ignore_enternotify_hack
         && client->focus_policy == SloppyFocus) {
+        
         debug(("\tSetting focus in response to EnterNotify\n"));
         focus_set(client, CurrentTime);
         if (client->raise_delay == 0) {
             stacking_raise(client);
         } else {
-            set_raise_timer(client->raise_delay);
+            if (t != NULL) timer_cancel(t);
+            t = timer_new(client->raise_delay, raise_on_timeout,
+                          (void *)client);
         }
     } else {
         debug(("\tNot setting focus\n"));

@@ -8,7 +8,7 @@ LDFLAGS=@LDFLAGS@@X_LIBS@
 
 #CFLAGS=-g -Wall -DSHAPE -DDEBUG=1 -I/usr/X11R6/include -L/usr/X11R6/lib
 
-OBJS=ahwm.@OBJEXT@ client.@OBJEXT@ event.@OBJEXT@ focus.@OBJEXT@ workspace.@OBJEXT@ keyboard-mouse.@OBJEXT@ xev.@OBJEXT@ cursor.@OBJEXT@ move-resize.@OBJEXT@ kill.@OBJEXT@ malloc.@OBJEXT@ icccm.@OBJEXT@ colormap.@OBJEXT@ ewmh.@OBJEXT@ debug.@OBJEXT@ place.@OBJEXT@ stacking.@OBJEXT@ parser.@OBJEXT@ lexer.@OBJEXT@ prefs.@OBJEXT@ compat.@OBJEXT@ paint.@OBJEXT@ mwm.@OBJEXT@
+OBJS=ahwm.@OBJEXT@ client.@OBJEXT@ event.@OBJEXT@ focus.@OBJEXT@ workspace.@OBJEXT@ keyboard-mouse.@OBJEXT@ xev.@OBJEXT@ cursor.@OBJEXT@ move-resize.@OBJEXT@ kill.@OBJEXT@ malloc.@OBJEXT@ icccm.@OBJEXT@ colormap.@OBJEXT@ ewmh.@OBJEXT@ debug.@OBJEXT@ place.@OBJEXT@ stacking.@OBJEXT@ parser.@OBJEXT@ lexer.@OBJEXT@ prefs.@OBJEXT@ compat.@OBJEXT@ paint.@OBJEXT@ mwm.@OBJEXT@ timer.@OBJEXT@
 
 all: ahwm
 
@@ -54,48 +54,48 @@ clean:
 
 ahwm.@OBJEXT@: config.h ahwm.h event.h client.h keyboard-mouse.h prefs.h focus.h
 ahwm.@OBJEXT@: workspace.h cursor.h move-resize.h kill.h icccm.h ewmh.h paint.h
-ahwm.@OBJEXT@: mwm.h colormap.h
+ahwm.@OBJEXT@: mwm.h colormap.h timer.h
 client.@OBJEXT@: config.h client.h ahwm.h workspace.h prefs.h keyboard-mouse.h
 client.@OBJEXT@: cursor.h focus.h event.h malloc.h compat.h debug.h ewmh.h
-client.@OBJEXT@: move-resize.h stacking.h mwm.h
+client.@OBJEXT@: move-resize.h stacking.h mwm.h colormap.h
 colormap.@OBJEXT@: config.h colormap.h client.h ahwm.h focus.h workspace.h prefs.h
 compat.@OBJEXT@: config.h compat.h
 cursor.@OBJEXT@: config.h cursor.h ahwm.h
 debug.@OBJEXT@: config.h debug.h
 event.@OBJEXT@: config.h ahwm.h event.h client.h focus.h workspace.h prefs.h
 event.@OBJEXT@: keyboard-mouse.h xev.h malloc.h compat.h move-resize.h debug.h
-event.@OBJEXT@: ewmh.h place.h stacking.h paint.h mwm.h colormap.h
+event.@OBJEXT@: ewmh.h place.h stacking.h paint.h mwm.h colormap.h timer.h
 ewmh.@OBJEXT@: config.h compat.h ahwm.h ewmh.h client.h malloc.h debug.h focus.h
-ewmh.@OBJEXT@: workspace.h prefs.h kill.h move-resize.h stacking.h
+ewmh.@OBJEXT@: workspace.h prefs.h kill.h move-resize.h stacking.h keyboard-mouse.h
 focus.@OBJEXT@: config.h compat.h focus.h client.h ahwm.h workspace.h prefs.h
 focus.@OBJEXT@: debug.h event.h ewmh.h keyboard-mouse.h stacking.h malloc.h paint.h
 focus.@OBJEXT@: colormap.h
 icccm.@OBJEXT@: config.h compat.h ahwm.h icccm.h debug.h
 keyboard-mouse.@OBJEXT@: config.h keyboard-mouse.h client.h ahwm.h prefs.h malloc.h
 keyboard-mouse.@OBJEXT@: compat.h workspace.h event.h focus.h cursor.h debug.h
-keyboard-mouse.@OBJEXT@: stacking.h
+keyboard-mouse.@OBJEXT@: stacking.h ewmh.h
 kill.@OBJEXT@: config.h kill.h client.h ahwm.h prefs.h event.h debug.h
+lexer.@OBJEXT@: config.h prefs.h client.h ahwm.h parser.h
 malloc.@OBJEXT@: config.h ahwm.h malloc.h compat.h
 move-resize.@OBJEXT@: config.h compat.h move-resize.h prefs.h client.h ahwm.h
 move-resize.@OBJEXT@: cursor.h event.h malloc.h debug.h focus.h workspace.h paint.h
-mwm-test.@OBJEXT@: MwmUtil.h
 mwm.@OBJEXT@: config.h ahwm.h mwm.h client.h MwmUtil.h debug.h
 paint.@OBJEXT@: config.h paint.h client.h ahwm.h debug.h malloc.h compat.h focus.h
 paint.@OBJEXT@: workspace.h prefs.h box.xbm down.xbm topbar.xbm up.xbm wins.xbm
 paint.@OBJEXT@: x.xbm
+parser.@OBJEXT@: config.h keyboard-mouse.h client.h ahwm.h prefs.h
 place.@OBJEXT@: config.h place.h client.h ahwm.h workspace.h prefs.h debug.h focus.h
 place.@OBJEXT@: stacking.h
-prefs.@OBJEXT@: config.h compat.h prefs.h client.h ahwm.h debug.h workspace.h
-prefs.@OBJEXT@: keyboard-mouse.h focus.h kill.h move-resize.h malloc.h
-prefs.@OBJEXT@: default-ahwmrc.h
-qux.@OBJEXT@: client.h config.h ahwm.h
-save.@OBJEXT@: config.h ahwm.h event.h client.h keyboard-mouse.h prefs.h focus.h
-save.@OBJEXT@: workspace.h cursor.h move-resize.h kill.h icccm.h ewmh.h paint.h
-save.@OBJEXT@: mwm.h colormap.h
+prefs.@OBJEXT@: config.h compat.h prefs.h client.h ahwm.h parser.h debug.h
+prefs.@OBJEXT@: workspace.h keyboard-mouse.h focus.h kill.h move-resize.h malloc.h
+prefs.@OBJEXT@: ewmh.h paint.h stacking.h default-ahwmrc.h default-message.h
 stacking.@OBJEXT@: config.h client.h ahwm.h stacking.h malloc.h compat.h workspace.h
-stacking.@OBJEXT@: prefs.h debug.h
+stacking.@OBJEXT@: prefs.h debug.h ewmh.h
+timer-test.@OBJEXT@: timer.h
+timer.@OBJEXT@: timer.h
+timer.@OBJEXT@ld.@OBJEXT@: timer.h
 workspace.@OBJEXT@: config.h workspace.h client.h ahwm.h prefs.h focus.h event.h
-workspace.@OBJEXT@: debug.h ewmh.h stacking.h
+workspace.@OBJEXT@: debug.h ewmh.h stacking.h xev.h
 xev.@OBJEXT@: config.h malloc.h compat.h ahwm.h
 ahwm.@OBJEXT@: config.h
 client.@OBJEXT@: config.h ahwm.h

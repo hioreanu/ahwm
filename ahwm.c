@@ -62,6 +62,7 @@
 #include "paint.h"
 #include "mwm.h"
 #include "colormap.h"
+#include "timer.h"
 #include "prefs.h"
 
 Display *dpy;
@@ -230,6 +231,7 @@ int main(int argc, char **argv)
     mwm_init();
     focus_init();
     kill_init();
+    timer_init();
 
     /* we need to set ahwm_fontname (in prefs_init())
      * before we load the font and create the GCs */
@@ -325,8 +327,8 @@ int main(int argc, char **argv)
 
     atexit(focus_save_stacks);
     signal(SIGTERM, sigterm);
-    signal(SIGSEGV, sigsegv);
-    signal(SIGBUS, sigsegv);
+//    signal(SIGSEGV, sigsegv);
+//    signal(SIGBUS, sigsegv);
     
     scan_windows();
     focus_load_stacks();
