@@ -48,7 +48,7 @@ static XEvent *compress_motion(XEvent *xevent);
 static void process_resize(client_t *client, int new_x, int new_y,
                            resize_direction_t direction,
                            quadrant_t quadrant,
-                           int *old_x, int *old_y);
+                           int *old_x, int *old_y, position_size *orig);
 static quadrant_t get_quadrant(client_t *client, int x, int y);
 static void display_geometry(char *s, client_t *client);
 static void constrain_geometry(client_t *);
@@ -247,6 +247,7 @@ void mouse_resize_client(XEvent *xevent)
     static int x_start, y_start;
     static resize_direction_t resize_direction = UNKNOWN;
     static quadrant_t quadrant = IV;
+    static position_size orig;
     XEvent event1;
     
     do {
@@ -286,6 +287,10 @@ void mouse_resize_client(XEvent *xevent)
                                 resize_direction = SE;
                                 break;
                         }
+                        orig.x = client->x;
+                        orig.y = client->y;
+                        orig.width = client->width;
+                        orig.height = client->height;
 #ifdef DEBUG
                         printf("\tGrabbing the mouse for resizing\n");
 #endif /* DEBUG */
@@ -297,7 +302,7 @@ void mouse_resize_client(XEvent *xevent)
                                      CurrentTime);
                         process_resize(client, x_start, y_start,
                                        resize_direction, quadrant,
-                                       &x_start, &y_start);
+                                       &x_start, &y_start, &orig);
                         
                     } else {
                         fprintf(stderr, "Received an unexpected button press\n");
@@ -330,13 +335,13 @@ void mouse_resize_client(XEvent *xevent)
 #endif /* DEBUG */
                 process_resize(client, xevent->xbutton.x_root,
                                xevent->xbutton.y_root, resize_direction,
-                               quadrant, &x_start, &y_start);
+                               quadrant, &x_start, &y_start, &orig);
                 break;
             case ButtonRelease:
                 if (client) {
                     process_resize(client, xevent->xmotion.x_root,
                                    xevent->xmotion.y_root, resize_direction,
-                                   quadrant, &x_start, &y_start);
+                                   quadrant, &x_start, &y_start, &orig);
                 }
                 goto reset;
             
@@ -427,7 +432,7 @@ static XEvent *compress_motion(XEvent *xevent)
 static void process_resize(client_t *client, int new_x, int new_y,
                            resize_direction_t direction,
                            quadrant_t quadrant,
-                           int *old_x, int *old_y)
+                           int *old_x, int *old_y, position_size *orig)
 {
     int x_diff, y_diff;
     int x, y, w, h;
@@ -474,7 +479,8 @@ static void process_resize(client_t *client, int new_x, int new_y,
             case WEST:
             case SW:
             case NW:
-                if (client->width - x_diff > 1) {
+                if (client->width - x_diff > 1
+                    && new_x < orig->x + orig->width) {
                     client->x += x_diff;
                     client->width -= x_diff;
                     *old_x += x_diff;
@@ -497,7 +503,8 @@ static void process_resize(client_t *client, int new_x, int new_y,
             case NORTH:
             case NW:
             case NE:
-                if (client->height - y_diff > TITLE_HEIGHT + 1) {
+                if (client->height - y_diff > TITLE_HEIGHT + 1
+                    && new_y < orig->y + orig->height) {
                     client->y += y_diff;
                     client->height -= y_diff;
                     *old_y += y_diff;
@@ -537,6 +544,14 @@ static void process_resize(client_t *client, int new_x, int new_y,
 static void display_geometry(char *s, client_t *client)
 {
     static char *titlebar_display = NULL;
+    int w_inc, h_inc;
+
+    if (client->xsh != NULL && (client->xsh->flags & PResizeInc)) {
+        w_inc = client->xsh->width_inc;
+        h_inc = client->xsh->height_inc;
+    } else {
+        w_inc = h_inc = 1;
+    }
     
     if (client->name != titlebar_display) {
         titlebar_display = malloc(256); /* arbitrary, whatever */
@@ -546,7 +561,7 @@ static void display_geometry(char *s, client_t *client)
     }
     snprintf(client->name, 256, "[%s %s] %dx%d+%d+%d",
              s, client->instance, client->x, client->y,
-             client->width, client->height - TITLE_HEIGHT);
+             client->width / w_inc, (client->height - TITLE_HEIGHT) / h_inc);
     client_paint_titlebar(client);
 }
 
