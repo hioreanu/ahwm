@@ -1100,14 +1100,14 @@ static int no_config(char *xwmrc_path)
     int i;
 
     fprintf(stderr, "XWM: Creating default configuration file\n");
-    yyin = fopen(xwmrc_path, "r+b");
+    yyin = fopen(xwmrc_path, "w+b");
     if (yyin == NULL) {
         fprintf(stderr,
                 "XWM: Could not create default configuration file: %s\n",
                 strerror(errno));
         return 0;
     }
-    for (i = 0; i < sizeof(default_xwmrc); i++) {
+    for (i = 0; i < DEFAULT_XWMRC_NLINES; i++) {
         fprintf(yyin, "%s\n", default_xwmrc[i]);
     }
     fseek(yyin, 0, SEEK_SET);
