@@ -12,6 +12,7 @@ TODO before release:
 - figure out what the hell 'sticky' means to EWMH
 - test with a modern version of Sun's X implementation
 - function ToggleOmnipresent
+- xmms placement does not work
 
 Wishlist:
 - motif hints override is!

@@ -291,8 +291,8 @@ static void client_create_frame(client_t *client, position_size *win_position)
     xswa.event_mask =  SubstructureRedirectMask | EnterWindowMask
         | LeaveWindowMask | FocusChangeMask | StructureNotifyMask;
 
+    /* client_get_position_size_hints(client, &ps); */
     memcpy(&ps, win_position, sizeof(position_size));
-    client_get_position_size_hints(client, &ps);
     client_frame_position(client, &ps);
     client->x = ps.x;
     client->y = ps.y;
@@ -391,6 +391,8 @@ static void client_add_titlebar_internal(client_t *client)
     xswa.override_redirect = True;
     xswa.win_gravity = NorthWestGravity;
 
+    debug(("Client width is %d\n", client->width));
+    
     client->titlebar = XCreateWindow(dpy, client->frame, 0, 0, client->width,
                                      TITLE_HEIGHT, 0, DefaultDepth(dpy, scr),
                                      CopyFromParent, DefaultVisual(dpy, scr),
@@ -427,7 +429,7 @@ void client_add_titlebar(client_t *client)
     ps.y = client->y;
     ps.width = client->width;
     ps.height = client->height;
-    client_get_position_size_hints(client, &ps);
+    /* client_get_position_size_hints(client, &ps); */
     client_create_frame(client, &ps);
     XMoveWindow(dpy, client->window, 0, TITLE_HEIGHT);
     update_move_offset(client);
