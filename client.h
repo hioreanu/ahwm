@@ -40,6 +40,8 @@ typedef struct _client_t {
     int width;                  /* actual size when mapped */
     int height;                 /* actual size when mapped */
     int workspace;              /* client's workspace  */
+    int window_event_mask;      /* event mask of client->window */
+    int frame_event_mask;       /* event mask of client->frame */
     char *name;
     /* window's name (ICCCM, 4.1.2.1) */
     /* will not be NULL; use free() */
@@ -135,6 +137,25 @@ void client_set_xsh(client_t *);
  */
 
 void client_inform_state(client_t *);
+
+/*
+ * reparent a client
+ * FIXME: more
+ */
+
+void client_reparent(client_t *);
+
+typedef struct _position_size {
+    int x, y, width, height;
+} position_size;
+
+/*
+ * Sets the position_size argument to the position and size that a
+ * frame should take around this client in strict accordance to ICCCM,
+ * 4.1.2.3
+ */
+
+void client_frame_position(client_t *, position_size *);
 
 /*
  * print out some debugging information about a client

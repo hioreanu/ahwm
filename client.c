@@ -5,9 +5,11 @@
  */
 
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
-#include <X11/Xutil.h>
+#include <X11/Xlib.h>
 #include <X11/Xatom.h>
+#include <X11/Xutil.h>
 
 #include "client.h"
 #include "workspace.h"
@@ -20,14 +22,13 @@ client_t *client_create(Window w)
 {
     client_t *client;
     XWindowAttributes xwa;
-    XSetWindowAttributes xswa;
-    int mask;
 
     if (XGetWindowAttributes(dpy, w, &xwa) == 0) return NULL;
     if (xwa.override_redirect) {
 #ifdef DEBUG
         printf("\tWindow has override_redirect, not creating client\n");
 #endif /* DEBUG */
+        /* FIXME:  may still need to reparent to fake root */
         return NULL;
     }
 
@@ -41,12 +42,24 @@ client_t *client_create(Window w)
     client->window = w;
     client->transient_for = None;
     client->workspace = workspace_current;
-    client->state = Withdrawn;
+    client->state = WithdrawnState;
     client->x = xwa.x;
     client->y = xwa.y;
     client->width = xwa.width;
     client->height = xwa.height;
+    client->frame = None;
 
+    client_set_name(client);
+    client_set_instance_class(client);
+    client_set_xwmh(client);
+    client_set_xsh(client);
+
+    client->frame_event_mask = SubstructureRedirectMask | ExposureMask
+                               | EnterWindowMask;
+    client->window_event_mask = xwa.your_event_mask | StructureNotifyMask;
+    XSelectInput(dpy, client->window, client->window_event_mask);
+    client_reparent(client);
+    
     if (focus_canfocus(client)) focus_add(client);
 
     if (XSaveContext(dpy, w, window_context, (void *)client) != 0) {
@@ -58,34 +71,6 @@ client_t *client_create(Window w)
     printf("\tCreated an entry for window 0x%08X at 0x%08X\n", w, client);
 #endif /* DEBUG */
 
-    /* create frame and reparent */
-    client->frame = None;
-    if (1) {
-        mask = CWBackPixmap | CWBackPixel | CWBorderPixel
-               | CWCursor | CWEventMask | CWOverrideRedirect;
-        xswa.cursor = cursor_normal;
-        xswa.background_pixmap = None;
-        xswa.background_pixel = black;
-        xswa.event_mask = SubstructureRedirectMask | ExposureMask |
-                          EnterWindowMask | LeaveWindowMask;
-        xswa.override_redirect = True;
-        client->frame = XCreateWindow(dpy, root_window, client->x, client->y,
-                                      client->width, client->height, 0,
-                                      DefaultDepth(dpy, scr), CopyFromParent,
-                                      DefaultVisual(dpy, scr),
-                                      mask, &xswa);
-#ifdef DEBUG
-        printf("\tReparenting client 0x%08X (window 0x%08X) to 0x%08X\n",
-               client, w, client->frame);
-#endif /* DEBUG */
-        XClearWindow(dpy, client->frame);
-        /* ignore the map and unmap events caused by the reparenting: */
-        XSelectInput(dpy, w, xwa.your_event_mask & ~StructureNotifyMask);
-        XReparentWindow(dpy, w, client->frame, 0, TITLE_HEIGHT);
-        XSelectInput(dpy, w,
-                     xwa.your_event_mask // | EnterWindowMask
-                     | StructureNotifyMask);
-    }
     if (client->frame != None) {
         if (XSaveContext(dpy, client->frame,
                          frame_context, (void *)client) != 0) {
@@ -95,15 +80,72 @@ client_t *client_create(Window w)
             return NULL;
         }
     } else {
-        XSelectInput(dpy, w, EnterWindowMask);
+        /* if the window doesn't have a frame, we still need to listen
+         * for EnterWindow events so it will be focused correctly when
+         * the mouse moves over it */
+        /* in the current implementation, all clients will have a frame,
+         * so this should never run */
+        client->window_event_mask |= EnterWindowMask;
+        XSelectInput(dpy, w, client->window_event_mask);
     }
-
-    client_set_name(client);
-    client_set_instance_class(client);
-    client_set_xwmh(client);
-    client_set_xsh(client);
         
     return client;
+}
+
+void client_reparent(client_t *client)
+{
+    XSetWindowAttributes xswa;
+    XWindowChanges xwc;
+    int mask;
+    Window w;
+    position_size ps;
+
+    w = client->window;
+    mask = CWBackPixmap | CWBackPixel | CWBorderPixel
+           | CWCursor | CWEventMask | CWOverrideRedirect;
+    xswa.cursor = cursor_normal;
+    xswa.background_pixmap = None;
+    xswa.background_pixel = black;
+    xswa.event_mask = client->frame_event_mask;
+    xswa.override_redirect = True;
+
+    client_frame_position(client, &ps);
+
+    if (client->frame == None) {
+        client->frame = XCreateWindow(dpy, root_window, ps.x, ps.y,
+                                      ps.width, ps.height, 0,
+                                      DefaultDepth(dpy, scr), CopyFromParent,
+                                      DefaultVisual(dpy, scr),
+                                      mask, &xswa);
+    } else {
+        /* if the client already has a frame, assume that we need to
+         * update the frame as if it were the first time we are creating
+         * it; however, deleting the frame and creating a new window is
+         * more expensive than just resetting the frame to the initial
+         * state */
+        XSelectInput(dpy, w, client->window_event_mask & ~StructureNotifyMask);
+        XReparentWindow(dpy, w, root_window, 0, TITLE_HEIGHT);
+        XChangeWindowAttributes(dpy, client->frame, mask, &xswa);
+
+        mask = CWX | CWY | CWWidth | CWHeight | CWBorderWidth;
+        xwc.x = ps.x;
+        xwc.y = ps.y;
+        xwc.width = ps.width;
+        xwc.height = ps.height;
+        xwc.border_width = 0;
+        XConfigureWindow(dpy, client->frame, mask, &xwc);
+    }
+
+#ifdef DEBUG
+    printf("\tReparenting client 0x%08X (window 0x%08X) to 0x%08X\n",
+           client, w, client->frame);
+#endif /* DEBUG */
+
+    XClearWindow(dpy, client->frame);
+    /* ignore the map and unmap events caused by the reparenting: */
+    XSelectInput(dpy, w, client->window_event_mask & ~StructureNotifyMask);
+    XReparentWindow(dpy, w, client->frame, 0, TITLE_HEIGHT);
+    XSelectInput(dpy, w, client->window_event_mask);
 }
 
 client_t *client_find(Window w)
@@ -128,8 +170,10 @@ client_t *client_find(Window w)
 
 void client_destroy(client_t *client)
 {
-    if (client->frame != None)
+    if (client->frame != None) {
         XUnmapWindow(dpy, client->frame);
+        XDestroyWindow(dpy, client->frame);
+    }
     if (client->xwmh != NULL) XFree(client->xwmh);
     XDeleteContext(dpy, client->window, window_context);
     XDeleteContext(dpy, client->frame, frame_context);
@@ -184,7 +228,7 @@ void client_set_instance_class(client_t *client)
     client->class = NULL;
     client->instance = NULL;
 
-    if (XGetClassHint(dpy, w, &xch) != 0) {
+    if (XGetClassHint(dpy, client->window, &xch) != 0) {
         client->instance = xch.res_name;
         client->class = xch.res_class;
     }
@@ -197,7 +241,7 @@ void client_set_xwmh(client_t *client)
 
 void client_set_xsh(client_t *client)
 {
-    long set_fields;
+    long set_fields;            /* ignored */
 
     client->xsh = XAllocSizeHints();
     if (client->xsh == NULL) {
@@ -217,6 +261,57 @@ void client_inform_state(client_t *client)
     /* FIXME */
 }
 
+void client_frame_position(client_t *client, position_size *ps)
+{
+    int req_x, req_y, req_width, req_height, gravity;
+    int y_win_ref, y_frame_ref; /* "reference" points */
+
+    req_x = client->x;
+    req_y = client->y;
+    req_width = client->width;
+    req_height = client->height;
+    gravity = NorthWestGravity;
+    
+    if (client->xsh != NULL) {
+        if (client->xsh->flags & PWinGravity)
+            gravity = client->xsh->win_gravity;
+        if (client->xsh->flags & (PPosition | USPosition)) {
+            req_x = client->xsh->x;
+            req_y = client->xsh->y;
+        }
+        if (client->xsh->flags & (PSize | USSize)) {
+            req_width = client->xsh->width;
+            req_height = client->xsh->height;
+        }
+    }
+
+    /* this is a bit simpler since we only add a titlebar at the top */
+    ps->x = req_x;
+    ps->width = req_width;
+    ps->height = req_height + TITLE_HEIGHT;
+    switch (gravity) {
+        case StaticGravity:
+        case SouthEastGravity:
+        case SouthGravity:
+        case SouthWestGravity:
+            ps->y = req_y + TITLE_HEIGHT;
+            break;
+        case CenterGravity:
+        case EastGravity:
+        case WestGravity:
+            y_win_ref = req_height / 2;
+            y_frame_ref = (req_height + TITLE_HEIGHT) / 2;
+            ps->y = req_y + (y_frame_ref - y_win_ref);
+            break;
+        case NorthGravity:
+        case NorthEastGravity:
+        case NorthWestGravity:
+        default:                /* assume NorthWestGravity */
+            ps->y = req_y;
+            break;
+    }
+}
+
 void client_print(char *s, client_t *client)
 {
     if (client == NULL) {
@@ -225,4 +320,6 @@ void client_print(char *s, client_t *client)
     }
     printf("%-19s client = 0x%08X, window = 0x%08X, frame = 0x%08X\n",
            s, client, client->window, client->frame);
+    printf("%-19s name = %s, instance = %s, class = %s\n",
+           s, client->name, client->instance, client->class);
 }

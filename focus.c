@@ -84,7 +84,7 @@ int focus_canfocus(client_t *client)
     /* Window Maker does a bunch of stuff with KDE here */
     /* ICC/client-to-windowmanager/wm-hints.html */
 
-    if (client->state != MAPPED) return 0;
+    if (client->state != NormalState) return 0;
     if (client->workspace != workspace_current) return 0;
     if (client->xwmh == NULL) return 1;
     if (client->xwmh->flags & InputHint && client->xwmh->input == False)
@@ -103,8 +103,7 @@ void focus_ensure()
     }
 
 #ifdef DEBUG
-    printf("\tSetting focus to 0x%08X...", focus_current->window);
-    fflush(stdout);
+    printf("\tSetting focus to 0x%08X...\n", focus_current->window);
 #endif /* DEBUG */
 
     XSetInputFocus(dpy, focus_current->window,

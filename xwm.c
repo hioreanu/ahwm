@@ -28,6 +28,8 @@ int alt_tab(Window win, Window subwindow, Time t,
             int x, int y, int root_x, int root_y);
 int alt_shift_tab(Window win, Window subwindow, Time t,
                   int x, int y, int root_x, int root_y);
+int control_alt_shift_t(Window w, Window sw, Time t,
+                        int x, int y, int root_x, int root_y);
 
 static int already_running_windowmanager;
 
@@ -112,6 +114,8 @@ int main(int argc, char **argv)
     keyboard_set_function("Alt | Tab", KEYBOARD_DEPRESS, alt_tab);
     keyboard_set_function("Alt | Shift | Tab", KEYBOARD_DEPRESS,
                           alt_shift_tab);
+    keyboard_set_function("Control | Alt | Shift | t", KEYBOARD_DEPRESS,
+                          control_alt_shift_t);
 
     scan_windows();
 
@@ -150,7 +154,7 @@ static void scan_windows()
     XQueryTree(dpy, root_window, &w1, &w2, &wins, &n);
     for (i = 0; i < n; i++) {
         client = client_create(wins[i]);  /* client.c */
-        if (client != NULL && client->state == MAPPED) {
+        if (client != NULL && client->state == NormalState) {
             if (client->frame != None) {
                 keyboard_grab_keys(client->frame); /* keyboard.c */
             } else {
@@ -175,4 +179,13 @@ int alt_shift_tab(Window win, Window subwindow, Time t,
     focus_prev();
     focus_ensure();
     return 0;
+}
+
+int control_alt_shift_t(Window w, Window sw, Time t,
+                        int x, int y, int root_x, int root_y)
+{
+    if (fork() == 0) {
+        execlp("/usr/X11R6/bin/xterm", "xterm", NULL);
+        _exit(0);
+    }
 }

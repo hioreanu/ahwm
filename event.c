@@ -3,8 +3,10 @@
  * This code is in the public domain and the author disclaims all
  * copyright privileges.
  */
+
 #include <sys/types.h>
 #include <sys/time.h>
+#include <stdio.h>
 #include <unistd.h>
 #include <errno.h>
 #include "xwm.h"
@@ -279,10 +281,10 @@ static void event_maprequest(XMapRequestEvent *xevent)
         fprintf(stderr, "unable to find client, shouldn't happen\n");
         return;
     }
-    if (client->state == MAPPED) {
+    if (client->state == NormalState) {
         focus_remove(client);
     }
-    client->state     = MAPPED;
+    client->state = NormalState;
     client->workspace = workspace_current;
 
     XMapWindow(xevent->display, client->window);
@@ -343,7 +345,7 @@ static void event_configurerequest(XConfigureRequestEvent *xevent)
 
 static void event_property(XPropertyEvent *xevent)
 {
-    if (icccm_prop_changed(xevent)) return;
+
 }
 
 static void event_colormap(XColormapEvent *xevent)
