@@ -239,9 +239,10 @@ void mouse_grab_buttons(client_t *client);
 
 /* 
  * process a key event
+ * returns True if handled the event, False if ignored it
  */
 
-void keyboard_handle_event(XKeyEvent *xevent);
+Bool keyboard_handle_event(XKeyEvent *xevent);
 
 /*
  * Whenever a mouse event is received it should be passed to this
@@ -249,9 +250,10 @@ void keyboard_handle_event(XKeyEvent *xevent);
  * which is dealt with as a special case within the event loops of the
  * functions that care about mouse motion.  The pointer will NOT be
  * grabbed when this function returns.
+ * returns True if handled the event, False if ignored it
  */
 
-void mouse_handle_event(XEvent *);
+Bool mouse_handle_event(XEvent *);
 
 /* FIXME:  there should be a function to unmap keys and buttons if we
  * really want this to be dynamic */

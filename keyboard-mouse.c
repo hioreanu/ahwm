@@ -408,7 +408,7 @@ static void unquote(XEvent *e)
         keyboard_replay(&e->xkey);
 }
 
-void keyboard_handle_event(XKeyEvent *xevent)
+Bool keyboard_handle_event(XKeyEvent *xevent)
 {
     keybinding *kb;
     int code;
@@ -433,10 +433,11 @@ void keyboard_handle_event(XKeyEvent *xevent)
                 } else {
                     (*kb->function)((XEvent *)xevent, kb->arg);
                 }
-                return;
+                return True;
             }
         }
     }
+    return False;
 }
 
 /*
@@ -451,7 +452,7 @@ void keyboard_handle_event(XKeyEvent *xevent)
 #define ANYBUTTONMASK (Button1Mask | Button2Mask | Button3Mask \
                        | Button4Mask | Button5Mask)
 
-void mouse_handle_event(XEvent *xevent)
+Bool mouse_handle_event(XEvent *xevent)
 {
     mousebinding *mb;
     unsigned int button, state;
@@ -484,7 +485,7 @@ void mouse_handle_event(XEvent *xevent)
                                  None, CurrentTime);
                     grabbed_button = button;
                 }
-                return;
+                return True;
             }
         }
     }
@@ -493,7 +494,9 @@ void mouse_handle_event(XEvent *xevent)
         && xevent->xbutton.button == grabbed_button) {
         XUngrabPointer(dpy, CurrentTime);
         grabbed_button = 0;
+        return True;
     }
+    return False;
 }
 
 /*

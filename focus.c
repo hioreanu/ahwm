@@ -38,6 +38,7 @@
 #include "debug.h"
 #include "event.h"
 #include "ewmh.h"
+#include "keyboard-mouse.h"
 
 client_t *focus_current = NULL;
 
@@ -311,6 +312,7 @@ void focus_alt_tab(XEvent *xevent, void *v)
     client_t *orig_focus;
     unsigned int action_keycode;
     KeyCode keycode_Alt_L, keycode_Alt_R;
+    enum { CONTINUE, DONE, REPLAY_KEYBOARD, QUIT } state;
 
     if (focus_current == NULL) {
         debug(("\tNo clients in alt-tab, returning\n"));
@@ -327,7 +329,8 @@ void focus_alt_tab(XEvent *xevent, void *v)
 
     XGrabKeyboard(dpy, root_window, True, GrabModeAsync,
                   GrabModeAsync, CurrentTime);
-    for (;;) {
+    state = CONTINUE;
+    while (state == CONTINUE) {
         switch (xevent->type) {
             case KeyPress:
                 if (xevent->xkey.keycode == action_keycode) {
@@ -338,43 +341,48 @@ void focus_alt_tab(XEvent *xevent, void *v)
                         focus_set_internal(focus_current->next_focus,
                                            event_timestamp, False);
                     }
-                } /* FIXME:  else end the action */
+                } else {
+                    state = REPLAY_KEYBOARD;
+                }
                 break;
             case KeyRelease:
                 if (xevent->xkey.keycode == keycode_Alt_L
                     || xevent->xkey.keycode == keycode_Alt_R) {
                     /* user let go of all modifiers */
-                    if (focus_current != NULL) {
-                        permute(orig_focus, focus_current);
-                    }
-                    
-                    XUngrabKeyboard(dpy, CurrentTime);
-                    /* we want to make sure server knows we've
-                     * ungrabbed keyboard before calling
-                     * XSetInputFocus: */
-                    XSync(dpy, False);
-                    in_alt_tab = False;
-                    focus_ensure(CurrentTime);
-                    
-                    debug(("\tfocus_current = '%.10s'\n",
-                           focus_current ? focus_current->name : "NULL"));
-                    dump_focus_list();
-                    debug(("\tLeaving alt-tab\n"));
-                    return;
+                    state = DONE;
                 }
                 break;
             default:
                 event_dispatch(xevent);
                 if (focus_current == NULL) {
                     debug(("\tAll clients gone, returning from alt-tab\n"));
-                    XUngrabKeyboard(dpy, CurrentTime);
-                    in_alt_tab = False;
-                    focus_ensure(CurrentTime);
-                    return;
+                    state = QUIT;
                 }
         }
-        event_get(ConnectionNumber(dpy), xevent);
+        if (state == CONTINUE) event_get(ConnectionNumber(dpy), xevent);
     }
+    
+    if (state != QUIT && focus_current != NULL) {
+        permute(orig_focus, focus_current);
+    }
+    
+    XUngrabKeyboard(dpy, CurrentTime);
+    /* we want to make sure server knows we've
+     * ungrabbed keyboard before calling
+     * XSetInputFocus: */
+    XSync(dpy, False);
+    in_alt_tab = False;
+    focus_ensure(CurrentTime);
+                    
+    if (state == REPLAY_KEYBOARD) {
+        if (!keyboard_handle_event(&xevent->xkey))
+            keyboard_replay(&xevent->xkey);
+    }
+    
+    debug(("\tfocus_current = '%.10s'\n",
+           focus_current ? focus_current->name : "NULL"));
+    dump_focus_list();
+    debug(("\tLeaving alt-tab\n"));
 }
 
 /*
