@@ -36,6 +36,7 @@ client_t *client_create(Window w)
     XWindowAttributes xwa;
     Bool has_titlebar = True;
     position_size requested_geometry;
+    int shaped = 0;
 
     if (XGetWindowAttributes(dpy, w, &xwa) == 0) return NULL;
     if (xwa.override_redirect) {
@@ -98,15 +99,14 @@ client_t *client_create(Window w)
     if (shape_supported) {
         int tmp;
         unsigned int tmp2;
-        int shaped;
 
         XShapeSelectInput(dpy, client->window, ShapeNotifyMask);
         XShapeQueryExtents(dpy, client->window, &shaped, &tmp, &tmp,
                            &tmp2, &tmp2, &tmp, &tmp, &tmp, &tmp2, &tmp2);
         has_titlebar = !shaped;
 #ifdef DEBUG
-        if (shaped) printf("SHAPED\n");
-        else printf("NOT SHAPED\n");
+        if (shaped) printf("\tSHAPED\n");
+        else printf("\tNOT SHAPED\n");
 #endif /* DEBUG */
     }
 #endif /* SHAPE */
@@ -128,6 +128,14 @@ client_t *client_create(Window w)
         Free(client);
         return NULL;
     }
+
+#ifdef SHAPE
+    if (shaped && shape_supported) {
+        XShapeCombineShape(dpy, client->frame, ShapeBounding, 0, 0,
+                           client->window, ShapeBounding, ShapeSet);
+
+    }
+#endif /* SHAPE */
 
     client->next = client_list;
     client->prev = NULL;
