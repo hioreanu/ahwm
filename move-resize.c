@@ -1010,9 +1010,8 @@ static void process_resize(client_t *client, int new_x, int new_y,
     /* now we draw the window rectangle
      * 
      * first, we erase the previous rectangle (the gc has an xor function
-     * selected, so we simply draw on it to erase).  we don't want any
-     * flicker, so we only erase and redraw if we've made any changes
-     * to the line segment */
+     * selected, so we simply draw on it to erase).
+     */
 
     if (ordinal != MIDDLE || x != client->x
         || w != client->width || y != client->y) {
@@ -1020,20 +1019,31 @@ static void process_resize(client_t *client, int new_x, int new_y,
         if (ordinal != FIRST) {
             XDrawLine(dpy, root_window, root_invert_gc,
                       x, y, x + w, y);
+            if (client->titlebar != None)
+                XDrawLine(dpy, root_window, root_invert_gc,
+                          x, y + TITLE_HEIGHT, x + w, y + TITLE_HEIGHT);
             if ((direction == NW || direction == NE)
                 || ((old_direction == NORTH)
-                    && (direction == EAST || direction == WEST)))
-                drafting_lines(client, NORTH, x, y, x + w, y);
+                    && (direction == EAST || direction == WEST))) {
+                if (client->titlebar != None)
+                    drafting_lines(client, NORTH, x, y, x + w, y);
+            }
             
         }
         if (ordinal != LAST) {
             XDrawLine(dpy, root_window, root_invert_gc, client->x,
                       client->y, client->x + client->width, client->y);
+            if (client->titlebar != None)
+                XDrawLine(dpy, root_window, root_invert_gc,
+                          client->x, client->y + TITLE_HEIGHT,
+                          client->x + client->width,
+                          client->y + TITLE_HEIGHT);
             if ((direction == NW || direction == NE)
                 || ((old_direction == NORTH)
-                    && (direction == EAST || direction == WEST)))
+                    && (direction == EAST || direction == WEST))) {
                 drafting_lines(client, NORTH, client->x, client->y,
                                client->x + client->width, client->y);
+            }
         }
     }
     if (ordinal != MIDDLE || x != client->x || w != client->width
@@ -1044,8 +1054,9 @@ static void process_resize(client_t *client, int new_x, int new_y,
                       x, y + h, x + w, y + h);
             if ((direction == SW || direction == SE)
                 || ((old_direction == SOUTH)
-                    && (direction == WEST || direction == EAST)))
+                    && (direction == WEST || direction == EAST))) {
                 drafting_lines(client, SOUTH, x, y + h, x + w, y + h);
+            }
         }
         if (ordinal != LAST) {
             XDrawLine(dpy, root_window, root_invert_gc,
@@ -1054,11 +1065,12 @@ static void process_resize(client_t *client, int new_x, int new_y,
                       client->y + client->height);
             if ((direction == SW || direction == SE)
                 || ((old_direction == SOUTH)
-                    && (direction == WEST || direction == EAST)))
+                    && (direction == WEST || direction == EAST))) {
                 drafting_lines(client, SOUTH, client->x,
                                client->y + client->height,
                                client->x + client->width,
                                client->y + client->height);
+            }
         }
     }
     if (ordinal != MIDDLE || y != client->y ||
@@ -1069,8 +1081,10 @@ static void process_resize(client_t *client, int new_x, int new_y,
                       x, y, x, y + h);
             if ((direction == NW || direction == SW)
                 || ((old_direction == NW || old_direction == SW)
-                    && (direction == NORTH || direction == SOUTH)))
-                drafting_lines(client, WEST, x, y, x, y + h);
+                    && (direction == NORTH || direction == SOUTH))) {
+                    drafting_lines(client, WEST, x, y + title_height,
+                                   x, y + h);
+            }
                 
         }
         if (ordinal != LAST) {
@@ -1079,9 +1093,11 @@ static void process_resize(client_t *client, int new_x, int new_y,
                       client->y + client->height);
             if ((direction == NW || direction == SW)
                 || ((old_direction == NW || old_direction == SW)
-                    && (direction == NORTH || direction == SOUTH)))
-                drafting_lines(client, WEST, client->x, client->y,
-                               client->x, client->y + client->height);
+                    && (direction == NORTH || direction == SOUTH))) {
+                    drafting_lines(client, WEST, client->x,
+                                   client->y + title_height, client->x,
+                                   client->y + client->height);
+            }
         }
     }
     if (ordinal != MIDDLE || y != client->y || h != client->height
@@ -1092,8 +1108,10 @@ static void process_resize(client_t *client, int new_x, int new_y,
                       x + w, y, x + w, y + h);
             if ((direction == NE || direction == SE)
                 || ((old_direction == NE || old_direction == SE)
-                    && (direction == NORTH || direction == SOUTH)))
-                drafting_lines(client, EAST, x + w, y, x + w, y + h);
+                    && (direction == NORTH || direction == SOUTH))) {
+                    drafting_lines(client, EAST, x + w, y + title_height,
+                                   x + w, y + h);
+            }
         }
         if (ordinal != LAST) {
             XDrawLine(dpy, root_window, root_invert_gc,
@@ -1103,18 +1121,14 @@ static void process_resize(client_t *client, int new_x, int new_y,
                       client->y + client->height);
             if ((direction == NE || direction == SE)
                 || ((old_direction == NE || old_direction == SE)
-                    && (direction == NORTH || direction == SOUTH)))
+                    && (direction == NORTH || direction == SOUTH))) {
                 drafting_lines(client, EAST, client->x + client->width,
-                      client->y, client->x + client->width,
-                      client->y + client->height);
+                               client->y + title_height,
+                               client->x + client->width,
+                               client->y + client->height);
+            }
         }
     }
-
-    if (ordinal == FIRST || x != client->x || y != client->y
-        || w != client->width || h != client->height) {
-        display_geometry("Resizing", client);
-    }
-
 }
 
 /*
@@ -1338,10 +1352,9 @@ static void draw_arrowhead(int x, int y, resize_direction_t direction)
  * changes the client's titlebar display to the geometry prefixed by a
  * given string
  * 
- * We want to avoid a Malloc/free on each tiny movement, so we keep
+ * We want to avoid a malloc/free on each tiny movement, so we keep
  * around a buffer and some pointers....
  */
-
 
 static void display_geometry(char *s, client_t *client)
 {
