@@ -242,7 +242,7 @@ void paint_titlebar(client_t *client)
 {
     unsigned long middle, hilight, lowlight, text;
     XGCValues xgcv;
-    int ndx;
+    int ndx, position;
 
     if (client == NULL || client->titlebar == None) return;
 
@@ -303,6 +303,18 @@ void paint_titlebar(client_t *client)
     XDrawLine(dpy, client->titlebar, extra_gc3,
               client->width - 2, 2, client->width - 2, TITLE_HEIGHT - 2);
 
-    XDrawString(dpy, client->titlebar, extra_gc4, 2, TITLE_HEIGHT - 4,
-                client->name, strlen(client->name));
+    if (client->title_position == DontDisplay) {
+        return;
+    } else if (client->title_position == DisplayLeft) {
+        position = 2;
+    } else if (client->title_position == DisplayCentered) {
+        int i = XTextWidth(fontstruct, client->name, strlen(client->name));
+        i /= 2;
+        position = client->width / 2 - i + 2;
+    } else if (client->title_position == DisplayRight) {
+        int i = XTextWidth(fontstruct, client->name, strlen(client->name));
+        position = client->width - i - 2;
+    }
+    XDrawString(dpy, client->titlebar, extra_gc4, position,
+                TITLE_HEIGHT - 4, client->name, strlen(client->name));
 }

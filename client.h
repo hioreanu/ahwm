@@ -134,6 +134,8 @@ typedef struct _client_t {
     enum { Fixed, Smart, Cascade, Mouse } map_policy : 2;
     enum { SkipCycle, RaiseImmediately,
            RaiseOnCycleFinish, DontRaise } cycle_behaviour : 2;
+    enum { DisplayLeft, DisplayCentered,
+           DisplayRight, DontDisplay } title_position : 2;
     unsigned int has_titlebar : 1;
     unsigned int is_shaped : 1;
     unsigned int pass_focus_click : 1;
@@ -148,6 +150,7 @@ typedef struct _client_t {
     option_setting focus_policy_set : 2;
     option_setting map_policy_set : 2;
     option_setting cycle_behaviour_set : 2;
+    option_setting title_position_set : 2;
     option_setting has_titlebar_set : 2;
     option_setting is_shaped_set : 2;
     option_setting pass_focus_click_set : 2;

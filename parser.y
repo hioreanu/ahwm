@@ -65,6 +65,7 @@
 %token TOK_DONTBINDMOUSE
 %token TOK_DONTBINDKEYS
 %token TOK_STICKY
+%token TOK_TITLEPOSITION
 
 %token TOK_SLOPPY_FOCUS
 %token TOK_CLICK_TO_FOCUS
@@ -74,6 +75,11 @@
 %token TOK_RAISEIMMEDIATELY
 %token TOK_RAISEONCYCLEFINISH
 %token TOK_DONTRAISE
+
+%token TOK_DISPLAYLEFT
+%token TOK_DISPLAYRIGHT
+%token TOK_DISPLAYCENTERED
+%token TOK_DONTDISPLAY
 
 %token TOK_TRUE
 %token TOK_FALSE
@@ -168,7 +174,7 @@ char *make_string(char *s);
 
 %type <value_int> boolean context_option context_name
 %type <value_int> option_name focus_enumeration cycle_enumeration
-%type <value_int> location function_name
+%type <value_int> position_enumeration location function_name
 %type <value_line> line config_file config
 %type <value_option> option
 %type <value_context> context
@@ -258,6 +264,7 @@ option_name: TOK_DISPLAYTITLEBAR { $$ = DISPLAYTITLEBAR; }
            | TOK_DONTBINDMOUSE { $$ = DONTBINDMOUSE; }
            | TOK_DONTBINDKEYS { $$ = DONTBINDKEYS; }
            | TOK_STICKY { $$ = STICKY; }
+           | TOK_TITLEPOSITION { $$ = TITLEPOSITION; }
 
 type: boolean
       {
@@ -309,6 +316,16 @@ type: boolean
           }
           $$ = typ;
       }
+    | position_enumeration
+      {
+          type *typ;
+          typ = malloc(sizeof(type));
+          if (typ != NULL) {
+              typ->type_type = POSITION_ENUM;
+              typ->type_value.position_enum = $1;
+          }
+          $$ = typ;
+      }
 
 focus_enumeration: TOK_SLOPPY_FOCUS { $$ = TYPE_SLOPPY_FOCUS; }
                  | TOK_CLICK_TO_FOCUS { $$ = TYPE_CLICK_TO_FOCUS; }
@@ -318,6 +335,11 @@ cycle_enumeration: TOK_SKIPCYCLE { $$ = TYPE_SKIP_CYCLE }
                  | TOK_RAISEIMMEDIATELY { $$ = TYPE_RAISE_IMMEDIATELY }
                  | TOK_RAISEONCYCLEFINISH { $$ = TYPE_RAISE_ON_CYCLE_FINISH }
                  | TOK_DONTRAISE { $$ = TYPE_DONT_RAISE }
+
+position_enumeration: TOK_DISPLAYLEFT { $$ = TYPE_DISPLAY_LEFT; }
+                    | TOK_DISPLAYRIGHT { $$ = TYPE_DISPLAY_RIGHT; }
+                    | TOK_DISPLAYCENTERED { $$ = TYPE_DISPLAY_CENTERED; }
+                    | TOK_DONTDISPLAY { $$ = TYPE_DONT_DISPLAY; }    
 
 boolean: TOK_TRUE { $$ = 1; }
        | TOK_FALSE { $$ = 0; }

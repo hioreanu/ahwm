@@ -75,7 +75,8 @@ struct _line {
 };
 
 struct _type {
-    enum { BOOLEAN, INTEGER, STRING, FOCUS_ENUM, CYCLE_ENUM } type_type;
+    enum { BOOLEAN, INTEGER, STRING, FOCUS_ENUM,
+           CYCLE_ENUM, POSITION_ENUM } type_type;
     union {
         int intval;
         char *stringval;
@@ -83,6 +84,8 @@ struct _type {
                TYPE_DONT_FOCUS } focus_enum;
         enum { TYPE_SKIP_CYCLE, TYPE_RAISE_IMMEDIATELY,
                TYPE_RAISE_ON_CYCLE_FINISH, TYPE_DONT_RAISE } cycle_enum;
+        enum { TYPE_DISPLAY_LEFT, TYPE_DISPLAY_RIGHT,
+               TYPE_DISPLAY_CENTERED, TYPE_DONT_DISPLAY } position_enum;
     } type_value;
 };
 
@@ -120,7 +123,8 @@ struct _option {
            NWORKSPACES,
            DONTBINDMOUSE,
            DONTBINDKEYS,
-           STICKY } option_name;
+           STICKY,
+           TITLEPOSITION } option_name;
     option_setting option_setting;
     type *option_value;
 };

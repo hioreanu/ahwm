@@ -136,10 +136,7 @@ Atom _NET_WM_STRUT, _NET_WM_STATE, _NET_WM_WINDOW_TYPE, _NET_WM_DESKTOP;
 
 /* EWMH 1.1 claims this is supposed to be "UTF-8_STRING" (which
  * is a perfectly OK atom identifier), but it's actually
- * "UTF8_STRING" (NB, no dash).  We have to choose to support
- * one or the other until they choose to fix EWMH, so I'll
- * choose the correct one and completely ignore the broken
- * "specification."  This is an really inexcusable mistake. */
+ * "UTF8_STRING" (NB, no dash). */
 static Atom UTF8_STRING;
 
 static Window ewmh_window;
@@ -357,15 +354,10 @@ void ewmh_init()
      * that are already there, but that would mean I have to ensure
      * the property contains the correct number of strings.  We can't
      * simply look for NULs: we need a full UTF8 parser, which is a
-     * non-trivial task.  There is no standard UTF8 library and I
-     * refuse to make this window manager rely on nonstandard
-     * libraries (does your window manager work out of the box on Irix
-     * 10 and SunOS 4?).  Thus, we simply overwrite any property
+     * non-trivial task.  Thus, we simply overwrite any property
      * that's already there */
     for (i = 0; i < nworkspaces; i++) {
-        /* EWMH is vague about this.  There is no such thing
-         * as a list of arrays of some property type.
-         * _NET_DESKTOP_NAMES is simply a big array that
+        /* _NET_DESKTOP_NAMES is simply a big array that
          * contains all the desktop names, separated by
          * NULs. */
         snprintf(workspace_name, 32, "Workspace %d", i+1);
@@ -385,9 +377,9 @@ void ewmh_init()
 }
 
 /*
- * EWMH is very, very vague about how this works.  The only way I
- * figured it out was by observing KDE applications and comparing this
- * to the GNOME _WIN spec.
+ * EWMH is very vague about how this works.  The only way I figured it
+ * out was by observing KDE applications and comparing this to the
+ * GNOME _WIN spec.
  * 
  * Some properties on the client window must be kept updated by the
  * window manager.  For these properties, the way a client can change
@@ -398,6 +390,10 @@ void ewmh_init()
  * Some other properties on the client window are not kept updated by
  * the window manager.  For these properties, the client can change
  * the property at any time by simply using XChangeProperty().
+ * 
+ * The whole reason for the ClientMessage thing is because it is much
+ * more work to try to figure out if a PropertyChanged event
+ * originated from the client or the window manager.
  */
 
 void ewmh_wm_state_apply(client_t *client)
@@ -603,10 +599,9 @@ void ewmh_wm_desktop_apply(client_t *client)
 }
 
 /*
- * EWMH does not specify how the application can change this.  We will
- * assume the application can change this property at any time.  We
- * won't touch this property, but EWMH should specify whether or not
- * the window manager is allowed to change this property.
+ * EWMH does not specify how the application can change
+ * _NET_WINDOW_TYPE.  We will assume the application can change this
+ * property at any time.  We won't change this property.
  */
 
 void ewmh_window_type_apply(client_t *client)
@@ -762,8 +757,8 @@ void ewmh_to_dock(client_t *client)
  * set.  This would solve (1) and (2).  However, in practice, problem
  * (1) never happens but problem (2) happens often, so I just take
  * care of problem (2) by not doing anything here.  In addition, EWMH
- * implies that these hints may only be set once before mapping and
- * cannot change (and EWMH should make this explicit if this is so).
+ * does not state how _NET_WINDOW_TYPE can be changed by the
+ * application, so (1) shouldn't happen.
  */
 
 void ewmh_to_normal(client_t *client)

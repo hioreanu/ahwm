@@ -104,6 +104,7 @@ NumberOfWorkspaces { return TOK_NWORKSPACES; }
 DontBindMouse { return TOK_DONTBINDMOUSE; }
 DontBindKeys { return TOK_DONTBINDKEYS; }
 Sicky { return TOK_STICKY; }
+TitlePosition { return TOK_TITLEPOSITION; }
 
 SloppyFocus { return TOK_SLOPPY_FOCUS; }
 ClickToFocus { return TOK_CLICK_TO_FOCUS; }
@@ -113,6 +114,11 @@ SkipCycle { return TOK_SKIPCYCLE; }
 RaiseImmediately { return TOK_RAISEIMMEDIATELY; }
 RaiseOnCycleFinish { return TOK_RAISEONCYCLEFINISH; }
 DontRaise { return TOK_DONTRAISE; }
+
+DisplayLeft { return TOK_DISPLAYLEFT; }
+DisplayRight { return TOK_DISPLAYRIGHT; }
+DisplayCentered { return TOK_DISPLAYCENTERED; }
+DontDisplay { return TOK_DONTDISPLAY; }
 
 True { return TOK_TRUE; }
 False { return TOK_FALSE; }

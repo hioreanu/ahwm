@@ -30,9 +30,8 @@
  * 
  * This also implements the older GNOME hints, since they are very
  * similar to the new EWMH.  The older GNOME hints only have a
- * somewhat unfinished standards document, but the document is
- * extremely clear and precise (as opposed to EWMH, which is vague and
- * downright wrong in some places).
+ * somewhat unfinished standards document, but that document is
+ * extremely clear and precise.
  *
  * TODO:
  * root messages:

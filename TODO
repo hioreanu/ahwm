@@ -21,7 +21,6 @@ Wishlist:
 - shading, perhaps with an optional animation
 - may need fake client struct for revert_to window for dynamic bindings
 - allow binding to click and drag on same place
-- allow window titles to be centered and right-aligned
 - 'mouse' map_policy placement algorithm - map window under mouse
 - finish support for DontRaise for CycleBehaviour
 - for focus click, grab all combinations of click and modifier
@@ -131,6 +130,7 @@ Finished, no longer TODO:
 - function composition
 - options DontBindKeys, DontBindMouse (boolean)
 - sticky windows: don't bind move/resize actions
+- allow window titles to be centered and right-aligned
 
 Abandoned, no longer TODO:
 - "stop" focus, detect when pointer stops in a window (no timeout) -

@@ -92,6 +92,8 @@ typedef struct _prefs {
     option_setting dont_bind_keys_set;
     Bool sticky;
     option_setting sticky_set;
+    int title_position;
+    option_setting title_position_set;
 } prefs;
 
 /* ADDOPT 6: set default value */
@@ -110,7 +112,8 @@ static prefs defaults = {
     NULL, UnSet,                /* titlebar_text_focused_color */
     False, UnSet,               /* dont_bind_mouse */
     False, UnSet,               /* dont_bind_keys */
-    False, UnSet                /* sticky */
+    False, UnSet,               /* sticky */
+    DisplayLeft, UnSet          /* title_position */
 };
 
 static line *contexts;
@@ -436,6 +439,14 @@ static Bool type_check_option(option *opt)
             retval = option_check_helper(opt->option_value,
                                          BOOLEAN, "Sticky");
             break;
+        case TITLEPOSITION:
+            if (opt->option_value->type_type != POSITION_ENUM) {
+                fprintf(stderr, "XWM:  Unknown value for TitlePosition\n");
+                retval = False;
+            } else {
+                retval = True;
+            }
+            break;
         default:
             fprintf(stderr, "XWM: unknown option type found...\n");
             retval = False;
@@ -758,15 +769,19 @@ static void option_apply(client_t *client, option *opt, prefs *p)
             break;
         case DONTBINDMOUSE:
             get_bool(opt->option_value, &p->dont_bind_mouse);
-            p->dont_bind_mouse = opt->option_setting;
+            p->dont_bind_mouse_set = opt->option_setting;
             break;
         case DONTBINDKEYS:
             get_bool(opt->option_value, &p->dont_bind_keys);
-            p->dont_bind_mouse = opt->option_setting;
+            p->dont_bind_mouse_set = opt->option_setting;
             break;
         case STICKY:
             get_bool(opt->option_value, &p->sticky);
-            p->sticky = opt->option_setting;
+            p->sticky_set = opt->option_setting;
+            break;
+        case TITLEPOSITION:
+            get_int(opt->option_value, &p->title_position);
+            p->title_position_set = opt->option_setting;
             break;
     }
 }
@@ -842,21 +857,18 @@ void prefs_apply(client_t *client)
         switch (p.cycle_behaviour) {
             case TYPE_SKIP_CYCLE:
                 client->cycle_behaviour = SkipCycle;
-                client->cycle_behaviour_set = p.cycle_behaviour_set;
                 break;
             case TYPE_RAISE_IMMEDIATELY:
                 client->cycle_behaviour = RaiseImmediately;
-                client->cycle_behaviour_set = p.cycle_behaviour_set;
                 break;
             case TYPE_RAISE_ON_CYCLE_FINISH:
                 client->cycle_behaviour = RaiseOnCycleFinish;
-                client->cycle_behaviour_set = p.cycle_behaviour_set;
                 break;
             case TYPE_DONT_RAISE:
                 client->cycle_behaviour = DontRaise;
-                client->cycle_behaviour_set = p.cycle_behaviour_set;
                 break;
         }
+        client->cycle_behaviour_set = p.cycle_behaviour_set;
     }
     if (client->omnipresent_set <= p.omnipresent_set) {
         if (p.omnipresent) {
@@ -970,6 +982,23 @@ void prefs_apply(client_t *client)
     if (client->sticky_set <= p.sticky_set) {
         client->sticky = p.sticky;
         client->sticky_set = p.sticky_set;
+    }
+    if (client->title_position_set <= p.title_position_set) {
+        switch (p.title_position) {
+            case TYPE_DISPLAY_LEFT:
+                client->title_position = DisplayLeft;
+                break;
+            case TYPE_DISPLAY_RIGHT:
+                client->title_position = DisplayRight;
+                break;
+            case TYPE_DISPLAY_CENTERED:
+                client->title_position = DisplayCentered;
+                break;
+            case TYPE_DONT_DISPLAY:
+                client->title_position = DontDisplay;
+                break;
+        }
+        client->title_position_set = p.title_position_set;
     }
     
     /* ADDOPT 9: apply the option to the client */
