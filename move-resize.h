@@ -9,6 +9,9 @@
 
 #include <X11/Xlib.h>
 
+/* one if moving/resizing, zero otherwise */
+extern int moving, sizing;
+
 /*
  * Functions for moving and resizing a client window, suitable for
  * binding to a mouse click or a keyboard press.

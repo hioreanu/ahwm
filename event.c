@@ -493,7 +493,7 @@ static void event_maprequest(XMapRequestEvent *xevent)
         if (client->titlebar != None) {
             XSetWindowAttributes xswa;
             xswa.background_pixel =
-                workspace_dark_highlight[workspace_current - 1];
+                workspace_darkest_highlight[workspace_current - 1];
             XChangeWindowAttributes(dpy, client->titlebar, CWBackPixel, &xswa);
         }
     }
@@ -649,6 +649,9 @@ static void event_property(XPropertyEvent *xevent)
     client = client_find(xevent->window);
     if (client == NULL) return;
     if (xevent->atom == XA_WM_NAME) {
+        /* move-resize.c takes over client->name while
+         * moving or resizing and then resets value */
+        if (moving || sizing) return;
 #ifdef DEBUG
         printf("\tWM_NAME, changing client->name\n");
 #endif /* DEBUG */

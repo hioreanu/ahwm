@@ -52,14 +52,14 @@ typedef enum {
     FIRST, MIDDLE, LAST
 } resize_ordinal_t;
 
+int moving = 0;
+int sizing = 0;
+
 static int keycode_Escape = 0;
 static int keycode_Return, keycode_Up, keycode_Down, keycode_Left;
 static int keycode_Right, keycode_j, keycode_k, keycode_l, keycode_h;
 static int keycode_w, keycode_a, keycode_s, keycode_d;
 static int keycode_Control_L, keycode_Control_R, keycode_space;
-
-static int moving = 0;
-static int sizing = 0;
 
 /* optimization, see display_geometry() */
 static char *titlebar_display = NULL;

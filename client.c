@@ -242,7 +242,7 @@ void client_add_titlebar(client_t *client)
            | CWOverrideRedirect | CWWinGravity;
     xswa.cursor = cursor_normal;
     xswa.background_pixmap = None;
-    xswa.background_pixel = workspace_dark_highlight[client->workspace - 1];
+    xswa.background_pixel = workspace_darkest_highlight[client->workspace - 1];
     xswa.event_mask = ExposureMask;
     xswa.override_redirect = True;
     xswa.win_gravity = NorthWestGravity;
@@ -567,44 +567,41 @@ void client_print(char *s, client_t *client)
 void client_paint_titlebar(client_t *client)
 {
     XGCValues xgcv;
-    
+
     if (client == NULL || client->titlebar == None) return;
+    
     XClearWindow(dpy, client->titlebar);
     if (client == focus_current) {
         xgcv.foreground = workspace_pixels[client->workspace - 1];
         XChangeGC(dpy, extra_gc, GCForeground, &xgcv);
         XFillRectangle(dpy, client->titlebar, extra_gc,
                        0, 0, client->width, TITLE_HEIGHT);
-        xgcv.foreground = workspace_dark_highlight[client->workspace - 1];
-        XChangeGC(dpy, extra_gc, GCForeground, &xgcv);
-        XDrawLine(dpy, client->titlebar, extra_gc,
-                  0, TITLE_HEIGHT, client->width, TITLE_HEIGHT);
-        XDrawLine(dpy, client->titlebar, extra_gc,
-                  client->width, 0, client->width, TITLE_HEIGHT);
+        
         xgcv.foreground = workspace_highlight[client->workspace - 1];
         XChangeGC(dpy, extra_gc, GCForeground, &xgcv);
         XDrawLine(dpy, client->titlebar, extra_gc, 0, 0,
                   client->width, 0);
+        XDrawLine(dpy, client->titlebar, extra_gc, 1, 1,
+                  client->width - 2, 1);
         XDrawLine(dpy, client->titlebar, extra_gc,
                   0, 0, 0, TITLE_HEIGHT);
-    }
-#if 0
-    else {
-        xgcv.foreground = workspace_darkest_highlight[client->workspace - 1];
+        XDrawLine(dpy, client->titlebar, extra_gc,
+                  1, 1, 1, TITLE_HEIGHT - 2);
+
+        xgcv.foreground = workspace_dark_highlight[client->workspace - 1];
         XChangeGC(dpy, extra_gc, GCForeground, &xgcv);
         XDrawLine(dpy, client->titlebar, extra_gc,
-                  0, TITLE_HEIGHT, client->width, TITLE_HEIGHT);
+                  1, TITLE_HEIGHT - 1, client->width - 1, TITLE_HEIGHT - 1);
         XDrawLine(dpy, client->titlebar, extra_gc,
-                  client->width, 0, client->width, TITLE_HEIGHT);
-        xgcv.foreground = workspace_pixels[client->workspace - 1];
-        XChangeGC(dpy, extra_gc, GCForeground, &xgcv);
-        XDrawLine(dpy, client->titlebar, extra_gc, 0, 0,
-                  client->width, 0);
+                  2, TITLE_HEIGHT - 2, client->width - 3, TITLE_HEIGHT - 2);
         XDrawLine(dpy, client->titlebar, extra_gc,
-                  0, 0, 0, TITLE_HEIGHT);
+                  client->width - 1, 1, client->width - 1, TITLE_HEIGHT - 2);
+        XDrawLine(dpy, client->titlebar, extra_gc,
+                  client->width - 2, 2, client->width - 2, TITLE_HEIGHT - 2);
     }
-#endif
-        
+    /* we don't draw a border for non-focused windows as that would
+     * require two additional colors (which is bloat) */
+    
     XDrawString(dpy, client->titlebar, root_white_fg_gc, 2, TITLE_HEIGHT - 4,
                 client->name, strlen(client->name));
 }

@@ -85,7 +85,8 @@ int main(int argc, char **argv)
     XEvent    event;
     int       xfd, junk;
     XGCValues xgcv;
-
+    XColor    xcolor, junk2;
+    
 #ifdef DEBUG
     setvbuf(stdout, NULL, _IONBF, 0);
 #endif /* DEBUG */
@@ -136,9 +137,15 @@ int main(int argc, char **argv)
     fontstruct = XLoadQueryFont(dpy,
                                 "-*-helvetica-bold-r-*-*-12-*-*-*-*-*-*-*");
 
+    if (XAllocNamedColor(dpy, DefaultColormap(dpy, scr), "#E0E0E0",
+                         &xcolor, &junk2) == 0) {
+        xgcv.foreground = white;
+    } else {
+        xgcv.foreground = xcolor.pixel;
+    }
+    
     xgcv.function = GXcopy;
     xgcv.plane_mask = AllPlanes;
-    xgcv.foreground = white;
     xgcv.background = black;
     xgcv.line_width = 0;
     xgcv.line_style = LineSolid;
@@ -154,7 +161,6 @@ int main(int argc, char **argv)
                                  | GCFont | GCFunction
                                  | GCPlaneMask | GCSubwindowMode,
                                  &xgcv);
-    xgcv.line_width = 4;
     extra_gc = XCreateGC(dpy, root_window,
                          GCForeground | GCBackground
                          | GCLineWidth | GCLineStyle
@@ -162,7 +168,6 @@ int main(int argc, char **argv)
                          | GCFont | GCFunction
                          | GCPlaneMask | GCSubwindowMode,
                          &xgcv);
-    xgcv.line_width = 0;
     xgcv.function = GXxor;
     root_invert_gc = XCreateGC(dpy, root_window,
                                  GCForeground | GCBackground
