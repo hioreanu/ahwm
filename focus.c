@@ -79,8 +79,6 @@ void focus_prev(client_t *client)
 
 int focus_canfocus(client_t *client)
 {
-    Window w = client->window;
-    
     /* Window Maker does a bunch of stuff with KDE here */
     /* ICC/client-to-windowmanager/wm-hints.html */
 
@@ -103,7 +101,8 @@ void focus_ensure()
     }
 
 #ifdef DEBUG
-    printf("\tSetting focus to 0x%08X...\n", focus_current->window);
+    printf("\tSetting focus to 0x%08X...\n",
+           (unsigned int)focus_current->window);
 #endif /* DEBUG */
 
     XSetInputFocus(dpy, focus_current->window,

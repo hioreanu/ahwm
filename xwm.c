@@ -13,6 +13,7 @@
 #include "keyboard.h"
 #include "focus.h"
 #include "cursor.h"
+#include "mouse.h"
 
 Display *dpy;
 int scr;

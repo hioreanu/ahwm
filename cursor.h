@@ -22,6 +22,12 @@ extern Cursor cursor_sizing_n_s;
 extern Cursor cursor_sizing_e_w;
 
 /*
+ * this is used by the resizing code:
+ */
+
+extern Cursor cursor_direction_map[9];
+
+/*
  * Initialize the above cursor objects
  * 
  * Returns 1 if things went OK, 0 if there was a problem

@@ -42,6 +42,8 @@ Cursor cursor_sizing_ne_sw = None;
 Cursor cursor_sizing_n_s   = None;
 Cursor cursor_sizing_e_w   = None;
 
+Cursor cursor_direction_map[9];
+
 int cursor_init()
 {
     Pixmap black, white;
@@ -111,5 +113,16 @@ int cursor_init()
     if (cursor_sizing_ne_sw == None) return 0;
     if (cursor_sizing_n_s == None)   return 0;
     if (cursor_sizing_e_w == None)   return 0;
+
+    cursor_direction_map[0] = cursor_sizing_nw_se; /* NW */
+    cursor_direction_map[1] = cursor_sizing_ne_sw; /* NE */
+    cursor_direction_map[2] = cursor_sizing_nw_se; /* SE */
+    cursor_direction_map[3] = cursor_sizing_ne_sw; /* SW */
+    cursor_direction_map[4] = cursor_sizing_n_s;   /* NORTH */
+    cursor_direction_map[5] = cursor_sizing_n_s;   /* SOUTH */
+    cursor_direction_map[6] = cursor_sizing_e_w;   /* EAST */
+    cursor_direction_map[7] = cursor_sizing_e_w;   /* WEST */
+    cursor_direction_map[8] = cursor_normal;       /* UNKNOWN */
+
     return 1;
 }

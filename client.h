@@ -106,7 +106,7 @@ client_t *client_find(Window);
  * Deallocate and forget about a client structure.
  */
 
-void client_delete(client_t *);
+void client_destroy(client_t *);
 
 /*
  * Figure out the name of a client and set it to a newly-malloced

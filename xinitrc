@@ -9,7 +9,7 @@ xsetroot -cursor_name left_ptr
 #exec xterm
 #xterm &
 
-#exec wmaker
 exec ./xwm
+#exec wmaker
 
 exit 1

@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <ctype.h>
 #include "keyboard.h"
 #include "client.h"
 
@@ -69,7 +70,7 @@ void keyboard_grab_keys(Window w)
     keybinding *kb;
 
 #ifdef DEBUG
-    printf("\tGrabbing keys of window 0x%08X\n", w);
+    printf("\tGrabbing keys of window 0x%08X\n", (unsigned int)w);
 #endif /* DEBUG */
     
     for (kb = bindings; kb != NULL; kb = kb->next) {
@@ -89,8 +90,8 @@ void keyboard_process(XKeyEvent *xevent)
 
     ks = XKeycodeToKeysym(dpy, xevent->keycode, 0);
     printf("\twindow 0x%08X, keycode %d, state %d, keystring %s\n",
-           xevent->window, xevent->keycode, xevent->state,
-           XKeysymToString(ks));
+           (unsigned int)xevent->window, xevent->keycode,
+           xevent->state, XKeysymToString(ks));
 #endif /* DEBUG */
 
     code = xevent->keycode;
@@ -129,7 +130,7 @@ int keyboard_string_to_keycode(char *keystring, int *keycode_ret,
                                unsigned int *modifiers_ret)
 {
     char buf[512];
-    char *cp1, *cp2, *cp3;
+    char *cp1, *cp2;
     int keycode;
     unsigned int modifiers, tmp_modifier;
     KeySym ks;

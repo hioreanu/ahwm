@@ -7,16 +7,44 @@
 #include "mouse.h"
 #include "client.h"
 #include "cursor.h"
+#include "event.h"
 #include <stdio.h>
 
 #ifndef MIN
 #define MIN(x,y) ((x) < (y) ? (x) : (y))
 #endif
 
+/*
+ * These are the possible directions in which one can resize a window,
+ * depending on which direction the mouse moves at first
+ * 
+ * UNKNOWN is obviously a marker to say the direction hasn't yet been
+ * identified
+ * 
+ * NB:  we will never actually constrain the resizing to only one
+ * dimension (ie, simply North or South, I find that annoying); the
+ * NORTH, SOUTH, EAST, WEST directions are simply to indicate that
+ * only one component of the resizing direction has been figured out
+ */
+
+typedef enum {
+    NW = 0, NE, SE, SW, NORTH, SOUTH, EAST, WEST, UNKNOWN
+} resize_direction_t;
+
+/*
+ * One of the four quadrants of a window like in plane geometry
+ */
+
+typedef enum {
+    I = 1, II, III, IV
+} quadrant_t;
+
 static XEvent *compress_motion(XEvent *xevent);
 static void process_resize(client_t *client, int new_x, int new_y,
                            resize_direction_t direction,
+                           quadrant_t quadrant,
                            int *old_x, int *old_y);
+static quadrant_t get_quadrant(client_t *client, int x, int y);
 
 /*
  * WindowMaker grabs the server while processing the motion events for
@@ -45,7 +73,7 @@ void mouse_grab_buttons(Window w)
  * This takes over the event loop and grabs the pointer until the move
  * is complete
  */
-
+/* FIXME:  need to send a synthetic event according to ICCCM */
 void mouse_move_client(XEvent *xevent)
 {
     static client_t *client = NULL;
@@ -163,6 +191,21 @@ void mouse_move_client(XEvent *xevent)
 
     if (client != NULL) {
         XMoveWindow(dpy, client->frame, client->x, client->y);
+        /* must send a synthetic ConfigureNotify to the client
+         * according to ICCCM 4.1.5 */
+        /* FIXME:  make this a function in client.c */
+        event1.type = ConfigureNotify;
+        event1.xconfigure.display = dpy;
+        event1.xconfigure.event = client->window;
+        event1.xconfigure.window = client->window;
+        event1.xconfigure.x = client->x;
+        event1.xconfigure.y = client->y - TITLE_HEIGHT;
+        event1.xconfigure.width = client->width;
+        event1.xconfigure.height = client->height - TITLE_HEIGHT;
+        event1.xconfigure.above = None; /* FIXME */
+        event1.xconfigure.override_redirect = False;
+        XSendEvent(dpy, client->window, False, StructureNotifyMask, &event1);
+        XFlush(dpy);
     }
 
 #ifdef DEBUG
@@ -173,44 +216,6 @@ void mouse_move_client(XEvent *xevent)
     x_start = y_start = -1;
     XUngrabPointer(dpy, CurrentTime);
 }
-
-/*
- * These are the possible directions in which one can resize a window,
- * depending on which direction the mouse moves at first
- * 
- * UNKNOWN is obviously a marker to say the direction hasn't yet been
- * identified
- * 
- * NB:  we will never actually constrain the resizing to only one
- * dimension (ie, simply North or South, I find that annoying); the
- * NORTH, SOUTH, EAST, WEST directions are simply to indicate that
- * only one component of the resizing direction has been figured out
- */
-
-typedef enum {
-    NW = 0, NE, SE, SW, NORTH, SOUTH, EAST, WEST, UNKNOWN
-} resize_direction_t;
-
-/* the cursors that go with the above directions */
-Cursor direction_cursor_map[] = {
-    cursor_nw_se,               /* NW */
-    cursor_ne_sw,               /* NE */
-    cursor_nw_se,               /* SE */
-    cursor_ne_sw,               /* SW */
-    cursor_n_s,                 /* NORTH */
-    cursor_n_s,                 /* SOUTH */
-    cursor_e_w,                 /* EAST */
-    cursor_e_w,                 /* WEST */
-    cursor_normal,              /* UNKNOWN */
-}
-
-/*
- * One of the four quadrants of a window like in plane geometry
- */
-
-typedef enum {
-    I = 1, II, III, IV
-} quadrant_t;
     
 
 /*
@@ -227,7 +232,7 @@ typedef enum {
 void mouse_resize_client(XEvent *xevent)
 {
     static client_t *client = NULL;
-    static int x_start, y_start, got_direction;
+    static int x_start, y_start;
     static resize_direction_t resize_direction = UNKNOWN;
     static quadrant_t quadrant = IV;
     XEvent event1;
@@ -253,19 +258,35 @@ void mouse_resize_client(XEvent *xevent)
                         }
                         x_start = xevent->xbutton.x_root;
                         y_start = xevent->xbutton.y_root;
-                        quadrant = get_quadrant(client,
-                                                xevent->xbutton.x_root,
+                        quadrant = get_quadrant(client, xevent->xbutton.x_root,
                                                 xevent->xbutton.y_root);
+                        switch (quadrant) {
+                            case I:
+                                resize_direction = NE;
+                                break;
+                            case II:
+                                resize_direction = NW;
+                                break;
+                            case III:
+                                resize_direction = SW;
+                                break;
+                            case IV:
+                                resize_direction = SE;
+                                break;
+                        }
 #ifdef DEBUG
                         printf("\tGrabbing the mouse for resizing\n");
 #endif /* DEBUG */
-                        /* don't know which direction we're moving in yet,
-                         * just use the generic cursor */
                         XGrabPointer(dpy, root_window, True,
                                      PointerMotionMask | ButtonPressMask |
                                      ButtonReleaseMask,
                                      GrabModeAsync, GrabModeAsync, None,
-                                     cursor_normal, CurrentTime);
+                                     cursor_direction_map[resize_direction],
+                                     CurrentTime);
+                        process_resize(client, x_start, y_start,
+                                       resize_direction, quadrant,
+                                       &x_start, &y_start);
+                        
                     } else {
                         fprintf(stderr, "Received an unexpected button press\n");
                     }
@@ -288,64 +309,6 @@ void mouse_resize_client(XEvent *xevent)
                 if (client == NULL) {
                     fprintf(stderr, "XWM: Error, null client in resize\n");
                     goto reset;
-                }
-
-                /* FIXME:  do the wmaker thing, just use quadrant */
-                switch (resize_direction) {
-                    case UNKNOWN:
-                        if (xevent->xbutton.x_root > x_start) {
-                                /* moving east */
-                            if (xevent->xbutton.y_root > y_start) {
-                                resize_direction = SE;
-                            } else if (xevent->xbutton.y_root < y_start) {
-                                resize_direction = NE;
-                            } else {
-                                resize_direction = EAST;
-                            }
-                        } else if (xevent->xbutton.x_root < x_start) {
-                                /* moving west */
-                            if (xevent->xbutton.y_root > y_start) {
-                                resize_direction = SW;
-                            } else if (xevent->xbutton.y_root < y_start) {
-                                resize_direction = NW;
-                            } else {
-                                resize_direction = WEST;
-                            }
-                        } else if (xevent->xbutton.y_root < y_start) {
-                            resize_direction = NORTH;
-                        } else if (xevent->xbutton.y_root > y_start) {
-                            resize_direction = SOUTH;
-                        }
-                        break;
-                    case NORTH:
-                        if (xevent->xbutton.x_root < x_start) {
-                            resize_direction = NW;
-                        } else if (xevent->xbutton.x_root > x_start) {
-                            resize_direction = NE;
-                        }
-                        break;
-                    case SOUTH:
-                        if (xevent->xbutton.x_root < x_start) {
-                            resize_direction = SW;
-                        } else if (xevent->xbutton.x_root < x_start) {
-                            resize_direction = SE;
-                        }
-                        break;
-                    case EAST:
-                        if (xevent->xbutton.y_root < y_start) {
-                            resize_direction = NE;
-                        } else if (xevent->xbutton.y_root > y_start) {
-                            resize_direction = SE;
-                        }
-                        break;
-                    case WEST:
-                        if (xevent->xbutton.y_root < y_start) {
-                            resize_direction = NW;
-                        } else if (xevent->xbutton.y_root > y_start) {
-                            resize_direction = SW;
-                        }
-                        break;
-                    /* NW, NE, SE, SW are already finalized, fall through */
                 }
 
 #ifdef DEBUG
@@ -384,13 +347,13 @@ void mouse_resize_client(XEvent *xevent)
 #endif /* DEBUG */
                 process_resize(client, xevent->xbutton.x_root,
                                xevent->xbutton.y_root, resize_direction,
-                               &x_start, &y_start);
+                               quadrant, &x_start, &y_start);
                 break;
             case ButtonRelease:
                 if (client) {
                     process_resize(client, xevent->xmotion.x_root,
                                    xevent->xmotion.y_root, resize_direction,
-                                   &x_start, &y_start);
+                                   quadrant, &x_start, &y_start);
                 }
                 goto reset;
             
@@ -416,6 +379,8 @@ void mouse_resize_client(XEvent *xevent)
     if (client != NULL) {
         XMoveResizeWindow(dpy, client->frame, client->x, client->y,
                           client->width, client->height);
+        XResizeWindow(dpy, client->window, client->width,
+                      client->height - TITLE_HEIGHT);
     }
 
 #ifdef DEBUG
@@ -473,8 +438,9 @@ static XEvent *compress_motion(XEvent *xevent)
     return xevent;
 }
 
-static void process_resize(client_t *client, int new_x, new_y,
+static void process_resize(client_t *client, int new_x, int new_y,
                            resize_direction_t direction,
+                           quadrant_t quadrant,
                            int *old_x, int *old_y)
 {
     int x_diff, y_diff;
@@ -484,13 +450,18 @@ static void process_resize(client_t *client, int new_x, new_y,
     y = client->y;
     w = client->width;
     h = client->height;
-    y_diff = new_y - old_y;
-    x_diff = new_x - old_x;
+    y_diff = new_y - *old_y;
+    x_diff = new_x - *old_x;
     if (direction == WEST || direction == EAST)
         y_diff = 0;
     if (direction == NORTH || direction == SOUTH)
         x_diff = 0;
     if (client->xsh != NULL && (client->xsh->flags & PResizeInc)) {
+#ifdef DEBUG
+        /* FIXME:  need to listen for property events before this will work */
+        printf("\txsh->width_inc = %d, xsh->height_inc = %d\n",
+               client->xsh->width_inc, client->xsh->height_inc);
+#endif /* DEBUG */
         if (y_diff > client->xsh->height_inc
             || (-y_diff) > client->xsh->height_inc) {
             if (y_diff < 0) y_diff += client->xsh->height_inc;
@@ -502,53 +473,54 @@ static void process_resize(client_t *client, int new_x, new_y,
             x_diff -= (x_diff % client->xsh->width_inc);
         }
     }
-
-    
     
     switch (direction) {
         case WEST:
-            
-
-
-
-
-
-
-
-            
+        case SW:
+        case NW:
+            client->x += x_diff;
+            client->width -= x_diff;
+            *old_x = new_x;
+            break;
+        case EAST:
+        case SE:
+        case NE:
+            client->width += x_diff;
+            *old_x = new_x;
+            break;
+        default:
     }
-    
-
-    
-    client->x += x_diff;
-    client->y += y_diff;
-    
-        
-        
-            
-                
-            
-        
-
+    switch (direction) {
+        case NORTH:
+        case NW:
+        case NE:
+            client->y += y_diff;
+            client->height -= y_diff;
+            *old_y = new_y;
+            break;
+        case SOUTH:
+        case SE:
+        case SW:
+            client->height += y_diff;
+            *old_y = new_y;
+            break;
+        default:
+    }
 }
-
 
 static quadrant_t get_quadrant(client_t *client, int x, int y)
 {
-    if (x < client->x + ((client->x + client->width) / 2)) {
-        if (y < client->y + ((client->y + client->height) / 2)) {
+    if (x < client->x + (client->width / 2)) {
+        if (y < client->y + (client->height / 2)) {
             return II;
         } else {
             return III;
         }
     } else {
-        if (y < client->y + ((client->y + client->height) / 2)) {
-            return I
+        if (y < client->y + (client->height / 2)) {
+            return I;
         } else {
             return IV;
         }
     }
 }
-
-    
-        

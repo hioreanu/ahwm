@@ -15,6 +15,7 @@
 #include "workspace.h"
 #include "keyboard.h"
 #include "cursor.h"
+#include "focus.h"
 
 XContext window_context;
 XContext frame_context;
@@ -65,7 +66,8 @@ client_t *client_create(Window w)
         return NULL;
     }
 #ifdef DEBUG
-    printf("\tCreated an entry for window 0x%08X at 0x%08X\n", w, client);
+    printf("\tCreated an entry for window 0x%08X at 0x%08X\n",
+           (unsigned int)w, (unsigned int)client);
 #endif /* DEBUG */
 
     if (client->frame != None) {
@@ -155,7 +157,7 @@ void client_reparent(client_t *client)
 
 #ifdef DEBUG
     printf("\tReparenting client 0x%08X (window 0x%08X) to 0x%08X\n",
-           client, w, client->frame);
+           (unsigned int)client, (unsigned int)w, (unsigned int)client->frame);
 #endif /* DEBUG */
 
     XClearWindow(dpy, client->frame);
@@ -234,7 +236,7 @@ void client_set_name(client_t *client)
     XFree(xtp.value);
 
 #ifdef DEBUG
-    printf("\tClient 0x%08X is %s\n", client, client->name);
+    printf("\tClient 0x%08X is %s\n", (unsigned int)client, client->name);
 #endif /* DEBUG */
 }
 
@@ -271,7 +273,7 @@ void client_set_xsh(client_t *client)
         client->xsh = NULL;
     }
     /* WTF am I supposed to do with an increment of zero? */
-    if (client->xsh & PResizeInc) {
+    if (client->xsh != NULL && (client->xsh->flags & PResizeInc)) {
         if (client->xsh->height_inc <= 0)
             client->xsh->height_inc = 1;
         if (client->xsh->width_inc <= 0)
@@ -365,7 +367,8 @@ void client_print(char *s, client_t *client)
         return;
     }
     printf("%-19s client = 0x%08X, window = 0x%08X, frame = 0x%08X\n",
-           s, client, client->window, client->frame);
+           s, (unsigned int)client, (unsigned int)client->window,
+           (unsigned int)client->frame);
     printf("%-19s name = %s, instance = %s, class = %s\n",
            s, client->name, client->instance, client->class);
 }

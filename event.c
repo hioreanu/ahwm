@@ -12,9 +12,11 @@
 #include "xwm.h"
 #include "event.h"
 #include "client.h"
+#include "focus.h"
 #include "workspace.h"
 #include "keyboard.h"
 #include "mouse.h"
+#include "xev.h"
 
 static void event_enter_leave(XCrossingEvent *);
 static void event_create(XCreateWindowEvent *);
@@ -211,7 +213,7 @@ static void event_create(XCreateWindowEvent *xevent)
     if (xevent->override_redirect) {
 #ifdef DEBUG
         printf("\tWindow 0x%08X has override_redirect, ignoring\n",
-               xevent->window);
+               (unsigned int)xevent->window);
 #endif /* DEBUG */
         return;
     }
