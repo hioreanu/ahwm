@@ -4,6 +4,7 @@
  * copyright privileges.
  */
 
+#include <stdio.h>
 #include "focus.h"
 #include "client.h"
 #include "workspace.h"
@@ -70,15 +71,15 @@ int focus_canfocus(client_t *client)
 {
     Window w = client->window;
     
+    /* Window Maker does a bunch of stuff with KDE here */
+    /* ICC/client-to-windowmanager/wm-hints.html */
+
     if (client->state != MAPPED) return 0;
     if (client->workspace != workspace_current) return 0;
     if (client->xwmh == NULL) return 1;
     if (client->xwmh->flags & InputHint && client->xwmh->input == False)
         return 0;
     return 1;
-
-    /* Window Maker does a bunch of stuff with KDE here */
-    /* ICC/client-to-windowmanager/wm-hints.html */
 }
 
 void focus_ensure()
@@ -87,14 +88,12 @@ void focus_ensure()
         return;
     focus_current = focus_stacks[workspace_current - 1];
     if (focus_current == NULL) {
-        XSetInputFocus(dpy, None, RevertToNone, CurrentTime);
+        XSetInputFocus(dpy, root_window, RevertToNone, CurrentTime);
         return;
     }
-    XSetInputFocus(dpy,
-                   focus_current->window,
-                   (focus_current->prev ?
-                    focus_current->prev->window :
-                    RevertToNone),
-                   CurrentTime);
+    printf("Setting focus to 0x%08X...", focus_current->window);
+    fflush(stdout);
+    XSetInputFocus(dpy, focus_current->window, RevertToNone, CurrentTime);
+    printf("ok\n");
     XMapRaised(dpy, focus_current->window);
 }

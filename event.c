@@ -134,11 +134,9 @@ static void event_enter_leave(XCrossingEvent *xevent)
 //    if (xevent->mode != NotifyGrab || xevent->detail != NotifyNonlinearVirtual)
 //        return;
     client = client_find(xevent->window);
-    if (client != NULL) {
-        /* FIXME: check if the window wants the focus */
-        printf("Changing the input focus...\n");
-        XMapRaised(dpy, xevent->window);
+    if (client != NULL && focus_canfocus(client)) {
         focus_set(client);      /* focus.c */
+        focus_ensure();
     }
 }
 

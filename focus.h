@@ -43,12 +43,24 @@ void focus_remove(client_t *);
 void focus_set(client_t *);
 
 /*
+ * Set the input focus to the next on the ring
+ */
+
+void focus_next();
+
+/*
+ * Set the input focus to the previous on the ring
+ */
+
+void focus_prev();
+
+/*
  * Ensure some window in the current workspace is mapped if possible
  */
 void focus_ensure();
 
 /*
- * returns 1 if the client accepts keyboard focus, 0 o/w
+ * returns one if the client accepts keyboard focus, zero o/w
  */
 
 int focus_canfocus(client_t *);
