@@ -201,6 +201,7 @@ char *make_string(char *s);
 %%
 
 config_file: config { preferences = $1; }
+             ;
 
 config: /* empty */ { $$ = NULL; }
      | config line
@@ -216,6 +217,7 @@ config: /* empty */ { $$ = NULL; }
                $$ = $2;
            }
        }
+     ;
 
 line: option TOK_SEMI { $$ = make_line(OPTION, $1); }
     | context { $$ = make_line(CONTEXT, $1); }
@@ -232,6 +234,7 @@ line: option TOK_SEMI { $$ = make_line(OPTION, $1); }
                   line_number);
           $$ = make_line(INVALID_LINE, NULL);
       }
+    ;
 option: option_name TOK_EQUALS type
         {
             option *opt;
@@ -256,6 +259,7 @@ option: option_name TOK_EQUALS type
             }
             $$ = opt;
         }
+      ;
 
 /* ADDOPT 3: define as option */
 option_name: TOK_DISPLAYTITLEBAR { $$ = DISPLAYTITLEBAR; }
@@ -280,6 +284,7 @@ option_name: TOK_DISPLAYTITLEBAR { $$ = DISPLAYTITLEBAR; }
            | TOK_RAISEDELAY { $$ = RAISEDELAY; }
            | TOK_USENETWMPID { $$ = USENETWMPID; }
            | TOK_WINDOWKILLINGPATIENCE { $$ = KILLINGPATIENCE; }
+           ;
 
 type: boolean
       {
@@ -341,23 +346,28 @@ type: boolean
           }
           $$ = typ;
       }
+    ;
 
 focus_enumeration: TOK_SLOPPY_FOCUS { $$ = TYPE_SLOPPY_FOCUS; }
                  | TOK_CLICK_TO_FOCUS { $$ = TYPE_CLICK_TO_FOCUS; }
                  | TOK_DONT_FOCUS { $$ = TYPE_DONT_FOCUS; }
+                 ;
 
 cycle_enumeration: TOK_SKIPCYCLE { $$ = TYPE_SKIP_CYCLE }
                  | TOK_RAISEIMMEDIATELY { $$ = TYPE_RAISE_IMMEDIATELY }
                  | TOK_RAISEONCYCLEFINISH { $$ = TYPE_RAISE_ON_CYCLE_FINISH }
                  | TOK_DONTRAISE { $$ = TYPE_DONT_RAISE }
+                 ;
 
 position_enumeration: TOK_DISPLAYLEFT { $$ = TYPE_DISPLAY_LEFT; }
                     | TOK_DISPLAYRIGHT { $$ = TYPE_DISPLAY_RIGHT; }
                     | TOK_DISPLAYCENTERED { $$ = TYPE_DISPLAY_CENTERED; }
-                    | TOK_DONTDISPLAY { $$ = TYPE_DONT_DISPLAY; }    
+                    | TOK_DONTDISPLAY { $$ = TYPE_DONT_DISPLAY; }
+                    ;
 
 boolean: TOK_TRUE { $$ = 1; }
        | TOK_FALSE { $$ = 0; }
+       ;
 
 context: context_option context_name type TOK_LBRACE config TOK_RBRACE
          {
@@ -371,17 +381,20 @@ context: context_option context_name type TOK_LBRACE config TOK_RBRACE
              }
              $$ = cntxt;
          }
+       ;
 
 context_name: TOK_ISSHAPED { $$ = SEL_ISSHAPED; }
             | TOK_INWORKSPACE { $$ = SEL_INWORKSPACE; }
             | TOK_WINDOWNAME { $$ = SEL_WINDOWNAME; }
             | TOK_WINDOWCLASS { $$ = SEL_WINDOWCLASS; }
             | TOK_WINDOWINSTANCE { $$ = SEL_WINDOWINSTANCE; }
+            ;
 
 context_option: /* empty */ { $$ = 0; }
               | TOK_NOT { $$ = SEL_NOT; }
               | TOK_TRANSIENTFOR { $$ = SEL_TRANSIENTFOR; }
               | TOK_HASTRANSIENT { $$ = SEL_HASTRANSIENT; }
+              ;
 
 keybinding: TOK_BINDKEY TOK_STRING function
             {
@@ -405,6 +418,7 @@ keybinding: TOK_BINDKEY TOK_STRING function
                 }
                 $$ = kb;
             }
+            ;
 
 mousebinding: TOK_BINDBUTTON location TOK_STRING function
               {
@@ -442,6 +456,7 @@ mousebinding: TOK_BINDBUTTON location TOK_STRING function
                   }
                   $$ = mb;
               }
+              ;
               
 keyunbinding: TOK_UNBINDKEY TOK_STRING
               {
@@ -463,6 +478,7 @@ keyunbinding: TOK_UNBINDKEY TOK_STRING
                   }
                   $$ = kub;
               }
+              ;
 
 mouseunbinding: TOK_UNBINDBUTTON location TOK_STRING
                 {
@@ -497,10 +513,12 @@ mouseunbinding: TOK_UNBINDBUTTON location TOK_STRING
                     }
                     $$ = mub;
                 }
+                ;
 
 location: TOK_ROOT { $$ = MOUSE_ROOT; }
         | TOK_FRAME { $$ = MOUSE_FRAME; }
         | TOK_TITLEBAR { $$ = MOUSE_TITLEBAR; }
+        ;
 
 function: function_name TOK_LPAREN arglist TOK_RPAREN
           {
@@ -511,6 +529,7 @@ function: function_name TOK_LPAREN arglist TOK_RPAREN
               }
               $$ = f;
           }
+          ;
 function: function_name TOK_LPAREN TOK_RPAREN
           {
               function *f = malloc(sizeof(function));
@@ -520,6 +539,7 @@ function: function_name TOK_LPAREN TOK_RPAREN
               }
               $$ = f;
           }
+          ;
 
 function_name: TOK_SENDTOWORKSPACE { $$ = SENDTOWORKSPACE; }
              | TOK_GOTOWORKSPACE { $$ = GOTOWORKSPACE; }
@@ -545,6 +565,7 @@ function_name: TOK_SENDTOWORKSPACE { $$ = SENDTOWORKSPACE; }
              | TOK_RESTART { $$ = RESTART; }
              | TOK_CRASH { $$ = CRASH; }
              | TOK_SHADE { $$ = SHADE; }
+             ;
 
 arglist: arglist TOK_COMMA type
          {
@@ -572,6 +593,7 @@ arglist: arglist TOK_COMMA type
              }
              $$ = al;
          }
+       ;
 
 definition: TOK_DEFINE TOK_STRING TOK_LBRACE function_list TOK_RBRACE
             {
@@ -582,6 +604,7 @@ definition: TOK_DEFINE TOK_STRING TOK_LBRACE function_list TOK_RBRACE
                 }
                 $$ = def;
             }
+            ;
 
 function_list: function TOK_SEMI function_list
                {
@@ -601,6 +624,7 @@ function_list: function TOK_SEMI function_list
                    }
                    $$ = fl;
                }
+             ;
 
 %%
 

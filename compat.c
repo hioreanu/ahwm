@@ -42,6 +42,21 @@ char *strdup(char *s)
 }
 #endif /* ! HAVE_STRDUP */
 
+#ifndef HAVE_STRCASECMP
+int strcasecmp(const char *s1, const char *s2)
+{
+    unsigned char c1, c2;
+    while (c1 = tolower(*s1) && c2 = tolower(*s2)) {
+        if (c1 != c2) {
+            return c1 < c2 ? -1 : 1;
+        }
+    }
+    if (c1 != '\0') return 1;
+    if (c2 != '\0') return -1;
+    return 0;
+}
+#endif
+
 #ifdef HOMEGROWN_STRERROR
 
 extern int   sys_nerr;

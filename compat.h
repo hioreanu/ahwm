@@ -36,6 +36,10 @@
 char *strdup(char *s);
 #endif /* HAVE_STRDUP */
 
+#ifndef HAVE_STRCASECMP
+int strcasecmp(const char *s1, const char *s2);
+#endif /* HAVE_STRCASECMP */
+
 #ifdef HOMEGROWN_SNPRINTF
 int snprintf(char *buf, int len, char *fmt, ...);
 #endif /* HOMEGROWN_SNPRINTF */

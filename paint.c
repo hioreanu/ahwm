@@ -31,6 +31,7 @@
 #include "debug.h"
 #include "malloc.h"
 #include "focus.h"
+#include "compat.h"
 
 #include <stdio.h>
 

@@ -49,6 +49,7 @@
 #include "debug.h"
 #include "stacking.h"
 #include "ewmh.h"
+#include "compat.h"
 
 #ifndef MIN
 #define MIN(x,y) ((x) < (y) ? (x) : (y))

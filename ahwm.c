@@ -325,7 +325,9 @@ int main(int argc, char **argv)
                                  | GCPlaneMask | GCSubwindowMode,
                                  &xgcv);
 
+#ifdef HAVE_ATEXIT
     atexit(focus_save_stacks);
+#endif
     signal(SIGTERM, sigterm);
 #ifndef DEBUG
     signal(SIGSEGV, sigsegv);
