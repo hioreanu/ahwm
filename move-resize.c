@@ -1051,13 +1051,17 @@ static void process_resize(client_t *client, int new_x, int new_y,
      */
 
     if (ordinal != FIRST && client->titlebar != None) {
-        snprintf(buf, 64, "%dx%d+%d+%d [Resizing]", w, h, x, y);
+        snprintf(buf, 64, "%dx%d+%d+%d [Resizing]",
+                 w / get_width_resize_inc(client),
+                 (h - title_height) / get_height_resize_inc(client), x, y);
         XDrawString(dpy, client->titlebar, root_invert_gc, 2,
                     TITLE_HEIGHT - 4, buf, strlen(buf));
     }
     if (ordinal != LAST && client->titlebar != None) {
-        snprintf(buf, 64, "%dx%d+%d+%d [Resizing]", client->width,
-                 client->height, client->x, client->y);
+        snprintf(buf, 64, "%dx%d+%d+%d [Resizing]",
+             client->width / get_width_resize_inc(client),
+             (client->height - title_height) / get_height_resize_inc(client),
+             client->x, client->y);
         XDrawString(dpy, client->titlebar, root_invert_gc, 2,
                     TITLE_HEIGHT - 4, buf, strlen(buf));
     }
@@ -1222,10 +1226,7 @@ static void drafting_lines(client_t *client, resize_direction_t direction,
     }
 
     if (direction == WEST || direction == EAST) {
-        if (client->titlebar == None)
-            tmp = (y2 - y1) / h_inc;
-        else
-            tmp = (y2 - y1 - TITLE_HEIGHT) / h_inc;
+        tmp = (y2 - y1) / h_inc;
     } else {
         tmp = (x2 - x1) / w_inc;
     }
