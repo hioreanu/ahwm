@@ -4,17 +4,22 @@
  * copyright privileges.
  */
 
+#include <X11/Xlib.h>
+#include <X11/keysym.h>
+
 #include <stdio.h>
 #include "focus.h"
 #include "client.h"
 #include "workspace.h"
 #include "debug.h"
+#include "event.h"
 
 client_t *focus_current = NULL;
 
 client_t *focus_stacks[NO_WORKSPACES] = { NULL };
 
 static void focus_change_current(client_t *, Time);
+static void swap_circular_nodes(client_t *, client_t *);
 
 /* 
  * invariant:
@@ -164,6 +169,68 @@ void focus_ensure(Time timestamp)
     client_raise(focus_current);
 }
 
+void dump_focus_list()
+{
+    client_t *client, *orig;
+
+    orig = client = focus_current;
+
+    printf("STACK: ");
+    do {
+        printf("%s ", client->name);
+        client = client->next_focus;
+    } while (client != orig);
+    printf("\n");
+}
+
+void focus_alt_tab(XEvent *xevent, void *v)
+{
+    client_t *orig_focus;
+    unsigned int action_keycode;
+    KeyCode keycode_Alt_L, keycode_Alt_R;
+
+    orig_focus = focus_current;
+    debug(("\torig_focus = '%s'\n", orig_focus ? orig_focus->name : "NULL"));
+    dump_focus_list();
+    action_keycode = xevent->xkey.keycode;
+    keycode_Alt_L = XKeysymToKeycode(dpy, XK_Alt_L);
+    keycode_Alt_R = XKeysymToKeycode(dpy, XK_Alt_R);
+
+    XGrabKeyboard(dpy, root_window, True, GrabModeAsync,
+                  GrabModeAsync, event_timestamp);
+    for (;;) {
+        switch (xevent->type) {
+            case KeyPress:
+                if (xevent->xkey.keycode == action_keycode) {
+                    if (xevent->xkey.state & ShiftMask) {
+                        focus_prev(event_timestamp);
+                    } else {
+                        focus_next(event_timestamp);
+                    }
+                }
+                break;
+            case KeyRelease:
+                if (xevent->xkey.keycode == keycode_Alt_L
+                    || xevent->xkey.keycode == keycode_Alt_R) {
+                    /* user let go of all modifiers */
+                    debug(("\tfocus_current = '%s'\n",
+                           focus_current ? focus_current->name : "NULL"));
+                    if (focus_current != NULL) {
+                        swap_circular_nodes(orig_focus, focus_current);
+                    }
+                    XUngrabKeyboard(dpy, event_timestamp);
+                    debug(("RETURNING FROM ALT-TAB\n"));
+                    dump_focus_list();
+                    return;
+                }
+                break;
+            default:
+                event_dispatch(xevent);
+        }
+        event_get(ConnectionNumber(dpy), xevent);
+    }
+}
+
 static void focus_change_current(client_t *new, Time timestamp)
 {
     client_t *old;
@@ -175,3 +242,51 @@ static void focus_change_current(client_t *new, Time timestamp)
     focus_ensure(timestamp);
 }
 
+/*
+ * ring looks like this:
+ * A <-> B <-> ... <-> C <-> D <-> E <-> ... <-> F <-> A
+ * and we want to exchange A and D like this:
+ * D <-> B <-> ... <-> C <-> A <-> E <-> ... <-> F <-> D
+ */
+
+static void swap_circular_nodes(client_t *A, client_t *D)
+{
+    client_t *B, *C, *E, *F;
+
+    /* if have only one or two elements, or not swapping, done */
+    if (A == D || (A->next_focus == D && D->next_focus == A))
+        return;
+
+    F = A->prev_focus;
+    B = A->next_focus;
+    C = D->prev_focus;
+    E = D->next_focus;
+
+    if (A->next_focus == D) {
+        /* no B or C */
+        F->next_focus = D;
+        E->prev_focus = A;
+        A->prev_focus = D;
+        A->next_focus = E;
+        D->prev_focus = F;
+        D->next_focus = A;
+    } else if (A->prev_focus == D) {
+        /* no E or F */
+        C->next_focus = A;
+        B->prev_focus = D;
+        A->prev_focus = C;
+        A->next_focus = D;
+        D->next_focus = B;
+        D->prev_focus = A;
+    } else {
+        /* B and D are separated by at least on node on each side */
+        A->next_focus = E;
+        A->prev_focus = C;
+        D->next_focus = B;
+        D->prev_focus = F;
+        F->next_focus = D;
+        B->prev_focus = D;
+        E->prev_focus = A;
+        C->next_focus = A;
+    }
+}
