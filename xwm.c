@@ -15,7 +15,12 @@ Display *dpy;
 int scr;
 int scr_height;
 int scr_width;
+unsigned long black;
+unsigned long white;
 Window root_window;
+Cursor cursor_normal;
+Cursor cursor_moving;
+Cursor cursor_sizing;
 
 static int already_running_windowmanager;
 
@@ -39,7 +44,7 @@ static int error_handler(Display *dpy, XErrorEvent *error)
  * 3.  Select the X events we want to see
  * 4.  Die if we can't do that because some other windowmanager is running
  * 5.  Set the X error handler
- * 6.  Define the root window cursor
+ * 6.  Define the root window cursor and other cursors
  * 7.  Create an XContext for the window management functions
  * 8.  Scan already-created windows and manage them
  * 9.  Go into a select() loop waiting for events
@@ -62,6 +67,8 @@ int main(int argc, char **argv)
     root_window = DefaultRootWindow(dpy);
     scr_height = DisplayHeight(dpy, scr);
     scr_width = DisplayWidth(dpy, scr);
+    black = BlackPixel(dpy, scr);
+    white = WhitePixel(dpy, scr);
 
     already_running_windowmanager = 0;
     XSetErrorHandler(tmp_error_handler);
@@ -80,7 +87,10 @@ int main(int argc, char **argv)
     XSynchronize(dpy, True);
 
 //    keyboard_grab_keys(root_window);
-    XDefineCursor(dpy, root_window, XCreateFontCursor(dpy, XC_left_ptr));
+    cursor_normal = XCreateFontCursor(dpy, XC_left_ptr);
+    cursor_moving = XCreateFontCursor(dpy, XC_fleur);
+    cursor_sizing = XCreateFontCursor(dpy, XC_sizing);
+    XDefineCursor(dpy, root_window, cursor_normal);
 
     window_context = XUniqueContext(); /* client.c */
     
