@@ -12,7 +12,7 @@ xsetroot -cursor_name left_ptr
 #xterm &
 #sleep 1
 
-#exec wmaker
+exec wmaker
 #exec kwin
 #exec ./9wm
 #exec enlightenment

@@ -95,9 +95,9 @@ typedef struct _client_t {
     /* flags for internal use */
     struct _flags {
         unsigned int reparented:1;         /* is window reparented to frame */
-        unsigned int ignore_enternotify:1; /* hack, see event.c */
         unsigned int ignore_unmapnotify:1; /* hack, see client_create */
     } flags;
+    unsigned int ignore_enternotify; /* hack, see event.c */
 
     /* flags set by user */
     struct _prefs {
@@ -121,6 +121,12 @@ extern client_t *client_list;
 typedef struct _position_size {
     int x, y, width, height;
 } position_size;
+
+typedef struct _ignore_enternotify_struct {
+    Window w;
+    int x;
+    int y;
+} ignore_enternotify_struct;
 
 /*
  * we store the data associated with each window using Xlib's XContext
@@ -323,5 +329,10 @@ void client_sendmessage(client_t *client, Atom data0, Time timestamp,
  */
 
 void client_raise(client_t *client);
+
+Window client_ignore_enternotify_add(client_t *client,
+                                     ignore_enternotify_struct *iens);
+Window client_ignore_enternotify_del(client_t *client,
+                                     ignore_enternotify_struct *iens) ;
 
 #endif /* CLIENT_H */

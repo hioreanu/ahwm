@@ -70,9 +70,9 @@ client_t *client_create(Window w)
     client->prev_x = client->prev_y = -1;
     client->prev_height = client->prev_width = -1;
     client->orig_border_width = xwa.border_width;
-    client->flags.ignore_enternotify = 0;
     client->flags.reparented = 0;
     client->flags.ignore_unmapnotify = 0;
+    client->ignore_enternotify = 0;
     
     /* God, this sucks.  I want the border width to be zero on all
      * clients, so I need to change the client's border width at some
@@ -106,7 +106,7 @@ client_t *client_create(Window w)
     }
 
     client->frame_event_mask = SubstructureRedirectMask | EnterWindowMask
-        | FocusChangeMask | StructureNotifyMask;
+        | LeaveWindowMask | FocusChangeMask | StructureNotifyMask;
     client->window_event_mask = xwa.your_event_mask | StructureNotifyMask
         | PropertyChangeMask;
     XSelectInput(dpy, client->window, client->window_event_mask);
@@ -749,6 +749,95 @@ void client_sendmessage(client_t *client, Atom data0, Time timestamp,
     XSendEvent(dpy, client->window, False, 0, (XEvent *)&xcme);
 }
 
+Window client_ignore_enternotify_add(client_t *client,
+                                     ignore_enternotify_struct *iens)
+{
+    Window junk1;
+    int junk2;
+    unsigned int junk3;
+    ignore_enternotify_struct extra_struct;
+    
+    if (iens == NULL) {
+        iens = &extra_struct;
+
+        if (XQueryPointer(dpy, root_window, &junk1,
+                          &iens->w, &iens->x, &iens->y,
+                          &junk2, &junk2, &junk3) == 0) {
+            debug(("\tstacking: XQueryPointer failed\n"));
+            return None;
+        }
+    }
+    if (client->frame != iens->w
+        && client->x <= iens->x
+        && client->x + client->width >= iens->x
+        && client->y <= iens->y
+        && client->y + client->height >= iens->y) {
+        debug(("\tIncrementing ignore_enternotify for 0x%08X\n", client));
+        client->ignore_enternotify++;
+        return client->frame;
+    } else {
+        return iens->w;
+    }
+}
+
+Window client_ignore_enternotify_del(client_t *client,
+                                     ignore_enternotify_struct *iens) 
+{
+    Window junk1, *children;
+    int i, nchildren, junk2;
+    unsigned int junk3;
+    client_t *c;
+    ignore_enternotify_struct extra_struct;
+    
+    if (iens == NULL) {
+        iens = &extra_struct;
+
+        if (XQueryPointer(dpy, root_window, &junk1, &iens->w,
+                          &iens->x, &iens->y, &junk2, &junk2, &junk3) == 0) {
+            debug(("\tstacking: XQueryPointer failed\n"));
+            return None;
+        }
+    }
+    if (!(client->x <= iens->x
+          && client->x + client->width >= iens->x
+          && client->y <= iens->y
+          && client->y + client->height >= iens->y)) {
+        return iens->w;
+    }
+    if (XQueryTree(dpy, root_window, &junk1, &junk1,
+                   &children, &nchildren) == 0) {
+        debug(("\tstacking: xquerytree failed\n"));
+        return iens->w;
+    }
+    
+    for (i = nchildren - 1; i >= 0; i--) {
+        debug(("\tStacking: --\n"));
+        if (children[i] == client->frame) {
+            debug(("\tStacking: unmapped window\n"));
+            continue;
+        }
+        c = client_find(children[i]);
+        if (c == NULL) {
+            debug(("\tstacking: window 0x%08X is not client\n",
+                   (unsigned int)children[i]));
+            continue;
+        }
+        debug(("\tstacking: client is %s\n", c->name));
+        if (iens->x >= c->x
+            && iens->y >= c->y
+            && iens->x <= c->x + c->width
+            && iens->y <= c->y + c->height) {
+            debug(("\tstacking: client is below pointer\n"));
+            XFree(children);
+            debug(("\tIncrementing ignore_enternotify for 0x%08X\n", c));
+            c->ignore_enternotify++;
+            return iens->w;
+        }
+    }
+    XFree(children);
+    return iens->w;
+}
+
 /*
  * Raising a window presents a somewhat interesting problem because we
  * want to hold the following invariant:
@@ -816,24 +905,35 @@ void client_sendmessage(client_t *client, Atom data0, Time timestamp,
  * raise all subtrees of D
  */
 
-static void raise_and_ignore_enternotify(client_t *client);
+typedef struct window_buffer {
+    Window *w;
+    int nused;
+    int navail;
+} window_buffer;
 
-static void raise_tree(client_t *node, client_t *ignore, Bool go_up)
+static void raise_tree(client_t *node, client_t *ignore,
+                       Bool go_up, ignore_enternotify_struct *iens)
 {
     client_t *parent, *c;
     
     if (go_up && node->transient_for != None) {
         parent = client_find(node->transient_for);
         if (parent != NULL) {
-            raise_tree(parent, node, True);
+            raise_tree(parent, node, True, iens);
         }
     }
     
-    raise_and_ignore_enternotify(node);
+    if (node->workspace == workspace_current
+        && node->state == NormalState) {
+        debug(("\tRaising window 0x%08X\n", node->window));
+        XSync(dpy, False);
+        XMapRaised(dpy, node->frame);
+        iens->w = client_ignore_enternotify_add(node, iens);
+    }
 
     for (c = node->transients; c != NULL; c = c->next_transient) {
         if (c != ignore)
-            raise_tree(c, NULL, False);
+            raise_tree(c, NULL, False, iens);
     }
 }
 
@@ -843,119 +943,19 @@ static void raise_tree(client_t *node, client_t *ignore, Bool go_up)
  * once instead of whenever we raise a window
  */
 
-static Window raising_under_pointer;
-static int raising_x, raising_y;
-
 void client_raise(client_t *client)
 {
     Window junk1;
     int junk2;
     unsigned int junk3;
+    ignore_enternotify_struct iens;
     
     if (XQueryPointer(dpy, root_window, &junk1,
-                      &raising_under_pointer, &raising_x, &raising_y,
+                      &iens.w, &iens.x, &iens.y,
                       &junk2, &junk2, &junk3) == False) {
-        raising_x = raising_y = -1;
-        raising_under_pointer = None;
+        iens.x = iens.y = -1;
+        iens.w = None;
     }
     
-    raise_tree(client, NULL, True);
+    raise_tree(client, NULL, True, &iens);
 }
-
-static void raise_and_ignore_enternotify(client_t *client)
-{
-    if (client->workspace == workspace_current
-        && client->state == NormalState) {
-        if (client->frame != raising_under_pointer
-            && raising_x >= client->x
-            && raising_y >= client->y
-            && raising_x <= client->x + client->width
-            && raising_y <= client->y + client->height) {
-            debug(("\tSetting ignore_enternotify for '%s' in client_raise\n",
-                   client->name));
-            client->flags.ignore_enternotify = 1;
-            raising_under_pointer = client->frame;
-        }
-        debug(("\tRaising window 0x%08X\n", client->window));
-        XMapRaised(dpy, client->frame);
-    }
-}
-
-#if 0
-static void client_raise_internal(client_t *client, int x, int y,
-                                  Window *under_pointer, client_t *orig);
-static void raise_and_ignore_enternotify(client_t *client, int x, int y,
-                                         Window *under_pointer);
-
-void client_raise(client_t *client) 
-{
-    client_t *transient_for;
-    Window under_pointer;
-    int x, y;
-    Window junk1;
-    int junk2;
-    unsigned int junk3;
-
-    if (client == NULL) return;
-    
-    if (client->transient_for != None
-        && (transient_for = client_find(client->transient_for)) != NULL) {
-        
-        /* If client is transient, raise leader, then ensure that
-         * client is on top of leader and transients.  This function
-         * only goes up; client_raise_internal only goes down in the
-         * transient tree.  Basically depth-first traversal, although
-         * I doubt that many applications make complex trees of
-         * transient windows. */
-        
-        client_raise(transient_for);
-        return;
-    }
-    
-    if (XQueryPointer(dpy, root_window, &junk1, &under_pointer, &x, &y,
-                      &junk2, &junk2, &junk3) == False) {
-        x = y = -1;
-        under_pointer = None;
-    }
-    
-    client_raise_internal(client, x, y, &under_pointer, NULL);
-}
-
-static void raise_and_ignore_enternotify(client_t *client, int x, int y,
-                                         Window *under_pointer)
-{
-    if (client->workspace == workspace_current
-        && client->state == NormalState) {
-        if (client->frame != *under_pointer
-            && x >= client->x
-            && y >= client->y
-            && x <= client->x + client->width
-            && y <= client->y + client->height) {
-            debug(("\tSetting ignore_enternotify for '%s' in client_raise\n",
-                   client->name));
-            client->flags.ignore_enternotify = 1;
-            *under_pointer = client->frame;
-        }
-        debug(("\tRaising window 0x%08X\n", client->window));
-        XMapRaised(dpy, client->frame);
-    }
-}
-
-void client_raise_internal(client_t *client, int x, int y,
-                           Window *under_pointer, client_t *orig)
-{
-    client_t *c;
-    Bool found_orig = False;
-
-    raise_and_ignore_enternotify(client, x, y, under_pointer);
-
-    for (c = client->transients; c != NULL; c = c->next_transient) {
-        if (c == orig)
-            found_orig = True;
-        else
-            client_raise_internal(c, x, y, under_pointer, client);
-    }
-    if (found_orig)
-        client_raise_internal(orig, x, y, under_pointer, client);
-}
-#endif

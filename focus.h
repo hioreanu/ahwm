@@ -41,7 +41,7 @@ void focus_remove(client_t *, Time);
 
 /*
  * Move a client from somewhere in the focus stack to the top of the
- * stack
+ * stack, call XSetInputFocus
  */
 
 void focus_set(client_t *, Time);

@@ -4,6 +4,10 @@
  * copyright privileges.
  */
 
+/*
+ * UnmapNotify, MapNotify, ConfigureNotify, GravityNotify, CirculateNotify
+ */
+
 #include <X11/Xatom.h>
 #include <sys/types.h>
 #include <sys/time.h>
@@ -50,6 +54,9 @@ static void event_map(XMapEvent *);
 static void event_shape(XShapeEvent *);
 #endif /* SHAPE */
 
+static unsigned int ignore_enternotify_hack = 0;
+
+static void update_ignore_enternotify_hack(XEvent *event);
 static Time figure_timestamp(XEvent *event);
 static client_t *query_stacking_order(Window unmapped);
 
@@ -157,7 +164,7 @@ void event_dispatch(XEvent *event)
             event_enter(&event->xcrossing);
             break;
             
-        case LeaveNotify:       /* frame LeaveWindowMask, see event_unmap() */
+        case LeaveNotify:       /* frame LeaveWindowMask, client.c */
             event_leave(&event->xcrossing);
             break;
             
@@ -185,10 +192,12 @@ void event_dispatch(XEvent *event)
             break;
             
         case UnmapNotify:       /* client StructureNotifyMask, client.c */
+            update_ignore_enternotify_hack(event);
             event_unmap(&event->xunmap);
             break;
             
         case MapNotify:         /* client StructureNotifyMask, client.c */
+            update_ignore_enternotify_hack(event);
             event_map(&event->xmap);
             break;
             
@@ -197,15 +206,24 @@ void event_dispatch(XEvent *event)
             break;
             
 /*        case ReparentNotify: */ /* TODO */
-/*        case ConfigureNotify: */ /* TODO */
+            
+        case ConfigureNotify:
+            update_ignore_enternotify_hack(event);
+            break;
             
         case ConfigureRequest:  /* root, frame SubstructureRedirectmask */
             event_configurerequest(&event->xconfigurerequest);
             break;
             
-/*        case GravityNotify: */ /* TOOD */
+        case GravityNotify:
+            update_ignore_enternotify_hack(event);
+            break;
+            
 /*        case ResizeRequest: */ /* TODO */
-/*        case CirculateNotify: */ /* TODO */
+            
+        case CirculateNotify:
+            update_ignore_enternotify_hack(event);
+            break;
             
         case CirculateRequest:  /* root, frame SubstructureRedirectMask */
             event_circulaterequest(&event->xcirculaterequest);
@@ -282,16 +300,19 @@ static void event_enter(XCrossingEvent *xevent)
 
     client = client_find(xevent->window);
     client_print("EnterNotify", client);
-    if (client != NULL && client->state == NormalState) {
-        if (client->flags.ignore_enternotify != 0) {
-            debug(("\tclient has ignore_enternotify\n"));
-            /* FIXME:  don't we need to deal with the LeaveNotify
-             * thing?  perhaps remove it altogether */
-            client->flags.ignore_enternotify = 0;
+    if (client != NULL && client->state == NormalState
+        && xevent->serial != ignore_enternotify_hack) {
+        debug(("\tSetting focus in response to EnterNotify\n"));
+        focus_set(client, CurrentTime);
+#if 0
+        if (client->ignore_enternotify != 0) {
+            debug(("\tDecrementing ignore_enternotify for 0x%08X\n", client));
+            client->ignore_enternotify--;
         } else if (client->workspace == workspace_current) {
             debug(("\tSetting focus in response to EnterNotify\n"));
             focus_set(client, CurrentTime);
         }
+#endif
     } else {
         debug(("\tNot setting focus\n"));
     }
@@ -314,10 +335,6 @@ static void event_enter(XCrossingEvent *xevent)
  * If we get a LeaveNotify, however, we know we won't be getting a
  * stray EnterNotify, so we reset the flag.  That's the only reason we
  * would even listen for LeaveNotify events.
- * 
- * FIXME:  don't we need to start listening for these whenever we set
- * ignore_enternotify?  Also, shouldn't the event mask be reset when
- * we get the EnterNotify?
  */
 
 static void event_leave(XCrossingEvent *xevent)
@@ -326,12 +343,10 @@ static void event_leave(XCrossingEvent *xevent)
     
     client = client_find(xevent->window);
     if (client == NULL) return;
-    if (client->flags.ignore_enternotify != 0) {
-        debug(("\tResetting client->ignore_enternotify\n"));
-        client->flags.ignore_enternotify = 0;
-    }
-    client->frame_event_mask &= ~LeaveWindowMask;
-    XSelectInput(dpy, client->frame, client->frame_event_mask);
+//    if (client->flags.ignore_enternotify != 0) {
+//        debug(("\tResetting ignore_enternotify for client 0x%08X\n", client));
+//        client->flags.ignore_enternotify = 0;
+//    }
 }
 
 /*
@@ -359,7 +374,7 @@ static void event_create(XCreateWindowEvent *xevent)
 
 static void event_destroy(XDestroyWindowEvent *xevent)
 {
-    client_t *client, *under_mouse;
+    client_t *client;
     
     client = client_find(xevent->window);
     client_print("Destroy:", client);
@@ -367,24 +382,11 @@ static void event_destroy(XDestroyWindowEvent *xevent)
         return;
     }
     if (client->window != xevent->window) return;
-    if (client->state == NormalState) {
-        /* received a DestroyNotify before or without an UnmapNotify
-         * 
-         * the Xlib docs don't say whether UnmapNotify will always
-         * be generated before DestroyNotify, but I've always seen
-         * it happen that way (so I haven't seen this code run)
-         */
-        focus_remove(client, event_timestamp);
-        ewmh_client_list_remove(client);
-        if (client->workspace == workspace_current) {
-            under_mouse = query_stacking_order(client->frame);
-            if (under_mouse != NULL) {
-                debug(("\tSetting ignore_enternotify for '%s' in event_destroy\n",
-                       under_mouse->name));
-                under_mouse->flags.ignore_enternotify = 1;
-            }
-        }
-    }
+
+    /* we will always receive an UnmapNotify before a DestroyNotify (X
+     * spec says that's how it has to be) and most of the work is done
+     * when the window is unmapped. */
+    
     client_destroy(client);
 }
 
@@ -411,26 +413,40 @@ static void event_destroy(XDestroyWindowEvent *xevent)
 
 static void event_unmap(XUnmapEvent *xevent)
 {
-    client_t *client, *under_mouse;
+    client_t *client;
+    XWindowAttributes xwa;
+    Window junk1, child;
+    int junk2, x, y;
+    unsigned int junk3;
     
     client = client_find(xevent->window);
 
     client_print("Unmap:", client);
     if (client == NULL) {
-        under_mouse = query_stacking_order(None);
-        if (under_mouse != NULL) {
-            debug(("\tSetting ignore_enternotify for '%s' in event_unmap\n",
-                   under_mouse->name));
-            under_mouse->flags.ignore_enternotify = 1;
-            under_mouse->frame_event_mask |= LeaveWindowMask;
-            XSelectInput(dpy, under_mouse->frame,
-                         under_mouse->frame_event_mask);
+        /* possibly an override_redirect window was unmapped, still may
+         * get stupid EnterNotify */
+        if (XGetWindowAttributes(dpy, xevent->window, &xwa) == 0) return;
+        if (XQueryPointer(dpy, root_window, &junk1, &child, &x, &y,
+                          &junk2, &junk2, &junk3) == 0) {
+            x = y = -1;
+            child = None;
+        }
+        client = client_find(child);
+        if (client != NULL
+            && xwa.x <= x
+            && xwa.y <= y
+            && xwa.x + xwa.width >= x
+            && xwa.y + xwa.height >= y) {
+            debug(("\tIncrementing ignore_enternotify for 0x%08X in event_unmap\n",
+                   client));
+            client->ignore_enternotify++;
         }
         return;
     }
 
     /* rarely may get a MapNotify from listening for
-     * SubstructureNotify on the root window, we ignore these */
+     * SubstructureNotify on the root window, we ignore these (will get another
+     * event shortly which we deal with) */
     if (xevent->event == root_window) {
         debug(("\tIgnoring event generated by root window\n"));
         return;
@@ -449,16 +465,18 @@ static void event_unmap(XUnmapEvent *xevent)
     }
     
     /* well, at this point, we need to do some things to the window
-     * (such as setting the WM_STATE property on the window to Withdrawn
-     * as per ICCCM), but the problem is that the client may have
-     * already destroyed the window, and the server may have already
-     * processed the destroy request, which makes the window invalid.
-     * I can't think of any way of figuring out if the window is still
-     * valid other than grabbing the server and seeing if some request
-     * on that window fails.  In any case, we have to catch some sort
-     * of error, and since we don't care if the requests we are about
-     * to make succeed or fail, we just ignore the errors they can
-     * cause. */
+     * (such as setting the WM_STATE property on the window to
+     * Withdrawn as per ICCCM), but the problem is that the client may
+     * have already destroyed the window, and the server may have
+     * already processed the destroy request, which makes the window
+     * invalid.  I can't think of any way of figuring out if the
+     * window is still valid other than grabbing the server and seeing
+     * if some request on that window fails.  In any case, we have to
+     * receive some sort of error, and since we don't care if the
+     * requests we are about to make succeed or fail, we just ignore
+     * the errors they can cause.  We get BadWindow errors everywhere
+     * throughout the window manager, but this particular area creates
+     * the majority of them. */
 
     focus_remove(client, event_timestamp);
     
@@ -467,15 +485,9 @@ static void event_unmap(XUnmapEvent *xevent)
         debug(("\tUnmapping frame in event_unmap\n"));
         XUnmapWindow(dpy, client->frame);
 
-        debug(("\tUnmapping window in event_unmap\n"));
-        XUnmapWindow(dpy, client->window); /* FIXME:  needed? */
         if (client->workspace == workspace_current) {
-            under_mouse = query_stacking_order(client->frame);
-            if (under_mouse != NULL) {
-                debug(("\tSetting ignore_enternotify for '%s' in event_unmap\n",
-                       under_mouse->name));
-                under_mouse->flags.ignore_enternotify = 1;
-            }
+            debug(("\tChecking ignore_enternotify for 0x%08X\n", client));
+            client_ignore_enternotify_del(client, NULL);
         }
     }
     client->state = WithdrawnState;
@@ -558,14 +570,15 @@ static void event_maprequest(XMapRequestEvent *xevent)
 /* FIXME:  should send a synthetic ConfigureNotify, ICCCM 4.1.5 */
 static void event_configurerequest(XConfigureRequestEvent *xevent)
 {
-    client_t       *client, *under_mouse;
-    XWindowChanges  xwc;
-    position_size   ps;
-    Window          junk1;
-    int             x, y, junk2;
-    unsigned int    junk3;
-    Bool            was_under_mouse;
-    unsigned long   new_mask;
+    client_t *client;
+    XWindowChanges xwc;
+    position_size ps;
+    Window junk1, tmp;
+    int junk2;
+    unsigned int junk3;
+    Bool was_under_mouse;
+    unsigned long new_mask;
+    ignore_enternotify_struct iens;
     
     client = client_find(xevent->window);
 
@@ -578,16 +591,14 @@ static void event_configurerequest(XConfigureRequestEvent *xevent)
 
     client_print("Configure Request:", client);
     
-    under_mouse = query_stacking_order(client->frame);
-    if (XQueryPointer(dpy, root_window, &junk1, &junk1, &x, &y,
+    if (XQueryPointer(dpy, root_window, &junk1, &iens.w, &iens.x, &iens.y,
                       &junk2, &junk2, &junk3) == False) {
-        x = -1;
-        y = -1;
+        iens.x = -1;
+        iens.y = -1;
+        iens.w = None;
     }
 
-    if (client->x <= x && client->x + client->width >= x
-        && client->y <= y && client->y + client->height >= y) {
-        /* FIXME:  also check stacking order, may be obscured */
+    if (iens.w == client->frame) {
         was_under_mouse = True;
     } else {
         was_under_mouse = False;
@@ -663,41 +674,71 @@ static void event_configurerequest(XConfigureRequestEvent *xevent)
     XConfigureWindow(xevent->display, client->window, new_mask, &xwc);
 
     /* if the client was under the pointer but is no longer under the
-     * pointer but some other client is, we will receive an
+     * pointer and some other client is, we will receive an
      * EnterNotify which we want to ignore
      * 
      * If the client was not under the pointer but now is, we will
      * receive an EnterNotify which we ignore
      */
     if (was_under_mouse
-        && (client->x > x || client->x + client->width < x
-            || client->y > y || client->y + client->height < y)
-        && under_mouse != NULL) {
-        debug(("\tClient 0x%08X (%s) resized itself and left "
-               "client 0x%08X (%s) under pointer\n",
-               (unsigned int)client, client->name,
-               (unsigned int)under_mouse, under_mouse->name));
-        debug(("\tSetting ignore_enternotify for '%s' in configurerequest\n",
-               under_mouse->name));
-        under_mouse->flags.ignore_enternotify = 1;
-    } else if (client->x <= x && client->x + client->width >= x
-               && client->y <= y && client->y + client->width >= y
-               && client->state == NormalState) {
-        debug(("\tClient 0x%08X (%s) resized itself to be under pointer\n",
+        && (client->x > iens.x || client->x + client->width < iens.x
+            || client->y > iens.y || client->y + client->height < iens.y)) {
+        debug(("\tClient 0x%08X (%s) resized itself from pointer\n",
                (unsigned int)client, client->name));
-        client->flags.ignore_enternotify = 1;
-        debug(("\tSetting ignore_enternotify for '%s' in configurerequest\n",
-               client->name));
+        debug(("Checking ignore_enternotify for 0x%08X\n", client));
+        iens.w = client_ignore_enternotify_del(client, &iens);
+    } else if (!was_under_mouse
+               && client->state == NormalState
+               && client->x <= iens.x && client->x + client->width >= iens.x
+               && client->y <= iens.y && client->y + client->width >= iens.y) {
+        debug(("\tClient 0x%08X (%s) resized itself to pointer\n",
+               (unsigned int)client, client->name));
+        debug(("\tChecking ignore_enternotify for 0x%08X\n", client));
+        /* Even with all those checks in this if statement, we still
+         * can't be sure that this window is now under the pointer.
+         * We call XSync to ensure the server has processed our
+         * request and then XQueryPointer to see if it is under
+         * the pointer. */
+        XSync(dpy, False);
+        if (XQueryPointer(dpy, root_window, &junk1,
+                          &tmp, &junk2, &junk2,
+                          &junk2, &junk2, &junk3) != False) {
+            if (tmp == client->frame) {
+                iens.w = client_ignore_enternotify_add(client, NULL);
+            }
+        }
     }
 
-    /* FIXME:  this could also cause an EnterNotify */
     if (xevent->value_mask & CWStackMode) {
         /* FIXME:  deal with the sibling, Opposite correctly */
-        if (xevent->detail == Above) {
+        /* we will completely ignore stacking requests for
+         * transient clients and clients which have transients -
+         * some applications try to ensure transients remain
+         * above the leader, but we'll do that ourselves */
+        if (xevent->detail == Above
+            && client->transients == NULL
+            && client->transient_for == None) {
             debug(("\tRaising window\n"));
+            if (!was_under_mouse
+                && client->state == NormalState
+                && client->x <= iens.x
+                && client->x + client->width >= iens.x
+                && client->y <= iens.y
+                && client->y + client->width >= iens.y) {
+                debug(("\tClient 0x%08X (%s) raised itself under pointer\n",
+                       client, client->name));
+                debug(("\tIncrementing ignore_enternotify for 0x%08X\n", client));
+                client->ignore_enternotify++;
+            }
             XRaiseWindow(dpy, client->frame);
-        } else if (xevent->detail == Below) {
+        } else if (xevent->detail == Below
+                   && client->transients == NULL
+                   && client->transient_for == None) {
             debug(("\tLowering window\n"));
+            if (was_under_mouse) {
+                debug(("\tChecking ignore_enternotify for 0x%08X\n", client));
+                client_ignore_enternotify_del(client, &iens);
+            }
             XLowerWindow(dpy, client->frame);
         } else {
             debug(("\tClient 0x%08X (%s) is requesting strange "
@@ -812,6 +853,7 @@ static void event_focusin(XFocusChangeEvent *xevent)
 {
     client_t *client;
 
+#if 0 /* FIXME */
     /* we could get a couple of these in a row and then
      * we start generating loads of these events - very
      * nasty bug, keeps bouncing the focus everywhere */
@@ -820,8 +862,7 @@ static void event_focusin(XFocusChangeEvent *xevent)
     if (xevent->type == FocusIn
         && xevent->mode == NotifyNormal
         && xevent->detail == NotifyNonlinearVirtual) {
-        /* someone stole our focus without asking for permission
-         * or is using funky input focus model (eg, Globally Active) */
+        /* someone stole our focus without asking for permission */
         client = client_find(xevent->window);
         client_print("FocusIn", client);
         if (client == NULL) {
@@ -833,6 +874,7 @@ static void event_focusin(XFocusChangeEvent *xevent)
     } else {
         debug(("\tNot setting focus\n"));
     }
+#endif
 }
 
 /*
@@ -862,6 +904,7 @@ static void event_map(XMapEvent *xevent)
     } else {
         debug(("\tNot calling XSetInputFocus\n"));
     }
+    ignore_enternotify_hack = xevent->serial;
 }
 
 /*
@@ -892,6 +935,11 @@ static void event_shape(XShapeEvent *xevent)
                        client->window, ShapeBounding, ShapeSet);
 }
 #endif /* SHAPE */
+
+static void update_ignore_enternotify_hack(XEvent *event)
+{
+    ignore_enternotify_hack = event->xany.serial;
+}
 
 /* 
  * all events defined by Xlib have common first few members, so just

@@ -50,6 +50,8 @@ static Window ewmh_window;
  * _NET_WM_WINDOW_TYPE,
  * _NET_WM_STATE,
  * _NET_WM_STRUT,
+ * 
+ * the "ping" protocol
  */
 
 void ewmh_init()
