@@ -73,6 +73,8 @@ void mark(XEvent *e, void *arg);
 
 static int already_running_windowmanager;
 static int (*default_error_handler)(Display *, XErrorEvent *);
+static int tmp_error_handler(Display *dpy, XErrorEvent *error);
+static int error_handler(Display *dpy, XErrorEvent *error);
 static void scan_windows();
 
 /*

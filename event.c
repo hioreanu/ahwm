@@ -100,14 +100,15 @@ void event_get(int xfd, XEvent *event)
     fd_set fds;
 
     for (;;) {
+        if (XPending(dpy) > 0) {
+            event_timestamp = figure_timestamp(event);
+            XNextEvent(dpy, event);
+            return;
+        }
         FD_ZERO(&fds);
         FD_SET(xfd, &fds);
-        if (select(xfd + 1, &fds, &fds, &fds, NULL) > 0) {
-            if (XPending(dpy) > 0) {
-                event_timestamp = figure_timestamp(event);
-                XNextEvent(dpy, event);
-                return;
-            }
+        if (select(xfd + 1, &fds, NULL, NULL, NULL) > 0) {
+            continue;
         } else if (errno != EINTR) {
             perror("XWM: select:");
         }

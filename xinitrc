@@ -20,7 +20,7 @@ xsetroot -cursor_name left_ptr
 #exec fvwm2
 #exec twm
 #exec ctwm
-export MALLOC_CHECK_=2
+#export MALLOC_CHECK_=2
 exec ./xwm
 
 exit 1
