@@ -43,6 +43,8 @@ void workspace_goto(XEvent *xevent, void *v)
 {
     int new_workspace = (int)v; /* this is always safe */
     client_t *client, *tmp;
+    Window cover_up;
+    XSetWindowAttributes xswa;
 
     if (new_workspace < 1 || new_workspace > NO_WORKSPACES) {
         fprintf(stderr, "XWM:  attempt to go to invalid workspace %d\n",
@@ -51,7 +53,23 @@ void workspace_goto(XEvent *xevent, void *v)
     }
 
     debug(("\tGoing to workspace %d\n", new_workspace));
-    
+
+    /* When we unmap the windows in order to change workspaces,
+     * sometimes it is possible to see the actual unmappings as
+     * they happen, especially when the server is stressed or
+     * the windows have contrasting colors; therefore we map a
+     * temporary window to cover up our actions.  We don't do the
+     * same when we remap the windows in the new workspace as that
+     * would require some nasty hackery. */
+    xswa.background_pixel = workspace_pixels[workspace_current - 1];
+    xswa.override_redirect = True;
+    cover_up = XCreateWindow(dpy, root_window, 0, 0, scr_width, scr_height,
+                             0, DefaultDepth(dpy, scr), InputOutput,
+                             DefaultVisual(dpy, scr),
+                             CWBackPixel | CWOverrideRedirect, &xswa);
+    XMapRaised(dpy, cover_up);
+    XClearWindow(dpy, cover_up);
+    /* unmap windows in current workspace */
     client = focus_stacks[workspace_current - 1];
     if (client != NULL) {
         debug(("\tUnmapping frame 0x%08X in workspace_goto\n", client->frame));
@@ -67,12 +85,15 @@ void workspace_goto(XEvent *xevent, void *v)
             ewmh_client_list_remove(client);
         }
     }
+    XUnmapWindow(dpy, cover_up);
+    XDestroyWindow(dpy, cover_up);
     workspace_current = new_workspace;
     workspace_update_color();
 
     /* FIXME:  getting multiple EnterNotify events per window when
      * we have transients here - must use 'mapped' flag, not raise
      * a window more than once */
+    /* map windows in new workspace */
     client = focus_stacks[workspace_current - 1];
     if (client != NULL) {
         tmp = client;

@@ -9,8 +9,8 @@ xrdb -merge < ./Xdefaults
 xset dpms 6000 6002 6004
 xsetroot -cursor_name left_ptr
 #exec xterm
-xterm &
-sleep 1
+#xterm &
+#sleep 1
 
 #exec wmaker
 #exec kwin
