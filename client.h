@@ -26,35 +26,42 @@ typedef enum _window_states_t { MAPPED, UNMAPPED } window_states_t;
  */
 
 typedef struct _client_t {
-    Window window;
-    Window parent;
-    Window transient_for;
-    XWMHints *xwmh;
-    char *name;
-    int x;
-    int y;
-    int width;
-    int height;
-    int workspace;
-    window_states_t state;
-    /* these are managed as doubly linked lists in focus.c: */
+    Window window;              /* the actual window */
+    Window parent;              /* FIXME */
+    Window transient_for;       /* FIXME */
+    XWMHints *xwmh;             /* Hints or NULL */
+    char *name;                 /* FIXME */
+    int x;                      /* position */
+    int y;                      /* position */
+    int width;                  /* size */
+    int height;                 /* size */
+    int workspace;              /* client's workspace  */
+    window_states_t state;      /* mapped or not */
+
+    /* clients are managed as doubly linked lists in focus.c: */
     struct _client_t *next;
     struct _client_t *prev;
 } client_t;
 
+/*
+ * Create and store a newly-allocated client_t structure for a given
+ * window.  Returns NULL on error or if we shouldn't be touching this
+ * window in any way.  This will also do a number of miscellaneous X
+ * input-related things with the window.
+ */
+
 client_t *client_create(Window);
+
+/*
+ * Find the client structure for a given window.
+ */
+
 client_t *client_find(Window);
+
+/*
+ * Deallocate and forget about a client structure.
+ */
+
 void client_delete(client_t *);
-
-void client_deactivate(client_t *);
-void client_activate(client_t *);
-void client_hide(client_t *);
-
-#if 0
-void client_move_to_workspace(client_t *, int);
-void client_move(client_t *, XButtonEvent *);
-void client_resize(client_t *, XButtonEvent *);
-void client_move_or_resize(client_t *, XButtonEvent *);
-#endif
 
 #endif /* CLIENT_H */
