@@ -1,0 +1,72 @@
+# $Id$
+SHELL=/bin/sh
+
+CC=@CC@
+LIBS=@XLIBS@
+CFLAGS=@CFLAGS@@X_CFLAGS@
+LDFLAGS=@LDFLAGS@@X_LIBS@
+
+#CFLAGS=-g -Wall -DSHAPE -DDEBUG=1 -I/usr/X11R6/include -L/usr/X11R6/lib
+
+OBJS=xwm.@OBJEXT@ client.@OBJEXT@ event.@OBJEXT@ focus.@OBJEXT@ workspace.@OBJEXT@ keyboard-mouse.@OBJEXT@ xev.@OBJEXT@ cursor.@OBJEXT@ move-resize.@OBJEXT@ kill.@OBJEXT@ malloc.@OBJEXT@ icccm.@OBJEXT@ colormap.@OBJEXT@ ewmh.@OBJEXT@ debug.@OBJEXT@ place.@OBJEXT@ stacking.@OBJEXT@
+
+all: xwm
+
+xwm: $(OBJS)
+	$(CC) $(CFLAGS) $(LDFLAGS) $(OBJS) -o $@@EXEEXT@ $(LIBS)
+
+install: xwm
+	@echo Still need to figure out this part
+.SUFFIXES:
+.SUFFIXES: .c .@OBJEXT@
+.c.@OBJEXT@:
+	$(CC) $(CFLAGS) -c $<
+
+dep:
+	@-makedepend -Y *.c *.h > /dev/null 2>&1
+	@-etags *.c *.h > /dev/null 2>&1
+depend: dep
+tags: dep
+
+wordcount:
+	@cat *.c *.h | fgrep -v '#include' | cpp -E - | egrep -v '^[ \t]*$$' | wc -l
+wc: wordcount
+
+clean:
+	@rm -f *.@OBJEXT@ *~ *core xwm # TAGS
+
+# DO NOT DELETE
+
+client.@OBJEXT@: client.h xwm.h workspace.h keyboard-mouse.h cursor.h focus.h
+client.@OBJEXT@: event.h malloc.h debug.h ewmh.h move-resize.h stacking.h
+colormap.@OBJEXT@: colormap.h client.h xwm.h
+cursor.@OBJEXT@: cursor.h xwm.h
+debug.@OBJEXT@: debug.h
+event.@OBJEXT@: xwm.h event.h client.h focus.h workspace.h keyboard-mouse.h xev.h
+event.@OBJEXT@: malloc.h move-resize.h debug.h ewmh.h place.h stacking.h
+ewmh.@OBJEXT@: xwm.h ewmh.h client.h malloc.h debug.h focus.h workspace.h kill.h
+focus.@OBJEXT@: focus.h client.h xwm.h workspace.h debug.h event.h ewmh.h
+focus.@OBJEXT@: keyboard-mouse.h stacking.h malloc.h
+icccm.@OBJEXT@: xwm.h icccm.h debug.h
+keyboard-mouse.@OBJEXT@: keyboard-mouse.h client.h xwm.h malloc.h workspace.h
+keyboard-mouse.@OBJEXT@: debug.h event.h focus.h cursor.h
+kill.@OBJEXT@: kill.h client.h xwm.h event.h debug.h
+malloc.@OBJEXT@: malloc.h
+move-resize.@OBJEXT@: move-resize.h client.h xwm.h cursor.h event.h malloc.h debug.h
+place.@OBJEXT@: place.h client.h xwm.h workspace.h debug.h focus.h stacking.h
+qux.@OBJEXT@: client.h xwm.h
+stacking.@OBJEXT@: client.h xwm.h stacking.h malloc.h workspace.h debug.h
+workspace.@OBJEXT@: workspace.h client.h xwm.h focus.h event.h debug.h ewmh.h
+workspace.@OBJEXT@: stacking.h
+xev.@OBJEXT@: malloc.h
+xwm.@OBJEXT@: xwm.h event.h client.h keyboard-mouse.h focus.h workspace.h cursor.h
+xwm.@OBJEXT@: move-resize.h kill.h icccm.h ewmh.h
+client.@OBJEXT@: xwm.h
+colormap.@OBJEXT@: client.h xwm.h
+ewmh.@OBJEXT@: client.h xwm.h
+focus.@OBJEXT@: client.h xwm.h workspace.h
+keyboard-mouse.@OBJEXT@: client.h xwm.h
+kill.@OBJEXT@: client.h xwm.h
+place.@OBJEXT@: client.h xwm.h
+stacking.@OBJEXT@: client.h xwm.h
+workspace.@OBJEXT@: client.h xwm.h
