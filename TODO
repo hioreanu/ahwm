@@ -1,4 +1,5 @@
 TODO before release:
+- timer_t declared in sys/types.h on FreeBSD
 - new section in manual about binding clicks, drags, double clicks
 - new section in manual about killing windows, document heuristics, etc.
 - make moving resistance threshhold user-definable, global option
