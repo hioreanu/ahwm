@@ -60,6 +60,9 @@ client_t *client_create(Window);
 
 /*
  * Find the client structure for a given window.
+ * The window is either the client window you passed to client_create
+ * or the frame which that function creates.
+ * Returns NULL on error.
  */
 
 client_t *client_find(Window);

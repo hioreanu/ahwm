@@ -57,7 +57,10 @@ int main(int argc, char **argv)
 {
     XEvent event;
     int    xfd;
-    
+
+    printf("--------------------------------");
+    printf(" Welcome to xwm ");
+    printf("--------------------------------\n");
     dpy = XOpenDisplay(NULL);
     if (dpy == NULL) {
         fprintf(stderr, "Could not open display '%s'\n", XDisplayName(NULL));
@@ -93,10 +96,11 @@ int main(int argc, char **argv)
     XDefineCursor(dpy, root_window, cursor_normal);
 
     window_context = XUniqueContext(); /* client.c */
+    frame_context = XUniqueContext();
     
     scan_windows();
 
-    printf("Setting root input focus...");
+    printf("\tSetting root input focus...");
     XSetInputFocus(dpy, root_window, RevertToPointerRoot, CurrentTime);
     printf("ok\n");
     focus_ensure();             /* focus.c */
@@ -105,8 +109,12 @@ int main(int argc, char **argv)
     fcntl(xfd, F_SETFD, FD_CLOEXEC);
 
     XSync(dpy, 0);
+    if (fork() == 0) {
+        sleep(1);
+        execlp("/usr/X11R6/bin/xterm", "xterm", NULL);
+    }
+    printf("\tInitialization complete\n");
     for (;;) {
-
         event_get(xfd, &event); /* event.c */
         event_dispatch(&event); /* event.c */
     }

@@ -55,7 +55,7 @@ void focus_next();
 void focus_prev();
 
 /*
- * Ensure some window in the current workspace is mapped if possible
+ * Ensure some window in the current workspace is focused if possible
  */
 void focus_ensure();
 

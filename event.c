@@ -66,6 +66,52 @@ void event_get(int xfd, XEvent *event)
 /* windowmaker: src/event.c:237 */
 void event_dispatch(XEvent *event)
 {
+    static char *xevent_names[] = {
+        "Zero",
+        "One",
+        "KeyPress",
+        "KeyRelease",
+        "ButtonPress",
+        "ButtonRelease",
+        "MotionNotify",
+        "EnterNotify",
+        "LeaveNotify",
+        "FocusIn",
+        "FocusOut",
+        "KeymapNotify",
+        "Expose",
+        "GraphicsExpose",
+        "NoExpose",
+        "VisibilityNotify",
+        "CreateNotify",
+        "DestroyNotify",
+        "UnmapNotify",
+        "MapNotify",
+        "MapRequest",
+        "ReparentNotify",
+        "ConfigureNotify",
+        "ConfigureRequest",
+        "GravityNotify",
+        "ResizeRequest",
+        "CirculateNotify",
+        "CirculateRequest",
+        "PropertyNotify",
+        "SelectionClear",
+        "SelectionRequest",
+        "SelectionNotify",
+        "ColormapNotify",
+        "ClientMessage",
+        "MappingNotify",
+    };
+
+    printf("----------------------------------------");
+    printf("----------------------------------------\n");
+    if (event->type > MappingNotify)
+        printf("%-19s unknown (%d)\n", "received event:", event->type);
+    else
+        printf("%-19s %s (%d)\n", "received event:",
+               xevent_names[event->type], event->type);
+
     /* check the event number, jump to appropriate function */
     switch(event->type) {
         case KeyPress:
@@ -113,28 +159,37 @@ void event_dispatch(XEvent *event)
             event_circulaterequest(&event->xcirculaterequest);
             break;
         /* MappingNotify */
+        default:
+            printf("\tIgnoring event\n");
+            break;
     }
 }
+/* FIXME:  must catch UnmapNotify, DestroyNotify */
+
+/*
+ * see the manual page for each individual event (for instance,
+ * XKeyEvent(3))
+ */
 
 static void event_key(XKeyEvent *xevent)
 {
-    printf("got a key event..\n");
+
 }
 
 static void event_button(XButtonEvent *xevent)
 {
-    printf("Got a button event...\n");
+
 }
 
 static void event_enter_leave(XCrossingEvent *xevent)
 {
     client_t *client;
     
-    printf("Got a crossing event....\n");
     /* stolen from 9wm: */
 //    if (xevent->mode != NotifyGrab || xevent->detail != NotifyNonlinearVirtual)
 //        return;
     client = client_find(xevent->window);
+    client_print("Enter/Leave:", client);
     if (client != NULL && focus_canfocus(client)) {
         focus_set(client);      /* focus.c */
         focus_ensure();
@@ -145,16 +200,19 @@ static void event_create(XCreateWindowEvent *xevent)
 {
     client_t *client;
 
-    printf("Got a create window event....\n");
-    if (xevent->override_redirect) return;
+    if (xevent->override_redirect) {
+        printf("\tWindow 0x%08X has override_redirect, ignoring\n",
+               xevent->window);
+        return;
+    }
 
     client = client_create(xevent->window);
+    client_print("Create:", client);
     if (client == NULL) return;
     client->x = xevent->x;
     client->y = xevent->y;
     client->width = xevent->width;
     client->height = xevent->height;
-    client->parent = root_window;
 }
 
 static void event_destroy(XDestroyWindowEvent *xevent)
@@ -162,9 +220,8 @@ static void event_destroy(XDestroyWindowEvent *xevent)
     client_t *client;
     
     client = client_find(xevent->window);
-    printf("Got a destroy event for client 0x%08X...\n", client);
+    client_print("Destroy:", client);
     if (client == NULL) {
-        printf("unable to find client, shouldn't happen\n");
         return;
     }
     focus_remove(client);
@@ -177,12 +234,11 @@ static void event_unmap(XUnmapEvent *xevent)
     client_t *client;
     
     client = client_find(xevent->window);
-    printf("Got an unmap event for client 0x%08X...\n", client);
-    if (client == NULL) {
-        printf("unable to find client, shouldn't happen\n");
-        return;
-    }
+    client_print("Unmap:", client);
+    if (client == NULL) return;
     client->state = UNMAPPED;
+    if (client->frame != None)
+        XUnmapWindow(dpy, client->frame);
     focus_remove(client);
     focus_ensure();
 }
@@ -192,18 +248,20 @@ static void event_maprequest(XMapRequestEvent *xevent)
     client_t *client;
     
     client = client_find(xevent->window);
-    printf("Got a map request for client 0x%08X...\n", client);
+    client_print("Map Request:", client);
     if (client == NULL) {
-        printf("unable to find client, shouldn't happen\n");
+        printf("\tunable to find client, shouldn't happen\n");
         return;
     }
     if (client->state == MAPPED) {
         focus_remove(client);
     }
-    client->state = MAPPED;
+    client->state     = MAPPED;
     client->workspace = workspace_current;
 
     XMapWindow(xevent->display, client->window);
+    if (client->frame != None)
+        XMapWindow(xevent->display, client->frame);
     keyboard_grab_keys(client->window);
     focus_set(client);
     focus_ensure();
@@ -211,32 +269,38 @@ static void event_maprequest(XMapRequestEvent *xevent)
 
 static void event_configurerequest(XConfigureRequestEvent *xevent)
 {
-    client_t *client;
-    XWindowChanges xwc;
+    client_t       *client;
+    XWindowChanges  xwc;
     
     client = client_find(xevent->window);
-    printf("Got a configure request for client 0x%08X....\n", client);
+    client_print("Configure Request:", client);
     if (xevent->value_mask & CWX)
-        client->x = xevent->x;
+        client->x      = xevent->x;
     if (xevent->value_mask & CWY)
-        client->y = xevent->y;
+        client->y      = xevent->y;
     if (xevent->value_mask & CWWidth)
-        client->width = xevent->width;
+        client->width  = xevent->width;
     if (xevent->value_mask & CWHeight)
         client->height = xevent->height;
 
-    xwc.x = xevent->x;
-    xwc.y = xevent->y;
-    xwc.height = xevent->height;
-    xwc.width = xevent->width;
-    xwc.x = xevent->x;
-    xwc.x = xevent->x;
+    xwc.x            = xevent->x + TITLE_HEIGHT;
+    xwc.y            = xevent->y;
+    xwc.height       = xevent->height + TITLE_HEIGHT;
+    xwc.width        = xevent->width;
+    xwc.x            = xevent->x;
+    xwc.x            = xevent->x;
     xwc.border_width = xevent->border_width;
-    xwc.sibling = xevent->above;
-    xwc.stack_mode = xevent->detail;
+    xwc.sibling      = xevent->above;
+    xwc.stack_mode   = xevent->detail;
 
     XConfigureWindow(xevent->display, xevent->window,
                      xevent->value_mask, &xwc);
+
+    xwc.x      -= TITLE_HEIGHT;
+    xwc.height -= TITLE_HEIGHT;
+    XConfigureWindow(xevent->display, client->frame,
+                     xevent->value_mask, &xwc);
+    
 
 /*
  * file:/home/ach/xlib/events/structure-control/configure.html
@@ -248,23 +312,19 @@ static void event_configurerequest(XConfigureRequestEvent *xevent)
 static void event_property(XPropertyEvent *xevent)
 {
     /* probably don't need to do anything here */
-    printf("Got a property event...\n");
 }
 
 static void event_colormap(XColormapEvent *xevent)
 {
     /* deal with this later */
-    printf("Got a colormap event..\n");
 }
 
 static void event_clientmessage(XClientMessageEvent *xevent)
 {
     /* used to iconify or hide windows in 9wm */
-    printf("Got a client message event...\n");
 }
 
 static void event_circulaterequest(XCirculateRequestEvent *xevent)
 {
-    printf("WTF?  Nobody uses this...\n");
+    /* nobody uses this */
 }
-

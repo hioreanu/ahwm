@@ -21,11 +21,17 @@ client_t *client_create(Window w)
     int mask;
 
     if (XGetWindowAttributes(dpy, w, &xwa) == 0) return NULL;
-    if (xwa.override_redirect) return NULL;
+    if (xwa.override_redirect) {
+        printf("\tWindow has override_redirect, not creating client\n");
+        return NULL;
+    }
     XSelectInput(dpy, w, EnterWindowMask | KeyPressMask);
 
     client = malloc(sizeof(client_t));
-    if (client == NULL) return NULL;
+    if (client == NULL) {
+        printf("\tMalloc failed\n");
+        return NULL;
+    }
     memset(client, 0, sizeof(client_t));
     
     client->window = w;
@@ -42,10 +48,11 @@ client_t *client_create(Window w)
     if (focus_canfocus(client)) focus_add(client);
 
     if (XSaveContext(dpy, w, window_context, (void *)client) != 0) {
+        printf("Could not save window context\n");
         free(client);
         return NULL;
     }
-    printf("Created an entry for window 0x%08X at 0x%08X\n", w, client);
+    printf("\tCreated an entry for window 0x%08X at 0x%08X\n", w, client);
 
     /* create frame and reparent */
     client->frame = None;
@@ -64,7 +71,7 @@ client_t *client_create(Window w)
                                       DefaultDepth(dpy, scr), CopyFromParent,
                                       DefaultVisual(dpy, scr),
                                       mask, &xswa);
-        printf("Reparenting client 0x%08X (window 0x%08X) to 0x%08X\n",
+        printf("\tReparenting client 0x%08X (window 0x%08X) to 0x%08X\n",
                client, w, client->frame);
         XClearWindow(dpy, client->frame);
         /* ignore the map and unmap events caused by the reparenting: */
@@ -79,6 +86,7 @@ client_t *client_create(Window w)
                          frame_context, (void *)client) != 0) {
             XDeleteContext(dpy, client->window, window_context);
             free(client);
+            printf("\tCould not save frame context\n");
             return NULL;
         }
     }
@@ -92,7 +100,13 @@ client_t *client_find(Window w)
 
     if (XFindContext(dpy, w, window_context, (void *)&client) != 0)
         if (XFindContext(dpy, w, frame_context, (void *)&client) != 0)
-            return NULL;
+            client = NULL;
+    if (client == NULL)
+        printf("\tCould not find client\n");
+    else if (client->window == w)
+        printf("\tFound client from window\n");
+    else
+        printf("\tFound client from frame\n");
     return client;
 }
 

@@ -19,8 +19,8 @@ static client_t *focus_stacks[NO_WORKSPACES] = { NULL };
  * focus_current == focus_stacks[workspace_current - 1]
  * 
  * This should hold whenever we enter or leave the window manager.
- * Call focus_ensure() whenever leaving the window manager and the
- * invariant may not hold to update 'focus_current'.
+ * Call focus_ensure() whenever leaving the window manager (and the
+ * invariant may not hold) to update 'focus_current'.
  */
 
 void focus_add(client_t *client)
@@ -91,7 +91,7 @@ void focus_ensure()
         XSetInputFocus(dpy, root_window, RevertToPointerRoot, CurrentTime);
         return;
     }
-    printf("Setting focus to 0x%08X...", focus_current->window);
+    printf("\tSetting focus to 0x%08X...", focus_current->window);
     fflush(stdout);
     XSetInputFocus(dpy, focus_current->window,
                    RevertToPointerRoot, CurrentTime);
