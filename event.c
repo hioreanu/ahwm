@@ -41,8 +41,14 @@ static void event_clientmessage(XClientMessageEvent *);
 static void event_circulaterequest(XCirculateRequestEvent *);
 static void event_expose(XExposeEvent *);
 static void event_focus(XFocusChangeEvent *);
+static void event_map(XMapEvent *);
 
 static Time figure_timestamp(XEvent *event);
+static client_t *query_stacking_order(Window unmapped);
+
+#if 0
+static Bool under_mouse(client_t *client);
+#endif
 
 #ifdef SHAPE
 static void event_shape(XShapeEvent *);
@@ -108,7 +114,7 @@ void event_dispatch(XEvent *event)
         "CreateNotify",         /* YES */
         "DestroyNotify",        /* YES */
         "UnmapNotify",          /* YES */
-        "MapNotify",            /* TODO */
+        "MapNotify",            /* YES */
         "MapRequest",           /* YES */
         "ReparentNotify",       /* TODO */
         "ConfigureNotify",      /* TODO */
@@ -193,7 +199,9 @@ void event_dispatch(XEvent *event)
             event_unmap(&event->xunmap);
             break;
             
-/*        case MapNotify: */    /* TODO */
+        case MapNotify:         /* client StructureNotifyMask, client.c */
+            event_map(&event->xmap);
+            break;
             
         case MapRequest:        /* frame SubstructureRedirectMask, client.c */
             event_maprequest(&event->xmaprequest);
@@ -264,7 +272,7 @@ static void event_enter_leave(XCrossingEvent *xevent)
     
     if (xevent->mode != NotifyNormal)
         return;
-
+    
     /* If the mouse is NOT in the focus window but in some other
      * window and it moves to the frame of the window, it will
      * generate this event, and I don't want this to do anything
@@ -272,8 +280,13 @@ static void event_enter_leave(XCrossingEvent *xevent)
     if (xevent->detail == NotifyInferior) return;
 
     client = client_find(xevent->window);
-    if (client != NULL) {
-        focus_set(client, event_timestamp);
+    if (client != NULL && client->state == NormalState) {
+        if (client->ignore_enternotify == 1) {
+            printf("CLIENT HAS IGNORE_ENTERNOTIFY\n");
+            client->ignore_enternotify = 0;
+        } else {
+            focus_set(client, event_timestamp);
+        }
     }
 }
 
@@ -306,7 +319,7 @@ static void event_create(XCreateWindowEvent *xevent)
 
 static void event_destroy(XDestroyWindowEvent *xevent)
 {
-    client_t *client;
+    client_t *client, *under_mouse;
     
     client = client_find(xevent->window);
 #ifdef DEBUG
@@ -316,7 +329,13 @@ static void event_destroy(XDestroyWindowEvent *xevent)
         return;
     }
     if (client->titlebar == xevent->window) return;
-    focus_remove(client, event_timestamp);
+    if (client->state == NormalState) {
+        focus_remove(client, event_timestamp);
+        if (client->workspace == workspace_current) {
+            under_mouse = query_stacking_order(client->frame);
+            if (under_mouse != NULL) under_mouse->ignore_enternotify = 1;
+        }
+    }
     client_destroy(client);
 }
 
@@ -338,7 +357,7 @@ static void event_destroy(XDestroyWindowEvent *xevent)
 
 static void event_unmap(XUnmapEvent *xevent)
 {
-    client_t *client;
+    client_t *client, *under_mouse;
     
     client = client_find(xevent->window);
 
@@ -370,10 +389,14 @@ static void event_unmap(XUnmapEvent *xevent)
 
         error_ignore(BadWindow, X_UnmapWindow);
         XUnmapWindow(dpy, client->window);
-        error_ignore(BadWindow, X_UnmapWindow);
+        error_ignore(BadWindow, X_UnmapWindow); /* FIXME */
+        if (client->workspace == workspace_current) {
+            under_mouse = query_stacking_order(client->frame);
+            if (under_mouse != NULL) under_mouse->ignore_enternotify = 1;
+        }
     }
     client->state = WithdrawnState;
-
+    
     error_ignore(BadWindow, X_ChangeProperty);
     client_inform_state(client);
     error_unignore(BadWindow, X_ChangeProperty);
@@ -387,7 +410,7 @@ static void event_maprequest(XMapRequestEvent *xevent)
 {
     client_t *client;
     Bool addfocus;
-    
+
     client = client_find(xevent->window);
 #ifdef DEBUG
     client_print("Map Request:", client);
@@ -442,10 +465,17 @@ static void event_configurerequest(XConfigureRequestEvent *xevent)
     
     client = client_find(xevent->window);
 
+    if (client == NULL) {
+        fprintf(stderr,
+                "XWM: Got ConfigureRequest from unknown client, "
+                "shouldn't happen\n");
+        return;
+    }
+
 #ifdef DEBUG
     client_print("Configure Request:", client);
-    printf("\tBefore: %dx%d+%d+%d\n", client->x, client->y,
-           client->width, client->height);
+    printf("\tBefore: %dx%d+%d+%d\n", client->width, client->height,
+           client->x, client->y);
 #endif /* DEBUG */
 
     if (xevent->value_mask & CWBorderWidth) {
@@ -456,23 +486,53 @@ static void event_configurerequest(XConfigureRequestEvent *xevent)
     ps.y = client->y;
     ps.width = client->width;
     ps.height = client->height;
-    
+
+    printf("\tClient is changing: ");
     if (xevent->value_mask & CWX) {
         client->prev_x = client->prev_width = -1;
         ps.x = xevent->x;
+#ifdef DEBUG
+        printf("x ");
+#endif /* DEBUG */
     }
     if (xevent->value_mask & CWY) {
         client->prev_y = client->prev_height = -1;
         ps.y = xevent->y;
+#ifdef DEBUG
+        printf("y ");
+#endif /* DEBUG */
     }
     if (xevent->value_mask & CWWidth) {
         client->prev_x = client->prev_width = -1;
         ps.width = xevent->width;
+#ifdef DEBUG
+        printf("width ");
+#endif /* DEBUG */
     }
     if (xevent->value_mask & CWHeight) {
         client->prev_y = client->prev_height = -1;
         ps.height = xevent->height;
+#ifdef DEBUG
+        printf("height ");
+#endif /* DEBUG */
     }
+    if (xevent->value_mask & CWBorderWidth) {
+        client->orig_border_width = xevent->border_width;
+#ifdef DEBUG
+        printf("border_width ");
+#endif /* DEBUG */
+    }
+    if (xevent->value_mask & CWSibling) {
+#ifdef DEBUG
+        printf("sibling ");
+#endif /* DEBUG */
+    }
+    if (xevent->value_mask & CWStackMode) {
+#ifdef DEBUG
+        printf("stack_mode ");
+#endif /* DEBUG */
+    }
+    printf("\n");
 
     client_frame_position(client, &ps);
     client->x = ps.x;
@@ -484,7 +544,7 @@ static void event_configurerequest(XConfigureRequestEvent *xevent)
     xwc.y            = client->y;
     xwc.width        = client->width;
     xwc.height       = client->height;
-    xwc.border_width = xevent->border_width;
+    xwc.border_width = 0;
     xwc.sibling      = xevent->above;
     xwc.stack_mode   = xevent->detail;
 
@@ -506,8 +566,8 @@ static void event_configurerequest(XConfigureRequestEvent *xevent)
                      &xwc);
 
 #ifdef DEBUG
-    printf("\tAfter: %dx%d+%d+%d\n", client->x, client->y,
-           client->width, client->height);
+    printf("\tAfter: %dx%d+%d+%d\n", client->width, client->height,
+           client->x, client->y);
 #endif /* DEBUG */
 }
 
@@ -616,6 +676,22 @@ static void event_focus(XFocusChangeEvent *xevent)
     }
 }
 
+/*
+ * Occasionally we map a window and then immediately give it the focus
+ * - however, we get a BadMatch error if the window hasn't yet been
+ * made visible by the server.  This function ensures we always map
+ * what we want to map.
+ */
+
+static void event_map(XMapEvent *xevent)
+{
+    client_t *client;
+
+    client = client_find(xevent->window);
+    if (client != NULL && client == focus_current)
+        XSetInputFocus(dpy, client->window, RevertToPointerRoot, CurrentTime);
+}
+
 #ifdef SHAPE
 static void event_shape(XShapeEvent *xevent)
 {
@@ -680,4 +756,76 @@ static Time figure_timestamp(XEvent *event)
 #endif /* SHAPE */
             return CurrentTime;
     }
+}
+
+#if 0
+static Bool under_mouse(client_t *client) /* FIXME */
+{
+    Window junk1;
+    int junk2, x, y;
+    unsigned int junk3;
+    
+    if (XQueryPointer(dpy, root_window, &junk1, &junk1, &x, &y,
+                      &junk2, &junk2, &junk3) == 0) {
+        printf("under_mouse: XQueryPointer failed!\n");
+        return False;
+    }
+    if (x >= client->x
+        && y >= client->y
+        && x <= client->x + client->width
+        && y <= client->y + client->height) {
+        return True;
+    } else {
+        return False;
+    }
+}
+#endif
+
+static client_t *query_stacking_order(Window unmapped)
+{
+    Window junk1, *children;
+    int i, nchildren, x, y, junk2;
+    unsigned int junk3;
+    client_t *client;
+
+    if (XQueryTree(dpy, root_window, &junk1, &junk1,
+                   &children, &nchildren) == 0) {
+        printf("STACKING: XQUERYTREE FAILED\n");
+        return NULL;
+    }
+    if (XQueryPointer(dpy, root_window, &junk1, &junk1, &x, &y,
+                      &junk2, &junk2, &junk3) == 0) {
+        printf("STACKING: XQUERYPOINTER FAILED\n");
+        return NULL;
+    }
+
+    if (children == NULL) {
+        printf("STACKING: NO CHILDREN\n");
+        return NULL;
+    }
+
+    for (i = nchildren - 1; i >= 0; i--) {
+        printf("STACKING: --\n");
+        if (children[i] == unmapped) {
+            printf("STACKING: UNMAPPED WINDOW\n");
+            continue;
+        }
+        client = client_find(children[i]);
+        if (client == NULL) {
+            printf("STACKING: WINDOW 0x%08X IS NOT CLIENT\n",
+                   (unsigned int)children[i]);
+            continue;
+        }
+        printf("STACKING: CLIENT IS %s\n", client->name);
+        if (x >= client->x
+            && y >= client->y
+            && x <= client->x + client->width
+            && y <= client->y + client->height) {
+            printf("STACKING: CLIENT IS BELOW POINTER\n");
+            XFree(children);
+            return client;
+        }
+    }
+    XFree(children);
+    return NULL;
 }

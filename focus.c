@@ -30,7 +30,8 @@ void focus_add(client_t *client, Time timestamp)
     focus_remove(client, timestamp);
     old = focus_stacks[client->workspace - 1];
     if (old == NULL) {
-        printf("SETTING FOCUS STACK OF WORKSPACE %d\n", client->workspace);
+        printf("SETTING FOCUS STACK OF WORKSPACE %d TO %s\n",
+               client->workspace, client->name);
         client->next_focus = client;
         client->prev_focus = client;
         focus_stacks[client->workspace - 1] = client;
@@ -59,21 +60,21 @@ void focus_remove(client_t *client, Time timestamp)
             client->next_focus->prev_focus = client->prev_focus;
             /* if was focused for workspace, update workspace pointer */
             if (focus_stacks[client->workspace - 1] == client) {
-                printf("SETTING FOCUS STACK OF WORKSPACE %d\n",
-                       client->workspace);
-                focus_stacks[client->workspace - 1] = client->next_focus;
+                printf("SETTING FOCUS STACK OF WORKSPACE %d TO %s\n",
+                       client->workspace, client->prev_focus->name);
+                focus_stacks[client->workspace - 1] = client->prev_focus;
             }
             /* if only client left on workspace, set to NULL */
             if (client->next_focus == client) {
-                printf("SETTING FOCUS STACK OF WORKSPACE %d\n",
+                printf("SETTING FOCUS STACK OF WORKSPACE %d TO NULL\n",
                        client->workspace);
                 focus_stacks[client->workspace - 1] = NULL;
                 client->next_focus = NULL;
                 client->prev_focus = NULL;
             }
-            /* if removed from current workspace, refocus now */
-            if (client->workspace == workspace_current) {
-                focus_current = client->next_focus;
+            /* if removed was focused window, refocus now */
+            if (client == focus_current) {
+                focus_current = client->prev_focus;
                 focus_ensure(timestamp);
             }
             return;
@@ -100,8 +101,8 @@ void focus_set(client_t *client, Time timestamp)
     }
     do {
         if (p == client) {
-            printf("SETTING FOCUS STACK OF WORKSPACE %d\n",
-                   client->workspace);
+            printf("SETTING FOCUS STACK OF WORKSPACE %d TO %s\n",
+                   client->workspace, client->name);
             focus_stacks[client->workspace - 1] = client;
             if (client->workspace == workspace_current) {
                 focus_current = client;

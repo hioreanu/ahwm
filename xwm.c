@@ -126,7 +126,7 @@ int main(int argc, char **argv)
     XDefineCursor(dpy, root_window, cursor_normal);
 
     fontstruct = XLoadQueryFont(dpy,
-                 "-*-helvetica-bold-r-normal-*-12-*-*-*-*-*-*-*");
+                                "-*-helvetica-bold-r-*-*-12-*-*-*-*-*-*-*");
 
     xgcv.function = GXcopy;
     xgcv.plane_mask = AllPlanes;

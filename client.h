@@ -54,6 +54,7 @@ typedef struct _client_t {
     int workspace;              /* client's workspace  */
     int window_event_mask;      /* event mask of client->window */
     int frame_event_mask;       /* event mask of client->frame */
+    int ignore_enternotify;     /* see event.c */
     unsigned int protocols;     /* WM_PROTOCOLS, see below (ICCCM, 4.1.2.7) */
     char *name;                 /* window's name (ICCCM, 4.1.2.1) */
     /* will not be NULL; use free() */

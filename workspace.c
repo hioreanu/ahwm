@@ -25,6 +25,8 @@ void workspace_goto(XEvent *xevent, void *v)
                 new_workspace);
         return;
     }
+
+    printf("GOING TO WORKSPACE %d\n", new_workspace);
     
     client = focus_stacks[workspace_current - 1];
     if (client != NULL) {
@@ -43,7 +45,7 @@ void workspace_goto(XEvent *xevent, void *v)
         for (client = tmp->prev_focus;
              client != tmp;
              client = client->prev_focus) {
-            client_raise(client);
+            client_raise(client); /* FIXME:  optimize */
         }
         client_raise(client);
     }
@@ -109,8 +111,14 @@ static void must_focus_this_client(client_t *client)
 
     for (;;) {
         XNextEvent(dpy, &event);
+        if (event.type == EnterNotify
+            || event.type == FocusIn
+            || event.type == FocusOut)
+            continue;
         if (event.type == MapNotify && event.xmap.window == client->frame) {
+            printf("ATTEMPTING TO FOCUS %s\n", client->name);
             focus_set(client, CurrentTime); /* XMapEvent has no time stamp */
+            focus_ensure(CurrentTime);
             break;
         } else {
             event_dispatch(&event);

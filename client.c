@@ -51,6 +51,9 @@ client_t *client_create(Window w)
         fprintf(stderr, "XWM: Malloc failed, unable to allocate client\n");
         return NULL;
     }
+    if (xwa.map_state != IsUnmapped) {
+        printf("CLIENT_CREATE:  CLIENT IS ALREADY MAPPED\n");
+    }
     memset(client, 0, sizeof(client_t));
     
     client->window = w;
@@ -62,6 +65,7 @@ client_t *client_create(Window w)
     client->titlebar = None;
     client->prev_x = client->prev_y = -1;
     client->prev_height = client->prev_width = -1;
+    client->ignore_enternotify = 0;
     client->orig_border_width = xwa.border_width;
     XSetWindowBorderWidth(dpy, w, 0);
 
@@ -432,7 +436,7 @@ void client_frame_position(client_t *client, position_size *ps)
 
 #ifdef DEBUG
     printf("\twindow wants to be positioned at %dx%d+%d+%d\n",
-           ps->x, ps->y, ps->height, ps->width);
+           ps->width, ps->height, ps->x, ps->y);
 #endif /* DEBUG */
 
     if (client->titlebar == None) return;
@@ -476,7 +480,7 @@ void client_frame_position(client_t *client, position_size *ps)
     }
 #ifdef DEBUG
     printf("\tframe positioned at %dx%d+%d+%d\n",
-           ps->x, ps->y, ps->height, ps->width);
+           ps->width, ps->height, ps->x, ps->y);
 #endif /* DEBUG */
 }
 
