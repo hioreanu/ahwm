@@ -621,7 +621,7 @@ static void remove_transient_from_leader(client_t *client)
         while (c != NULL) {
             if (c == client) {
                 if (tmp == NULL) {
-                    leader->transients = NULL;
+                    leader->transients = client->next_transient;
                 } else {
                     tmp->next_transient = c->next_transient;
                 }
