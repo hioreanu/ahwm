@@ -73,12 +73,6 @@ typedef struct _client_t {
      * The state is 'NormalState' whenever the window is mapped.
      */
 
-    struct _flags {
-        unsigned int reparented:1;         /* is window reparented to frame */
-        unsigned int ignore_enternotify:1; /* see event.c */
-        unsigned int ignore_unmapnotify:1; /* hack, see client_create */
-    } flags;
-    
     /* clients are also managed as doubly linked lists */
     struct _client_t *next;
     struct _client_t *prev;
@@ -97,6 +91,22 @@ typedef struct _client_t {
     /* mapped clients are managed as doubly linked lists in focus.c: */
     struct _client_t *next_focus;
     struct _client_t *prev_focus;
+
+    /* flags for internal use */
+    struct _flags {
+        unsigned int reparented:1;         /* is window reparented to frame */
+        unsigned int ignore_enternotify:1; /* hack, see event.c */
+        unsigned int ignore_unmapnotify:1; /* hack, see client_create */
+    } flags;
+
+    /* flags set by user */
+    struct _prefs {
+        unsigned int titlebar:1;
+        unsigned int skip_alt_tab:1;
+        unsigned int omnipresent:1;
+        unsigned int always_on_top:1;
+        unsigned int always_on_bottom:1;
+    } prefs;
 } client_t;                     /* 124 bytes on ILP-32 machines */
 
 /* the values for client->protocols, can be ORed together */
@@ -239,7 +249,6 @@ void client_inform_state(client_t *);
  * is going to have a titlebar, else False.
  */
 
-//void client_reparent(client_t *, Bool, position_size *);
 void client_reparent(client_t *client);
 void client_unreparent(client_t *client);
 

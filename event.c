@@ -139,7 +139,7 @@ void event_dispatch(XEvent *event)
             
         case KeyPress:          /* XGrabKeys in keyboard.c */
         case KeyRelease:        /* XGrabKeys in keyboard.c */
-            keyboard_process(&event->xkey);
+            keyboard_handle_event(&event->xkey);
             break;
             
         case ButtonPress:       /* XGrabButton in mouse.c */
@@ -220,11 +220,9 @@ void event_dispatch(XEvent *event)
 /*        case SelectionRequest: */ /* ignored */
 /*        case SelectionNotify: */ /* ignored */
 
-#if 0
-        case ColormapNotify:    /* TODO */
+        case ColormapNotify:
             event_colormap(&event->xcolormap);
             break;
-#endif
             
         case ClientMessage:     /* client's in charge of this */
             event_clientmessage(&event->xclient);

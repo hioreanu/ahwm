@@ -70,6 +70,7 @@ static Time last_quote_time;
 
 static void modifier_combinations_helper(unsigned int state, int *n, int bit);
 static int figure_button(char *, unsigned int *);
+static int figure_keycode(char *, unsigned int *);
 static int get_location(Window w);
 static void warn(KeySym new, char *old, char *mod);
 static void figure_lock(KeySym keysym, int bit);
@@ -79,6 +80,10 @@ static void get_event_child_windows_mouse(Window *event, Window *child,
 static void get_event_child_windows_keyboard(Window *event, Window *child,
                                              unsigned int mask);
 static Bool in_window(XEvent *xevent, Window w);
+
+static int parse_string(char *keystring, unsigned int *button_ret,
+                        unsigned int *modifiers_ret,
+                        int (*fn)(char *, unsigned int *));
 
 void keyboard_init()
 {
@@ -234,7 +239,7 @@ void keyboard_set_function(char *keystring, int depress,
     unsigned int keycode;
     unsigned int modifiers;
 
-    if (keyboard_parse_string(keystring, &keycode, &modifiers) != 1) {
+    if (parse_string(keystring, &keycode, &modifiers, figure_keycode) != 1) {
         fprintf(stderr, "XWM: Cannot bind key, bad keystring '%s'\n", keystring);
         return;
     }
@@ -248,7 +253,7 @@ void mouse_set_function(char *mousestring, int depress,
     unsigned int button;
     unsigned int modifiers;
 
-    if (mouse_parse_string(mousestring, &button, &modifiers) != 1) {
+    if (parse_string(mousestring, &button, &modifiers, figure_button) != 1) {
         fprintf(stderr, "XWM: Cannot bind mouse button, bad string '%s'\n",
                 mousestring);
         return;
@@ -403,7 +408,7 @@ static void unquote(XEvent *e)
         keyboard_replay(&e->xkey);
 }
 
-void keyboard_process(XKeyEvent *xevent)
+void keyboard_handle_event(XKeyEvent *xevent)
 {
     keybinding *kb;
     int code;
@@ -495,106 +500,10 @@ void mouse_handle_event(XEvent *xevent)
  * This is simple enough that we don't need to bring in lex (or, God
  * forbid, yacc).  Looks ugly, mostly just string manipulation.
  */
-int keyboard_parse_string(char *keystring, unsigned int *keycode_ret,
-                          unsigned int *modifiers_ret)
-{
-    char buf[512];
-    char *cp1, *cp2;
-    unsigned int keycode;
-    unsigned int modifiers, tmp_modifier;
-    KeySym ks;
 
-    if (keystring == NULL) return 0;
-    memset(buf, 0, 512);
-    modifiers = 0;
-
-    while (*keystring != '\0') {
-        while (isspace(*keystring)) keystring++;
-        cp1 = strchr(keystring, '|');
-        if (cp1 == NULL) {
-            strncpy(buf, keystring, 512);
-            buf[511] = '\0';
-            while (isspace(*(buf + strlen(buf) - 1)))
-                *(buf + strlen(buf) - 1) = '\0';
-            ks = XStringToKeysym(buf);
-            if (ks == NoSymbol) {
-                fprintf(stderr, "XWM: Couldn't figure out '%s'\n", buf);
-                return 0;
-            }
-            keycode = XKeysymToKeycode(dpy, ks);
-            if (keycode == 0) {
-                fprintf(stderr,
-                        "XWM: XKeysymToKeycode failed somehow "
-                        "(perhaps unmapped?)");
-                return 0;
-            }
-            *modifiers_ret = modifiers;
-            *keycode_ret = keycode;
-            return 1;
-        }
-        /* found a modifier key */
-        cp2 = cp1 - 1;
-        while (isspace(*cp2)) cp2--;
-        memcpy(buf, keystring, MIN(511, cp2 - keystring + 1));
-        buf[MIN(511, cp2 - keystring + 1)] = '\0';
-
-        if (strcasecmp(buf, "Mod1") == 0) {
-            tmp_modifier = Mod1Mask;
-        } else if (strcasecmp(buf, "Mod1Mask") == 0) {
-            tmp_modifier = Mod1Mask;
-        } else if (strcasecmp(buf, "Mod2") == 0) {
-            tmp_modifier = Mod2Mask;
-        } else if (strcasecmp(buf, "Mod2Mask") == 0) {
-            tmp_modifier = Mod2Mask;
-        } else if (strcasecmp(buf, "Mod3") == 0) {
-            tmp_modifier = Mod3Mask;
-        } else if (strcasecmp(buf, "Mod3Mask") == 0) {
-            tmp_modifier = Mod3Mask;
-        } else if (strcasecmp(buf, "Mod4") == 0) {
-            tmp_modifier = Mod4Mask;
-        } else if (strcasecmp(buf, "Mod4Mask") == 0) {
-            tmp_modifier = Mod4Mask;
-        } else if (strcasecmp(buf, "Mod5") == 0) {
-            tmp_modifier = Mod5Mask;
-        } else if (strcasecmp(buf, "Mod5Mask") == 0) {
-            tmp_modifier = Mod5Mask;
-        } else if (strcasecmp(buf, "Shift") == 0) {
-            tmp_modifier = ShiftMask;
-        } else if (strcasecmp(buf, "ShiftMask") == 0) {
-            tmp_modifier = ShiftMask;
-        } else if (strcasecmp(buf, "Control") == 0) {
-            tmp_modifier = ControlMask;
-        } else if (strcasecmp(buf, "ControlMask") == 0) {
-            tmp_modifier = ControlMask;
-        } else if (strcasecmp(buf, "Meta") == 0) {
-            tmp_modifier = MetaMask;
-        } else if (strcasecmp(buf, "MetaMask") == 0) {
-            tmp_modifier = MetaMask;
-        } else if (strcasecmp(buf, "Super") == 0) {
-            tmp_modifier = SuperMask;
-        } else if (strcasecmp(buf, "SuperMask") == 0) {
-            tmp_modifier = SuperMask;
-        } else if (strcasecmp(buf, "Hyper") == 0) {
-            tmp_modifier = HyperMask;
-        } else if (strcasecmp(buf, "HyperMask") == 0) {
-            tmp_modifier = HyperMask;
-        } else if (strcasecmp(buf, "Alt") == 0) {
-            tmp_modifier = AltMask;
-        } else if (strcasecmp(buf, "AltMask") == 0) {
-            tmp_modifier = AltMask;
-        } else {
-            fprintf(stderr, "XWM: Could not figure out modifier '%s'\n", buf);
-            return 0;
-        }
-        modifiers |= tmp_modifier;
-
-        keystring = cp1 + 1;
-    }
-    return 0;
-}
-
-int mouse_parse_string(char *keystring, unsigned int *button_ret,
-                       unsigned int *modifiers_ret)
+int parse_string(char *keystring, unsigned int *button_ret,
+                 unsigned int *modifiers_ret,
+                 int (*fn)(char *, unsigned int *))
 {
     char buf[512];
     char *cp1, *cp2;
@@ -613,9 +522,7 @@ int mouse_parse_string(char *keystring, unsigned int *button_ret,
             buf[511] = '\0';
             while (isspace(*(buf + strlen(buf) - 1)))
                 *(buf + strlen(buf) - 1) = '\0';
-            if (figure_button(buf, &keycode) == -1) {
-                fprintf(stderr,
-                        "XWM: Couldn't figure out mouse button '%s'\n", buf);
+            if (fn(buf, &keycode) == -1) {
                 return 0;
             }
             *modifiers_ret = modifiers;
@@ -679,6 +586,47 @@ int mouse_parse_string(char *keystring, unsigned int *button_ret,
         modifiers |= tmp_modifier;
 
         keystring = cp1 + 1;
+    }
+    return 0;
+}
+
+static int figure_button(char *s, unsigned int *b)
+{
+    if (strcasecmp(s, "Button1") == 0) {
+        *b = Button1;
+        return 0;
+    } else if (strcasecmp(s, "Button2") == 0) {
+        *b = Button2;
+        return 0;
+    } else if (strcasecmp(s, "Button3") == 0) {
+        *b = Button3;
+        return 0;
+    } else if (strcasecmp(s, "Button4") == 0) {
+        *b = Button4;
+        return 0;
+    } else if (strcasecmp(s, "Button5") == 0) {
+        *b = Button5;
+        return 0;
+    } else {
+        fprintf(stderr, "XWM: Couldn't parse button '%s'\n", s);
+        return -1;
+    }
+}
+
+static int figure_keycode(char *s, unsigned int *k) 
+{
+    KeySym ks;
+
+    ks = XStringToKeysym(s);
+    if (ks == NoSymbol) {
+        fprintf(stderr, "XWM: Couldn't figure out '%s'\n", s);
+        return -1;
+    }
+    *k = XKeysymToKeycode(dpy, ks);
+    if (*k == 0) {
+        fprintf(stderr,
+                "XWM: XKeysymToKeycode(%s) failed (perhaps unmapped?)", s);
+        return -1;
     }
     return 0;
 }
@@ -792,28 +740,6 @@ static int get_location(Window w)
     if (w == client->frame) return MOUSE_FRAME;
     if (w == client->titlebar) return MOUSE_TITLEBAR;
     return MOUSE_NOWHERE;
-}
-
-static int figure_button(char *s, unsigned int *b)
-{
-    if (strcasecmp(s, "Button1") == 0) {
-        *b = Button1;
-        return 0;
-    } else if (strcasecmp(s, "Button2") == 0) {
-        *b = Button2;
-        return 0;
-    } else if (strcasecmp(s, "Button3") == 0) {
-        *b = Button3;
-        return 0;
-    } else if (strcasecmp(s, "Button4") == 0) {
-        *b = Button4;
-        return 0;
-    } else if (strcasecmp(s, "Button5") == 0) {
-        *b = Button5;
-        return 0;
-    } else {
-        return -1;
-    }
 }
 
 static void warn(KeySym new, char *old, char *mod)

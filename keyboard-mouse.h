@@ -131,14 +131,9 @@ void mouse_set_function_ex(unsigned int button, unsigned int modifiers,
 #define MOUSE_EVERYWHERE (MOUSE_NOWHERE | MOUSE_TITLEBAR | \
                           MOUSE_ROOT | MOUSE_FRAME)
 
-/* FIXME:  parsing routines should be private */
-
 /*
- * Function to convert a string which describes a keyboard binding to
- * the representation we have to deal with in these functions.
- * Returns 1 if the string is ok, 0 if it is not in the language
- * described below.  KEYCODE and MODIFIERS are changed upon reading a
- * string in the language.
+ * This works identically to keyboard_set_function_ex except that the
+ * keycode and modifiers are parsed from a string.
  * 
  * The grammar for KEYSTRING has tokens which are:
  * 1.  One of the symbols from <X11/keysym.h> with the 'XK_' prefix
@@ -199,11 +194,11 @@ void mouse_set_function_ex(unsigned int button, unsigned int modifiers,
  * ICCCM crap
  */
 
-int keyboard_parse_string(char *keystring, unsigned int *keycode,
-                          unsigned int *modifiers);
+void keyboard_set_function(char *keystring, int depress,
+                           key_fn fn, void *arg);
 
 /*
- * This works very similar to keyboard_parse_string except the grammar
+ * This works very similar to keyboard_set_function except the grammar
  * is a bit different:
  * 
  * STRING       ::= MODLIST* WHITESPACE BUTTON
@@ -219,26 +214,8 @@ int keyboard_parse_string(char *keystring, unsigned int *keycode,
  * This function treats all tokens as case-insensitive.
  */
 
-int mouse_parse_string(char *mousestring, unsigned int *button,
-                       unsigned int *modifiers);
-
-/*
- * Utility function which calls keyboard_parse_string() and then
- * keyboard_set_function_ex()
- */
-
-void keyboard_set_function(char *keystring, int depress,
-                           key_fn fn, void *arg);
-
-/*
- * convenience function which parses "mousestring" using
- * mouse_parse_string() and calls mouse_set_function_ex()
- */
-
 void mouse_set_function(char *mousestring, int depress,
                         int location, mouse_fn fn, void *arg);
-
-
 
 /*
  * Do a "soft" grab on all the keys that are of interest to us - this
@@ -264,7 +241,7 @@ void mouse_grab_buttons(client_t *client);
  * process a key event
  */
 
-void keyboard_process(XKeyEvent *xevent);
+void keyboard_handle_event(XKeyEvent *xevent);
 
 /*
  * Whenever a mouse event is received it should be passed to this

@@ -12,6 +12,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <X11/keysym.h>
 
 #include "move-resize.h"
@@ -542,7 +543,7 @@ void resize_client(XEvent *xevent, void *v)
     /* we take over the titlebar display routines in process_resize() */
     if (client->titlebar != None) {
         free(client->name);
-        client->name = strdup("");
+        client->name = Strdup("");
         client_paint_titlebar(client);
     }
     /* just draws the initial drafting lines with FIRST argument */
