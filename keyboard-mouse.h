@@ -137,7 +137,6 @@ void keyboard_grab_keys(Window);
 void keyboard_process(XKeyEvent *xevent);
 
 /* FIXME:  there should be a function to unmap a key if we really want
- * this to be dynamic (difficult to do efficiently with the
- * implementation I've chosen) */
+ * this to be dynamic */
 
 #endif /* KEYBOARD_H */

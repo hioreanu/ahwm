@@ -14,9 +14,8 @@
 #include "client.h"
 #include "workspace.h"
 #include "keyboard.h"
+#include "mouse.h"
 
-static void event_key(XKeyEvent *);
-static void event_button(XButtonEvent *);
 static void event_enter_leave(XCrossingEvent *);
 static void event_create(XCreateWindowEvent *);
 static void event_destroy(XDestroyWindowEvent *);
@@ -122,13 +121,13 @@ void event_dispatch(XEvent *event)
     switch(event->type) {
         case KeyPress:
         /* case KeyRelease: */
-            event_key(&event->xkey);
+            keyboard_process(&event->xkey); /* keyboard.c */
             break;
         case ButtonPress:
         case ButtonRelease:
-            event_button(&event->xbutton);
+        case MotionNotify:
+            mouse_handle_event(event); /* mouse.c */
             break;
-
         case EnterNotify:
 /*        case LeaveNotify: */
             event_enter_leave(&event->xcrossing);
@@ -179,16 +178,6 @@ void event_dispatch(XEvent *event)
  * see the manual page for each individual event (for instance,
  * XKeyEvent(3))
  */
-
-static void event_key(XKeyEvent *xevent)
-{
-    keyboard_process(xevent);   /* keyboard.c */
-}
-
-static void event_button(XButtonEvent *xevent)
-{
-
-}
 
 static void event_enter_leave(XCrossingEvent *xevent)
 {
@@ -288,8 +277,10 @@ static void event_maprequest(XMapRequestEvent *xevent)
     if (client->frame != None) {
         XMapWindow(xevent->display, client->frame);
         keyboard_grab_keys(client->frame);
+        mouse_grab_buttons(client->frame);
     } else {
         keyboard_grab_keys(client->window);
+        mouse_grab_buttons(client->window);
     }
     
     focus_set(client);

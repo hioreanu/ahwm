@@ -157,8 +157,10 @@ static void scan_windows()
         if (client != NULL && client->state == NormalState) {
             if (client->frame != None) {
                 keyboard_grab_keys(client->frame); /* keyboard.c */
+                mouse_grab_buttons(client->frame); /* mouse.c */
             } else {
                 keyboard_grab_keys(wins[i]); /* keyboard.c */
+                mouse_grab_buttons(wins[i]); /* mouse.c */
             }
         }
     }

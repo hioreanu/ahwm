@@ -7,7 +7,7 @@
 #ifndef MOUSE_H
 #define MOUSE_H
 
-#include <X11/XEvent.h>
+#include <X11/Xlib.h>
 
 /*
  * Grab the mouse buttons we use for a specified window
