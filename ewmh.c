@@ -280,7 +280,7 @@ void ewmh_client_list_remove(client_t *client)
 
 void ewmh_stacking_list_update(Window *w, int nwindows)
 {
-    printf("Updating _NET_CLIENT_LIST_STACKING, i=%d\n", nwindows);
+    debug(("Updating _NET_CLIENT_LIST_STACKING, i=%d\n", nwindows));
     XChangeProperty(dpy, root_window, _NET_CLIENT_LIST_STACKING,
                     XA_WINDOW, 32, PropModeReplace,
                     (unsigned char *)w, nwindows);
