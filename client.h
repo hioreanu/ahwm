@@ -117,12 +117,9 @@ typedef struct _client_t {
 
     struct _client_t *transients;
     struct _client_t *next_transient;
-    
-    /* All clients are managed as regular doubly linked lists in
-     * stacking.c; these can be used to iterate over all clients. */
-    struct _client_t *next_stacking;
-    struct _client_t *prev_stacking;
 
+    int stacking;               /* opaque, used by stacking.c */
+    
     /* hacks, see client.c and event.c */
     unsigned int reparented : 1;
     unsigned int ignore_unmapnotify : 1;
@@ -142,9 +139,10 @@ typedef struct _client_t {
     unsigned int always_on_top : 1;
     unsigned int always_on_bottom : 1;
     unsigned int omnipresent : 1;
-    unsigned int sticky : 1; /* FIXME: implement */
+    unsigned int sticky : 1;
     unsigned int dont_bind_mouse : 1;
     unsigned int dont_bind_keys : 1;
+    unsigned int keep_transients_on_top : 1;
 
     option_setting workspace_set : 2;
     option_setting focus_policy_set : 2;
@@ -160,6 +158,7 @@ typedef struct _client_t {
     option_setting sticky_set : 2;
     option_setting dont_bind_mouse_set : 2;
     option_setting dont_bind_keys_set : 2;
+    option_setting keep_transients_on_top_set : 2;
 } client_t;                     /* 116 bytes on ILP-32 machines */
 
 /* the values for client->protocols, can be ORed together */

@@ -51,8 +51,6 @@
 #include "prefs.h"
 #include "mwm.h"
 
-#include "paint.h" /* FIXME: remove */
-
 /*
  * we store the data associated with each window using Xlib's XContext
  * mechanism (which has nothing to do with X itself, it's just a hash
@@ -109,6 +107,7 @@ client_t *client_create(Window w)
     client->prev_x = client->prev_y = -1;
     client->prev_height = client->prev_width = -1;
     client->orig_border_width = xwa.border_width;
+    client->stacking = -1;
     client->reparented = 0;
     client->ignore_unmapnotify = 0;
     client->color_index = 0;
@@ -118,6 +117,7 @@ client_t *client_create(Window w)
     client->sticky = 0;
     client->dont_bind_keys = 0;
     client->dont_bind_mouse = 0;
+    client->keep_transients_on_top = 1;
 
     client->workspace_set = UnSet;
     client->focus_policy_set = UnSet;
@@ -132,6 +132,7 @@ client_t *client_create(Window w)
     client->sticky_set = UnSet;
     client->dont_bind_keys_set = UnSet;
     client->dont_bind_mouse_set = UnSet;
+    client->keep_transients_on_top_set = UnSet;
     
     /* God, this sucks.  I want the border width to be zero on all
      * clients, so I need to change the client's border width at some
@@ -367,6 +368,16 @@ static void client_add_titlebar_internal(client_t *client)
     }
 
     client->has_titlebar = 1;
+
+#ifdef SHAPE
+    if (shape_supported && client->is_shaped) {
+        XShapeCombineShape(dpy, client->frame, ShapeBounding, 0,
+                           TITLE_HEIGHT, client->window,
+                           ShapeBounding, ShapeSet);
+        XShapeCombineShape(dpy, client->frame, ShapeBounding, 0, 0,
+                           client->titlebar, ShapeBounding, ShapeUnion);
+    }
+#endif
 }
 
 void client_add_titlebar(client_t *client)
@@ -395,7 +406,7 @@ void client_remove_titlebar(client_t *client)
     if (client->titlebar == None)
         return;
     
-    debug(("\tRemoving titlebar\n"));
+    printf("\tRemoving titlebar\n");
 
     if (XQueryTree(dpy, client->frame, &junk1, &junk1, &junk2, &n) == 0) {
         reparented = False;
@@ -413,6 +424,12 @@ void client_remove_titlebar(client_t *client)
 
     client_create_frame(client, &ps); /* just resets frame's position */
     XMoveWindow(dpy, client->window, 0, 0);
+#ifdef SHAPE
+    if (shape_supported && client->is_shaped) {
+        XShapeCombineShape(dpy, client->frame, ShapeBounding, 0, 0,
+                           client->window, ShapeBounding, ShapeSet);
+    }
+#endif
     debug(("\tDone removing titlebar\n"));
 }
 

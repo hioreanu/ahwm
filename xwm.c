@@ -292,7 +292,9 @@ static int error_handler(Display *dpy, XErrorEvent *error)
         || (error->request_code == X_PolyFillRectangle
             && error->error_code == BadDrawable)
         || (error->request_code == X_PolySegment
-            && error->error_code == BadDrawable))
+            && error->error_code == BadDrawable)
+        || (error->request_code == X_ConfigureWindow
+            && error->error_code == BadMatch))
         return 0;
     fprintf(stderr, "XWM: ");
     return default_error_handler(dpy, error); /* calls exit() */

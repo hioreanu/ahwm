@@ -57,6 +57,8 @@ extern Window stacking_hiding_window;
 
 extern Window stacking_desktop_window;
 
+extern Window stacking_desktop_frame;
+
 /*
  * add a client to the top of stacking list, ignoring transients
  */
@@ -75,19 +77,31 @@ void stacking_remove(client_t *client);
 client_t *stacking_top();
 
 /*
+ * Returns the client immediately on top of or below given client
+ */
+
+client_t *stacking_prev(client_t *client);
+client_t *stacking_next(client_t *client);
+
+/*
  * This will:
  * 
  * 1. raise the client to the top of the stacking list
  * 
- * 2. raise the client's transients above the client
+ * 2. map the client if it is in the current workspace
  * 
- * 3. raise the client (and its transients) to the top of the
- *    transients mapped on top of the client's leader
- * 
- * 3. map each window in the entire transience tree which is in the
- *    current workspace
+ * 3. perform (1) and (2) for each client in the transience
+ *    tree for which client->keep_transients_on_top is set
  */
 
 void stacking_raise(client_t *client);
+
+/*
+ * This will ensure the client is in the correct stacking order, but
+ * will not raise the client among its peers unless needed.  Use this
+ * after client->always_on_top or client->always_on_bottom changes.
+ */
+
+void stacking_restack(client_t *client);
 
 #endif /* STACKING_H */

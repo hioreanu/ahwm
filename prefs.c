@@ -670,8 +670,6 @@ static Bool context_applies(client_t *client, context *cntxt)
         get_int(cntxt->context_value, &type_int);
         if (client->workspace == 0) {
             retval = workspace_current == (unsigned)type_int;
-        } else if (client->omnipresent == 1) {
-            retval = True;
         } else {
             retval = client->workspace == (unsigned)type_int;
         }
@@ -909,17 +907,13 @@ void prefs_apply(client_t *client)
             if (client->always_on_top == 0) {
                 client->always_on_top = 1;
                 client->always_on_top_set = p.always_on_top_set;
-                /* moves to top of always-on-top windows: */
-                stacking_remove(client);
-                stacking_add(client);
+                stacking_restack(client);
             }
         } else {
             if (client->always_on_top == 1) {
                 client->always_on_top = 0;
                 client->always_on_top_set = p.always_on_top_set;
-                /* moves to top of not always-on-top windows: */
-                stacking_remove(client);
-                stacking_add(client);
+                stacking_restack(client);
             }
         }
     }
@@ -928,17 +922,13 @@ void prefs_apply(client_t *client)
             if (client->always_on_bottom == 0) {
                 client->always_on_bottom = 1;
                 client->always_on_bottom_set = p.always_on_bottom_set;
-                /* moves to top of always-on-bottom windows: */
-                stacking_remove(client);
-                stacking_add(client);
+                stacking_restack(client);
             }
         } else {
             if (client->always_on_bottom == 1) {
                 client->always_on_bottom = 0;
                 client->always_on_bottom_set = p.always_on_bottom_set;
-                /* moves to top of not always-on-bottom windows: */
-                stacking_remove(client);
-                stacking_add(client);
+                stacking_restack(client);
             }
         }
     }

@@ -843,8 +843,7 @@ static void event_map(XMapEvent *xevent)
 }
 
 /*
- * If we get this, we update our frame to match the client's shape and
- * get rid of the titlebar if the client has one.
+ * If we get this, we update our frame to match the client's shape
  */
 
 #ifdef SHAPE

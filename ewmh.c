@@ -677,7 +677,6 @@ static void sticky(client_t *client)
 
 static void on_top(client_t *client)
 {
-    stacking_remove(client);
     if (client->always_on_bottom_set <= HintSet) {
         client->always_on_bottom = 0;
         client->always_on_bottom_set = HintSet;
@@ -686,12 +685,11 @@ static void on_top(client_t *client)
         client->always_on_top = 1;
         client->always_on_top_set = HintSet;
     }
-    stacking_add(client);
+    stacking_restack(client);
 }
 
 static void on_bottom(client_t *client)
 {
-    stacking_remove(client);
     if (client->always_on_top_set <= HintSet) {
         client->always_on_top = 0;
         client->always_on_top_set = HintSet;
@@ -700,7 +698,7 @@ static void on_bottom(client_t *client)
         client->always_on_bottom = 1;
         client->always_on_bottom_set = HintSet;
     }
-    stacking_add(client);
+    stacking_restack(client);
 }
 
 /*
@@ -897,7 +895,6 @@ Bool ewmh_handle_clientmessage(XClientMessageEvent *xevent)
         } else if (data > 4) {            /* 8 >= data > 4 */
             on_top(client);
         } else {                          /* data == 4, normal layer */
-            stacking_remove(client);
             if (client->always_on_top_set <= HintSet) {
                 client->always_on_top = 0;
                 client->always_on_top_set = HintSet;
@@ -906,7 +903,7 @@ Bool ewmh_handle_clientmessage(XClientMessageEvent *xevent)
                 client->always_on_bottom = 0;
                 client->always_on_bottom_set = HintSet;
             }
-            stacking_add(client);
+            stacking_restack(client);
         }
         return True;
     } else if (xevent->message_type == _WIN_STATE) {
