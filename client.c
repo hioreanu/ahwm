@@ -587,7 +587,9 @@ void client_paint_titlebar(client_t *client)
                   client->width, 0);
         XDrawLine(dpy, client->titlebar, extra_gc,
                   0, 0, 0, TITLE_HEIGHT);
-    } else {
+    }
+#if 0
+    else {
         xgcv.foreground = workspace_darkest_highlight[client->workspace - 1];
         XChangeGC(dpy, extra_gc, GCForeground, &xgcv);
         XDrawLine(dpy, client->titlebar, extra_gc,
@@ -601,6 +603,7 @@ void client_paint_titlebar(client_t *client)
         XDrawLine(dpy, client->titlebar, extra_gc,
                   0, 0, 0, TITLE_HEIGHT);
     }
+#endif
         
     XDrawString(dpy, client->titlebar, root_white_fg_gc, 2, TITLE_HEIGHT - 4,
                 client->name, strlen(client->name));

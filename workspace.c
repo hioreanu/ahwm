@@ -11,6 +11,13 @@
 #include "focus.h"
 #include "event.h"
 
+#ifndef MIN
+#define MIN(x,y) ((x) < (y) ? (x) : (y))
+#endif
+#ifndef MAX
+#define MAX(x,y) ((x) > (y) ? (x) : (y))
+#endif
+
 char *workspace_colors[NO_WORKSPACES] = {
     "#404040",
     "#2F4F4F",
@@ -154,6 +161,11 @@ static void must_focus_this_client(client_t *client)
     XSelectInput(dpy, client->frame, client->frame_event_mask);
 }
 
+/* addition and subtraction without overflow */
+#define SUB(x,y) ((x) < (y) ? 0 : ((x) - (y)))
+#define ADD(x,y) (((((x) + (y)) > 0xFFFF) || ((x) + (y) < (x))) ? \
+                  0xFFFF : ((x) + (y)))
+
 static void alloc_workspace_colors()
 {
     int i;
@@ -167,27 +179,27 @@ static void alloc_workspace_colors()
         }
         workspace_pixels[i] = usable.pixel;
         usable.flags = DoRed | DoGreen | DoBlue;
-        usable.red = exact.red - 4096;
-        usable.green = exact.green - 4096;
-        usable.blue = exact.blue - 4096;
+        usable.red = SUB(exact.red, 4096);
+        usable.green = SUB(exact.green, 4096);
+        usable.blue = SUB(exact.blue, 4096);
         if (XAllocColor(dpy, DefaultColormap(dpy, scr), &usable) == 0) {
             fprintf(stderr,
                     "XWM: Could not allocate dark highlight of color \"%s\"\n",
                     workspace_colors[i]);
         }
         workspace_dark_highlight[i] = usable.pixel;
-        usable.red = exact.red - 8192;
-        usable.green = exact.green - 8192;
-        usable.blue = exact.blue - 8192;
+        usable.red = SUB(exact.red, 8192);
+        usable.green = SUB(exact.green, 8192);
+        usable.blue = SUB(exact.blue, 8192);
         if (XAllocColor(dpy, DefaultColormap(dpy, scr), &usable) == 0) {
             fprintf(stderr,
                     "XWM: Could not allocate dark highlight of color \"%s\"\n",
                     workspace_colors[i]);
         }
         workspace_darkest_highlight[i] = usable.pixel;
-        usable.red = exact.red + 4096;
-        usable.green = exact.green + 4096;
-        usable.blue = exact.blue + 4096;
+        usable.red = ADD(exact.red, 4096);
+        usable.green = ADD(exact.green, 4096);
+        usable.blue = ADD(exact.blue, 4096);
         if (XAllocColor(dpy, DefaultColormap(dpy, scr), &usable) == 0) {
             fprintf(stderr,
                     "XWM: Could not allocate highlight of color \"%s\"\n",
