@@ -23,6 +23,10 @@
 extern int workspace_current;
 
 extern char* workspace_colors[NO_WORKSPACES];
+extern unsigned long workspace_pixels[NO_WORKSPACES];
+extern unsigned long workspace_dark_highlight[NO_WORKSPACES];
+extern unsigned long workspace_darkest_highlight[NO_WORKSPACES];
+extern unsigned long workspace_highlight[NO_WORKSPACES];
 
 /*
  * move a client to a workspace and make it the top-level window in
@@ -34,5 +38,11 @@ void workspace_client_moveto(XEvent *e, void *workspace);
  * make a workspace the current workspace
  */
 void workspace_goto(XEvent *e, void *workspace);
+
+/*
+ * update the color on a workspace, allocate colors if needed
+ */
+
+void workspace_update_color();
 
 #endif /* WORKSPACE_H */

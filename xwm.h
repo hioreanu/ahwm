@@ -26,6 +26,7 @@ extern Window root_window;
 extern GC root_white_fg_gc;
 extern GC root_black_fg_gc;
 extern GC root_invert_gc;
+extern GC extra_gc;
 extern XFontStruct *fontstruct;
 extern Atom WM_STATE;
 extern Atom WM_CHANGE_STATE;

@@ -12,22 +12,24 @@
 #include "event.h"
 
 char *workspace_colors[NO_WORKSPACES] = {
-    "#080808",
+    "#404040",
     "#2F4F4F",
     "#000050",
     "#500000",
     "#500050",
     "#A08000",
-    "#000000"
+    "#101010"
 };
 
-static unsigned long workspace_pixels[NO_WORKSPACES] = { 0 };
+unsigned long workspace_pixels[NO_WORKSPACES] = { 0 };
+unsigned long workspace_dark_highlight[NO_WORKSPACES];
+unsigned long workspace_darkest_highlight[NO_WORKSPACES];
+unsigned long workspace_highlight[NO_WORKSPACES];
 
 int workspace_current = 1;
 
 static void must_focus_this_client(client_t *client);
 static void alloc_workspace_colors();
-static void update_workspace_color();
 
 void workspace_goto(XEvent *xevent, void *v)
 {
@@ -55,7 +57,7 @@ void workspace_goto(XEvent *xevent, void *v)
         }
     }
     workspace_current = new_workspace;
-    update_workspace_color();
+    workspace_update_color();
     
     client = focus_stacks[workspace_current - 1];
     if (client != NULL) {
@@ -164,10 +166,38 @@ static void alloc_workspace_colors()
                     workspace_colors[i]);
         }
         workspace_pixels[i] = usable.pixel;
+        usable.flags = DoRed | DoGreen | DoBlue;
+        usable.red = exact.red - 16;
+        usable.green = exact.green - 16;
+        usable.blue = exact.blue - 16;
+        if (XAllocColor(dpy, DefaultColormap(dpy, scr), &usable) == 0) {
+            fprintf(stderr,
+                    "XWM: Could not allocate dark highlight of color \"%s\"\n",
+                    workspace_colors[i]);
+        }
+        workspace_dark_highlight[i] = usable.pixel;
+        usable.red = exact.red - 32;
+        usable.green = exact.green - 32;
+        usable.blue = exact.blue - 32;
+        if (XAllocColor(dpy, DefaultColormap(dpy, scr), &usable) == 0) {
+            fprintf(stderr,
+                    "XWM: Could not allocate dark highlight of color \"%s\"\n",
+                    workspace_colors[i]);
+        }
+        workspace_darkest_highlight[i] = usable.pixel;
+        usable.red = exact.red + 16;
+        usable.green = exact.green + 16;
+        usable.blue = exact.blue + 16;
+        if (XAllocColor(dpy, DefaultColormap(dpy, scr), &usable) == 0) {
+            fprintf(stderr,
+                    "XWM: Could not allocate highlight of color \"%s\"\n",
+                    workspace_colors[i]);
+        }
+        workspace_highlight[i] = usable.pixel;
     }
 }
 
-static void update_workspace_color()
+void workspace_update_color()
 {
     static Bool initialized = False;
     XSetWindowAttributes xswa;

@@ -19,8 +19,10 @@
 #include "client.h"
 #include "workspace.h"
 #include "keyboard.h"
+#include "mouse.h"
 #include "cursor.h"
 #include "focus.h"
+#include "event.h"
 #include "malloc.h"
 
 XContext window_context;
@@ -51,9 +53,6 @@ client_t *client_create(Window w)
     if (client == NULL) {
         fprintf(stderr, "XWM: Malloc failed, unable to allocate client\n");
         return NULL;
-    }
-    if (xwa.map_state != IsUnmapped) {
-        printf("CLIENT_CREATE:  CLIENT IS ALREADY MAPPED\n");
     }
     memset(client, 0, sizeof(client_t));
     
@@ -141,6 +140,20 @@ client_t *client_create(Window w)
     client->prev = NULL;
     if (client_list != NULL) client_list->prev = client;
     client_list = client;
+
+    if (xwa.map_state != IsUnmapped) {
+#ifdef DEBUG
+        printf("\tclient_create:  client is already mapped\n");
+#endif /* DEBUG */
+        client->state = NormalState;
+        client_inform_state(client);
+        XMapWindow(dpy, client->frame);
+        if (client->titlebar != None)
+            XMapWindow(dpy, client->titlebar);
+        keyboard_grab_keys(client);
+        mouse_grab_buttons(client);
+        focus_add(client, event_timestamp);
+    }
     
     return client;
 }
@@ -225,11 +238,11 @@ void client_add_titlebar(client_t *client)
     XSetWindowAttributes xswa;
     int mask;
     
-    mask = CWBackPixmap | CWBackPixel | CWCursor
-           | CWEventMask | CWOverrideRedirect | CWWinGravity;
+    mask = CWBackPixmap | CWBackPixel | CWCursor | CWEventMask
+           | CWOverrideRedirect | CWWinGravity;
     xswa.cursor = cursor_normal;
     xswa.background_pixmap = None;
-    xswa.background_pixel = black;
+    xswa.background_pixel = workspace_dark_highlight[client->workspace - 1];
     xswa.event_mask = ExposureMask;
     xswa.override_redirect = True;
     xswa.win_gravity = NorthWestGravity;
@@ -553,9 +566,21 @@ void client_print(char *s, client_t *client)
 
 void client_paint_titlebar(client_t *client)
 {
-    if (client->titlebar == None) return;
+    XGCValues xgcv;
+    
+    if (client == NULL || client->titlebar == None) return;
     XClearWindow(dpy, client->titlebar);
-    XDrawString(dpy, client->titlebar, root_invert_gc, 2, TITLE_HEIGHT - 4,
+    if (client == focus_current) {
+        xgcv.foreground = workspace_pixels[client->workspace - 1];
+        XChangeGC(dpy, extra_gc, GCForeground, &xgcv);
+        XFillRectangle(dpy, client->titlebar, extra_gc,
+                       0, 0, client->width, TITLE_HEIGHT);
+        xgcv.foreground = workspace_highlight[client->workspace - 1];
+        XChangeGC(dpy, extra_gc, GCForeground, &xgcv);
+        XDrawRectangle(dpy, client->titlebar, extra_gc,
+                       0, 0, client->width, TITLE_HEIGHT);
+    }
+    XDrawString(dpy, client->titlebar, root_white_fg_gc, 2, TITLE_HEIGHT - 4,
                 client->name, strlen(client->name));
 }
 

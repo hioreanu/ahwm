@@ -5,7 +5,7 @@ CFLAGS=-DSHAPE -O2 -I/usr/X11R6/include -L/usr/X11R6/lib
 CFLAGS=-g -Wall -DSHAPE -DDEBUG=1 -I/usr/X11R6/include -L/usr/X11R6/lib
 LIBS=-lX11 -lXext
 
-OBJS=xwm.o client.o event.o focus.o workspace.o keyboard.o xev.o mouse.o cursor.o move-resize.o error.o kill.o malloc.o icccm.o
+OBJS=xwm.o client.o event.o focus.o workspace.o keyboard.o xev.o mouse.o cursor.o move-resize.o error.o kill.o malloc.o icccm.o colormap.o
 
 all: xwm
 
@@ -31,26 +31,28 @@ clean:
 
 # DO NOT DELETE
 
-client.o: client.h xwm.h workspace.h keyboard.h cursor.h focus.h malloc.h
-cursor.o: cursor.h xwm.h malloc.h ew_cursor_black.xbm ne_cursor_black.xbm
-cursor.o: ns_cursor_black.xbm nw_cursor_black.xbm ew_cursor_white.xbm
-cursor.o: ne_cursor_white.xbm ns_cursor_white.xbm nw_cursor_white.xbm
+client.o: client.h xwm.h workspace.h keyboard.h mouse.h cursor.h focus.h
+client.o: event.h malloc.h
+colormap.o: colormap.h client.h xwm.h
+cursor.o: cursor.h xwm.h
 error.o: error.h xwm.h
 event.o: xwm.h event.h client.h focus.h workspace.h keyboard.h mouse.h xev.h
 event.o: error.h malloc.h
 focus.o: focus.h client.h xwm.h workspace.h
+icccm.o: xwm.h icccm.h
 keyboard-test.o: keyboard.h client.h xwm.h
 keyboard.o: keyboard.h client.h xwm.h malloc.h
 kill.o: kill.h client.h xwm.h event.h
 malloc.o: malloc.h
 mouse.o: mouse.h client.h xwm.h move-resize.h cursor.h malloc.h
 move-resize.o: move-resize.h client.h xwm.h cursor.h event.h malloc.h
-workspace.o: workspace.h client.h xwm.h
+workspace.o: workspace.h client.h xwm.h focus.h event.h
 xev.o: malloc.h
-xwm.o: xwm.h event.h client.h keyboard.h focus.h cursor.h mouse.h
-xwm.o: move-resize.h error.h kill.h
+xwm.o: xwm.h event.h client.h keyboard.h focus.h workspace.h cursor.h mouse.h
+xwm.o: move-resize.h error.h kill.h icccm.h
 client.o: xwm.h
-focus.o: client.h xwm.h
+colormap.o: client.h xwm.h
+focus.o: client.h xwm.h workspace.h
 keyboard.o: client.h xwm.h
 kill.o: client.h xwm.h
 mouse.o: client.h xwm.h

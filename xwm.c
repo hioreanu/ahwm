@@ -36,6 +36,7 @@ Window root_window;
 GC root_white_fg_gc;
 GC root_black_fg_gc;
 GC root_invert_gc;
+GC extra_gc;
 XFontStruct *fontstruct;
 Atom WM_STATE;
 Atom WM_CHANGE_STATE;
@@ -130,6 +131,8 @@ int main(int argc, char **argv)
      * consistency. */
     XDefineCursor(dpy, root_window, cursor_normal);
 
+    workspace_update_color();
+
     fontstruct = XLoadQueryFont(dpy,
                                 "-*-helvetica-bold-r-*-*-12-*-*-*-*-*-*-*");
 
@@ -151,6 +154,13 @@ int main(int argc, char **argv)
                                  | GCFont | GCFunction
                                  | GCPlaneMask | GCSubwindowMode,
                                  &xgcv);
+    extra_gc = XCreateGC(dpy, root_window,
+                         GCForeground | GCBackground
+                         | GCLineWidth | GCLineStyle
+                         | GCCapStyle | GCJoinStyle
+                         | GCFont | GCFunction
+                         | GCPlaneMask | GCSubwindowMode,
+                         &xgcv);
     xgcv.function = GXxor;
     root_invert_gc = XCreateGC(dpy, root_window,
                                  GCForeground | GCBackground
@@ -269,17 +279,12 @@ int main(int argc, char **argv)
 static void scan_windows()
 {
     int i, n;
-    Window *wins, w1, w2;
+    Window *wins, junk;
     client_t *client;
 
-    XQueryTree(dpy, root_window, &w1, &w2, &wins, &n);
+    XQueryTree(dpy, root_window, &junk, &junk, &wins, &n);
     for (i = 0; i < n; i++) {
         client = client_create(wins[i]); /* client.c */
-        if (client != NULL && client->state == NormalState) {
-            keyboard_grab_keys(client); /* keyboard.c */
-            mouse_grab_buttons(client); /* mouse.c */
-            /* FIXME:  see what else event_maprequest does (focus?) */
-        }
     }
     if (wins != NULL) XFree(wins);
 }

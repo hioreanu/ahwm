@@ -13,6 +13,8 @@ client_t *focus_current = NULL;
 
 client_t *focus_stacks[NO_WORKSPACES] = { NULL };
 
+static void focus_change_current(client_t *, Time);
+
 /* 
  * invariant:
  * 
@@ -44,8 +46,7 @@ void focus_add(client_t *client, Time timestamp)
         old->prev_focus = client;
     }
     if (client->workspace == workspace_current) {
-        focus_current = client;
-        focus_ensure(timestamp);
+        focus_change_current(client, timestamp);
     }
 }
 
@@ -80,8 +81,7 @@ void focus_remove(client_t *client, Time timestamp)
             }
             /* if removed was focused window, refocus now */
             if (client == focus_current) {
-                focus_current = client->prev_focus;
-                focus_ensure(timestamp);
+                focus_change_current(client->prev_focus, timestamp);
             }
             return;
         }
@@ -113,8 +113,7 @@ void focus_set(client_t *client, Time timestamp)
 #endif /* DEBUG */
             focus_stacks[client->workspace - 1] = client;
             if (client->workspace == workspace_current) {
-                focus_current = client;
-                focus_ensure(timestamp);
+                focus_change_current(client, timestamp);
             }
             return;
         }
@@ -181,3 +180,15 @@ void focus_ensure(Time timestamp)
 
     client_raise(focus_current);
 }
+
+static void focus_change_current(client_t *new, Time timestamp)
+{
+    client_t *old;
+
+    old = focus_current;
+    focus_current = new;
+    client_paint_titlebar(old);
+    client_paint_titlebar(new);
+    focus_ensure(timestamp);
+}
+

@@ -27,7 +27,7 @@
 #include <X11/extensions/shape.h>
 #endif /* SHAPE */
 
-Time event_timestamp;
+Time event_timestamp = CurrentTime;
 
 static void event_enter(XCrossingEvent *);
 static void event_leave(XCrossingEvent *);
@@ -488,7 +488,15 @@ static void event_maprequest(XMapRequestEvent *xevent)
     } else {
         client->state = NormalState;
     }
-    client->workspace = workspace_current;
+    if (client->workspace != workspace_current) {
+        client->workspace = workspace_current;
+        if (client->titlebar != None) {
+            XSetWindowAttributes xswa;
+            xswa.background_pixel =
+                workspace_dark_highlight[workspace_current - 1];
+            XChangeWindowAttributes(dpy, client->titlebar, CWBackPixel, &xswa);
+        }
+    }
 
     if (client->state == NormalState) {
         XMapWindow(xevent->display, client->window);
