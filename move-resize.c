@@ -199,6 +199,7 @@ void move_client(XEvent *xevent, void *v)
     }
     if (client == NULL) {
         fprintf(stderr, "XWM: Not moving a non-client\n");
+        debug(("Ungrabbing pointer 4\n"));
         XUngrabPointer(dpy, CurrentTime);
         return;
     }
@@ -386,6 +387,7 @@ void move_client(XEvent *xevent, void *v)
         }
     }
 
+    debug(("Ungrabbing pointer 5\n"));
     XUngrabPointer(dpy, CurrentTime);
     XUngrabKeyboard(dpy, CurrentTime);
     moving = 0;
@@ -537,6 +539,7 @@ void resize_client(XEvent *xevent, void *v)
     }
     if (client == NULL) {
         debug(("\tNot resizing a non-client\n"));
+        debug(("Ungrabbing pointer 6\n"));
         XUngrabPointer(dpy, CurrentTime);
         return;
     }
@@ -806,6 +809,7 @@ void resize_client(XEvent *xevent, void *v)
         client_paint_titlebar(client);
     }
 
+    debug(("Ungrabbing pointer 7\n"));
     XUngrabPointer(dpy, CurrentTime);
     XUngrabKeyboard(dpy, CurrentTime);
     sizing = 0;

@@ -43,10 +43,11 @@
 #include "client.h"
 #include "malloc.h"
 #include "workspace.h"
-#include "debug.h"
 #include "event.h"
 #include "focus.h"
 #include "cursor.h"
+#define DEBUG 1
+#include "debug.h"
 
 #ifndef MIN
 #define MIN(x,y) ((x) < (y) ? (x) : (y))
@@ -529,6 +530,8 @@ Bool keyboard_handle_event(XKeyEvent *xevent)
 #define ANYBUTTONMASK (Button1Mask | Button2Mask | Button3Mask \
                        | Button4Mask | Button5Mask)
 
+#include "xev.h"
+
 Bool mouse_handle_event(XEvent *xevent)
 {
     mousebinding *mb;
@@ -542,13 +545,14 @@ Bool mouse_handle_event(XEvent *xevent)
     state = xevent->xbutton.state & (~(ANYBUTTONMASK | AllLocksMask));
     location = get_location(&xevent->xbutton);
     debug(("\tMouse event, button = %d, state = 0x%08X\n", button, state));
+    xev_print(xevent);
     
     if (xevent->xbutton.button == Button1
         && xevent->xbutton.state == 0) {
         client = client_find(xevent->xbutton.window);
         if (client != NULL
             && client->focus_policy == ClickToFocus) {
-            focus_set(client, event_timestamp);
+            focus_set(client, xevent->xbutton.time);
             set_focus = True;
         }
     }
@@ -564,16 +568,23 @@ Bool mouse_handle_event(XEvent *xevent)
                     if (grabbed_button == 0
                         || (grabbed_button == xevent->xbutton.button
                             && xevent->type == ButtonRelease
-                            && in_window(xevent, xevent->xbutton.window)))
+                            && in_window(xevent, xevent->xbutton.window))) {
+                        debug(("Calling function\n"));
                         (*mb->function)(xevent, mb->arg);
+                    } else {
+                        debug(("Not calling function\n"));
+                    }
                 }
-                XUngrabPointer(dpy, event_timestamp);
+                debug(("Ungrabbing pointer 1\n"));
+                XUngrabPointer(dpy, xevent->xbutton.time);
                 grabbed_button = 0;
             } else {
+                debug(("GRABBING POINTER\n"));
+
                 XGrabPointer(dpy, xevent->xbutton.window, False,
                              ButtonReleaseMask | ButtonPressMask,
                              GrabModeAsync, GrabModeAsync, None,
-                             None, event_timestamp);
+                             None, xevent->xbutton.time);
                 grabbed_button = button;
             }
             return True;
@@ -584,11 +595,13 @@ Bool mouse_handle_event(XEvent *xevent)
     if (grabbed_button != 0
         && xevent->type == ButtonRelease
         && xevent->xbutton.button == grabbed_button) {
-        XUngrabPointer(dpy, event_timestamp);
+        debug(("Ungrabbing pointer 2\n"));
+        XUngrabPointer(dpy, xevent->xbutton.time);
         grabbed_button = 0;
         return True;
     } else if (grabbed_button == 0) {
-        XUngrabPointer(dpy, event_timestamp);
+        debug(("Ungrabbing pointer 3\n"));
+        XUngrabPointer(dpy, xevent->xbutton.time);
     }
     if (set_focus) return True;
     else return False;
