@@ -18,6 +18,12 @@ extern Display *dpy;
 extern int scr;
 extern int scr_height;
 extern int scr_width;
+extern unsigned long black;
+extern unsigned long white;
 extern Window root_window;
+
+extern Cursor cursor_normal;
+extern Cursor cursor_moving;
+extern Cursor cursor_sizing;
 
 #endif /* XWM_H */
