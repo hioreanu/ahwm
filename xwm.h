@@ -75,9 +75,6 @@ extern int shape_event_base;
  * 9.  Do the main event loop
  */
 
-#ifndef HAVE_STRDUP
-char *strdup(char *s);
-#endif
 
 /* FIXME:  wrong place */
 struct _arglist;

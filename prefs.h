@@ -95,13 +95,18 @@ struct _context {
 #define SEL_TRANSIENTFOR 0100   /* may be ORed with others */
 #define SEL_HASTRANSIENT 0200   /* may be ORed with others */
 
+/* To add an option, follow the ADDOPT comments through *.y *.l *.c *.h */
+/* ADDOPT 3 */
 struct _option {
     enum { DISPLAYTITLEBAR,
            OMNIPRESENT,
            SKIPALTTAB,
            DEFAULTWORKSPACE,
            FOCUSPOLICY,
-           NUMBEROFWORKSPACES } option_name;
+           NUMBEROFWORKSPACES,
+           ALWAYSONTOP,
+           PASSFOCUSCLICK,
+           ALWAYSONBOTTOM } option_name;
     type *option_value;
 };
 
@@ -130,7 +135,7 @@ struct _mouseunbinding {
 };
 
 struct _function {
-    enum { MOVETOWORKSPACE = 0,
+    enum { SENDTOWORKSPACE = 0,
            GOTOWORKSPACE = 1,
            ALTTAB = 2,
            KILLNICELY = 3,

@@ -1,4 +1,4 @@
-%{
+%{                                                      /* -*-Text-*- */
 /* $Id$ */
 /* Copyright (c) 2001 Alex Hioreanu.  All rights reserved.
  *
@@ -38,6 +38,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 
 #ifdef PARSER_DEBUG
 #define parse_debug(x) printf(x)
@@ -53,6 +54,9 @@
 %token TOK_DEFAULTWORKSPACE
 %token TOK_NUMBEROFWORKSPACES
 %token TOK_FOCUS_POLICY
+%token TOK_ALWAYSONTOP
+%token TOK_ALWAYSONBOTTOM
+%token TOK_PASSFOCUSCLICK
 
 %token TOK_SLOPPY_FOCUS
 %token TOK_CLICK_TO_FOCUS
@@ -88,7 +92,7 @@
 %token TOK_FRAME
 %token TOK_TITLEBAR
 
-%token TOK_MOVETOWORKSPACE
+%token TOK_SENDTOWORKSPACE
 %token TOK_GOTOWORKSPACE
 %token TOK_ALTTAB
 %token TOK_KILLNICELY
@@ -174,11 +178,12 @@ config: /* empty */ { $$ = NULL; }
        }
 
 line: option TOK_SEMI { $$ = make_line(OPTION, $1); }
-    | context TOK_SEMI { $$ = make_line(CONTEXT, $1); }
+    | context { $$ = make_line(CONTEXT, $1); }
     | keybinding TOK_SEMI { $$ = make_line(KEYBINDING, $1); }
     | keyunbinding TOK_SEMI { $$ = make_line(KEYUNBINDING, $1); }
     | mousebinding TOK_SEMI { $$ = make_line(MOUSEBINDING, $1); }
     | mouseunbinding TOK_SEMI { $$ = make_line(MOUSEUNBINDING, $1); }
+    | TOK_SEMI { $$ = make_line(INVALID_LINE, NULL); }
     | error TOK_SEMI
       {
           extern int line_number;
@@ -198,12 +203,16 @@ option: option_name TOK_EQUALS type
             $$ = opt;
         }
 
+/* ADDOPT 2 */
 option_name: TOK_DISPLAYTITLEBAR { $$ = DISPLAYTITLEBAR; }
            | TOK_OMNIPRESENT { $$ = OMNIPRESENT; }
            | TOK_SKIP_ALT_TAB { $$ = SKIPALTTAB; }
            | TOK_DEFAULTWORKSPACE { $$ = DEFAULTWORKSPACE; }
            | TOK_NUMBEROFWORKSPACES { $$ = NUMBEROFWORKSPACES; }
            | TOK_FOCUS_POLICY { $$ = FOCUSPOLICY; }
+           | TOK_ALWAYSONTOP { $$ = ALWAYSONTOP; }
+           | TOK_ALWAYSONBOTTOM { $$ = ALWAYSONBOTTOM; }
+           | TOK_PASSFOCUSCLICK { $$ = PASSFOCUSCLICK; }
 
 type: boolean
       {
@@ -392,7 +401,7 @@ function: function_name TOK_LPAREN TOK_RPAREN
               $$ = f;
           }
 
-function_name: TOK_MOVETOWORKSPACE { $$ = MOVETOWORKSPACE; }
+function_name: TOK_SENDTOWORKSPACE { $$ = SENDTOWORKSPACE; }
              | TOK_GOTOWORKSPACE { $$ = GOTOWORKSPACE; }
              | TOK_ALTTAB { $$ = ALTTAB; }
              | TOK_KILLNICELY { $$ = KILLNICELY; }
@@ -451,8 +460,11 @@ char *make_string(char *s)
 {
     char *n, *np, *sp, c;
 
-    n = malloc(strlen(s) - 2);
-    c = '\0';
+    parse_debug(("String is '%s'\n", s));
+    assert(s[0] == '"');
+    n = malloc(strlen(s) - 2 + 1); /* minus quotes, plus NUL */
+    if (n == NULL) return NULL;
+    c = '\0';                   /* c is previous char examined */
     np = n;
     for (sp = s+1; *sp != '\0'; sp++) {
         if (c == '\\') {
@@ -485,12 +497,15 @@ char *make_string(char *s)
             }
         } else if (*sp == '"') {
             break;
+        } else if (*sp == '\\') {
+            ;
         } else {
             *np++ = *sp;
         }
         c = *sp;
     }
     *np = '\0';
+    parse_debug(("String is now '%s'\n", n));
     return n;
 }
        

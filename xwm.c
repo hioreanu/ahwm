@@ -308,7 +308,7 @@ int main(int argc, char **argv)
     mouse_bind("Button1", MOUSE_DEPRESS, MOUSE_TITLEBAR,
                move_client, NULL);
 #endif
-
+    
     prefs_init();
     focus_init();
     scan_windows();
@@ -420,16 +420,3 @@ void mark(XEvent *e, void *arg)
     printf("-------------------------------------\n");
 }
 #endif
-
-#ifndef HAVE_STRDUP
-/* 'autoscan' tells me 'strdup()' isn't portable */
-char *strdup(char *s)
-{
-    char *n;
-
-    n = malloc(strlen(s));
-    if (n == NULL) return NULL;
-    strcpy(n, s);
-    return n;
-}
-#endif /* ! HAVE_STRDUP */

@@ -132,8 +132,7 @@ static int find_overlap(client_t *one, client_t *two)
  * 
  * This algorithm is "correct" in that it will choose the position
  * with the least amount of overlap out of all the possible positions.
- * Proof is long and tedious; contact me if you're pedantic and you
- * want the proof.
+ * However, the "overlap" is calculated incorrectly (see above).
  * 
  * Other window managers use a similar algorithm (perhaps with some
  * additional steps to shortcut if a zero-overlap position is found)

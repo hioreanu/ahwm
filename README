@@ -1,0 +1,21 @@
+$Id$
+
+This is release 1.0 of AHWM, an X11 window manager.
+
+The installation of AHWM is the same as many other autoconf-based
+builds and does not take any special options or steps; please see the
+file "INSTALL" for details.
+
+The documentation for AHWM is in two manual pages, which you can view
+by invoking "man ahwm" and "man ahwmrc".
+
+You can obtain the latest version of AHWM from the AHWM homepage which
+is located at:
+http://people.cs.uchicago.edu/~ahiorean/ahwm
+
+AHWM's author is Alex Hioreanu, who can be reached at:
+hioreanu+ahwm@uchicago.edu
+
+Please contact the author if you find any bugs or you want some new
+features.  The author tries to be attentive and responsive, so please
+don't hesitate to contact him.

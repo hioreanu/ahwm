@@ -32,6 +32,10 @@
 
 #include "config.h"
 
+#ifndef HAVE_STRDUP
+char *strdup(char *s);
+#endif /* HAVE_STRDUP */
+
 #ifdef HOMEGROWN_SNPRINTF
 int snprintf(char *buf, int len, char *fmt, ...);
 #endif /* HOMEGROWN_SNPRINTF */

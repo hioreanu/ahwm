@@ -79,12 +79,15 @@ DIGIT [0-9]
     }
 }
 
-DisplayTitleBar { return TOK_DISPLAYTITLEBAR; }
+DisplayTitleBar { return TOK_DISPLAYTITLEBAR; /* ADDOPT 1 */ }
 SkipAltTab { return TOK_SKIP_ALT_TAB; }
 Omnipresent { return TOK_OMNIPRESENT; }
 DefaultWorkspace { return TOK_DEFAULTWORKSPACE; }
 NumberOfWorkspaces { return TOK_NUMBEROFWORKSPACES; }
 FocusPolicy { return TOK_FOCUS_POLICY; }
+AlwaysOnTop { return TOK_ALWAYSONTOP; }
+AlwaysOnBottom { return TOK_ALWAYSONBOTTOM; }
+PassFocusClick { return TOK_PASSFOCUSCLICK; }
 
 SloppyFocus { return TOK_SLOPPY_FOCUS; }
 ClickToFocus { return TOK_CLICK_TO_FOCUS; }
@@ -120,7 +123,7 @@ Root { return TOK_ROOT; }
 Frame { return TOK_FRAME; }
 Titlebar { return TOK_TITLEBAR; }
 
-MoveToWorkspace { return TOK_MOVETOWORKSPACE; }
+SendToWorkspace { return TOK_SENDTOWORKSPACE; }
 GoToWorkspace { return TOK_GOTOWORKSPACE; }
 AltTab { return TOK_ALTTAB; }
 KillNicely { return TOK_KILLNICELY; }
@@ -147,7 +150,7 @@ Refresh { return TOK_REFRESH; }
 "(" { return TOK_LPAREN; }
 ")" { return TOK_RPAREN; }
 
-\"([^\"\n]|\\n|\\\"|\\\\)*\" {
+\"([^\"\n]|\\n|\\a|\\b|\\r|\\t|\\v|\\\"|\\\\)*\" {
     yylval.value_string = yytext;
     return TOK_STRING;
 }

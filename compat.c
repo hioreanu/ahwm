@@ -29,6 +29,19 @@
 #include "config.h"
 #include "compat.h"
 
+#ifndef HAVE_STRDUP
+/* 'autoscan' tells me 'strdup()' isn't portable */
+char *strdup(char *s)
+{
+    char *n;
+
+    n = malloc(strlen(s));
+    if (n == NULL) return NULL;
+    strcpy(n, s);
+    return n;
+}
+#endif /* ! HAVE_STRDUP */
+
 #ifdef HOMEGROWN_STRERROR
 
 extern int   sys_nerr;

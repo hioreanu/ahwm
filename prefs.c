@@ -58,12 +58,16 @@
 #define CHECK_STRING(x) ((x)->type_type == STRING ? True : False)
 #define CHECK_INT(x) ((x)->type_type == INTEGER ? True : False)
 
+/* ADDOPT 4 */
 typedef struct _prefs {
     Bool titlebar;
     Bool omnipresent;
     Bool skip_alt_tab;
     int workspace;
     int focus_policy;
+    Bool always_on_top;
+    Bool always_on_bottom;
+    Bool pass_focus_click;
 } prefs;
 
 static void get_int(type *typ, int *val);
@@ -88,12 +92,17 @@ static void globally_bind(line *lp);
 static void globally_unbind(line *lp);
 
 static line *defaults, *contexts;
+
+/* ADDOPT 5 */
 int pref_no_workspaces = 7;
 Bool pref_display_titlebar = True;
 Bool pref_omnipresent = False;
 Bool pref_skip_alt_tab = False;
 int pref_default_workspace = 0;
 int pref_default_focus_policy = TYPE_SLOPPY_FOCUS;
+Bool pref_default_on_top = False;
+Bool pref_default_on_bottom = False;
+Bool pref_pass_focus_click = False;
 
 void prefs_init()
 {
@@ -143,6 +152,7 @@ void prefs_init()
                 globally_unbind(lp);
                 break;
             case OPTION:
+                /* ADDOPT 6 */
                 switch (lp->line_value.option->option_name) {
                     case DISPLAYTITLEBAR:
                         get_bool(lp->line_value.option->option_value,
@@ -167,6 +177,18 @@ void prefs_init()
                     case FOCUSPOLICY:
                         get_int(lp->line_value.option->option_value,
                                 &pref_default_focus_policy);
+                        break;
+                    case ALWAYSONTOP:
+                        get_bool(lp->line_value.option->option_value,
+                                &pref_default_on_top);
+                        break;
+                    case ALWAYSONBOTTOM:
+                        get_bool(lp->line_value.option->option_value,
+                                &pref_default_on_bottom);
+                        break;
+                    case PASSFOCUSCLICK:
+                        get_bool(lp->line_value.option->option_value,
+                                 &pref_pass_focus_click);
                         break;
                 }
                 break;
@@ -216,7 +238,8 @@ static line *type_check(line *block)
                 line_ok = type_check_mousebinding(lp->line_value.mousebinding);
                 break;
             case MOUSEUNBINDING:
-                line_ok = type_check_mouseunbinding(lp->line_value.mouseunbinding);
+                line_ok =
+                    type_check_mouseunbinding(lp->line_value.mouseunbinding);
                 break;
         }
         if (line_ok == True) {
@@ -272,6 +295,7 @@ static Bool type_check_option(option *opt)
     Bool retval;
     
     switch (opt->option_name) {
+        /* ADDOPT 7 */
         case DISPLAYTITLEBAR:
             if ( (retval = CHECK_BOOL(opt->option_value)) == False) {
                 fprintf(stderr,
@@ -298,10 +322,28 @@ static Bool type_check_option(option *opt)
             break;
         case FOCUSPOLICY:
             if (opt->option_value->type_type != FOCUS_ENUM) {
-                fprintf(stderr, "XWM:  Unknown type for FocusPolicy\n");
+                fprintf(stderr, "XWM:  Unknown value for FocusPolicy\n");
                 retval = False;
             } else {
                 retval = True;
+            }
+            break;
+        case ALWAYSONTOP:
+            if ( (retval = CHECK_BOOL(opt->option_value)) == False) {
+                fprintf(stderr,
+                        "XWM: AlwaysOnTop not given boolean value\n");
+            }
+            break;
+        case ALWAYSONBOTTOM:
+            if ( (retval = CHECK_BOOL(opt->option_value)) == False) {
+                fprintf(stderr,
+                        "XWM: AlwaysOnBottom not given boolean value\n");
+            }
+            break;
+        case PASSFOCUSCLICK:
+            if ( (retval = CHECK_BOOL(opt->option_value)) == False) {
+                fprintf(stderr,
+                        "XWM: PassFocusClick not given boolean value\n");
             }
             break;
         default:
@@ -354,7 +396,7 @@ static Bool type_check_function(function *fn)
                 return False;
             }
             break;
-        case MOVETOWORKSPACE:
+        case SENDTOWORKSPACE:
         case GOTOWORKSPACE:
             if (fn->function_args == NULL) {
                 return False;
@@ -386,6 +428,8 @@ static Bool type_check_function(function *fn)
                 return False;
             }
             if (CHECK_STRING(fn->function_args->arglist_arg) == True) {
+                printf("In type_check_function, %s\n",
+                       fn->function_args->arglist_arg->type_value.stringval);
                 return True;
             }
             break;
@@ -398,11 +442,15 @@ void prefs_apply(client_t *client)
 {
     prefs p;
 
+    /* ADDOPT 9 */
     p.titlebar = pref_display_titlebar;
     p.omnipresent = pref_omnipresent;
     p.skip_alt_tab = pref_skip_alt_tab;
     p.workspace = pref_default_workspace;
     p.focus_policy = pref_default_focus_policy;
+    p.always_on_top = pref_default_on_top;
+    p.always_on_bottom = pref_default_on_bottom;
+    p.pass_focus_click = pref_pass_focus_click;
 
     prefs_apply_internal(client, contexts, &p);
 
@@ -444,6 +492,26 @@ void prefs_apply(client_t *client)
             client->focus_policy = DontFocus;
             break;
     }
+    if (p.always_on_top) {
+        client->always_on_top = 1;
+    } else {
+        client->always_on_top = 0;
+    }
+    if (p.always_on_bottom) {
+        client->always_on_bottom = 1;
+    } else {
+        client->always_on_top = 0;
+    }
+    if (p.pass_focus_click) {
+        client->pass_focus_click = 1;
+    } else {
+        client->pass_focus_click = 0;
+    }
+    /* ADDOPT 10 */
+    /* For adding an option, at this point, do something with the
+     * client window, or set a flag in client_t and ensure
+     * this flag is applied whenever needed */
+
 }
 
 static void prefs_apply_internal(client_t *client, line *block, prefs *p)
@@ -556,22 +624,34 @@ static Bool context_applies(client_t *client, context *cntxt)
         }
     } else if (cntxt->context_selector & SEL_WINDOWNAME) {
         get_string(cntxt->context_value, &type_string);
-        retval = !(strcmp(client->name, type_string));
-    } else if (cntxt->context_selector & SEL_WINDOWCLASS) {
-        if (client->class == NULL) {
-            retval = False;
+        if (strcmp(type_string, "*") == 0) {
+            retval = True;
         } else {
-            get_string(cntxt->context_value, &type_string);
-            retval = !(strcmp(client->class, type_string));
-            debug(("Using window class (%s, %s), returning %d\n",
-                   client->class, type_string, retval));
+            retval = !(strcmp(client->name, type_string));
+        }
+    } else if (cntxt->context_selector & SEL_WINDOWCLASS) {
+        get_string(cntxt->context_value, &type_string);
+        if (strcmp(type_string, "*") == 0) {
+            retval = True;
+        } else {
+            if (client->class == NULL) {
+                retval = False;
+            } else {
+                retval = !(strcmp(client->class, type_string));
+                debug(("Using window class (%s, %s), returning %d\n",
+                       client->class, type_string, retval));
+            }
         }
     } else if (cntxt->context_selector & SEL_WINDOWINSTANCE) {
-        if (client->instance == NULL) {
-            retval = False;
+        get_string(cntxt->context_value, &type_string);
+        if (strcmp(type_string, "*") == 0) {
+            retval = True;
         } else {
-            get_string(cntxt->context_value, &type_string);
-            retval = !(strcmp(client->instance, type_string));
+            if (client->instance == NULL) {
+                retval = False;
+            } else {
+                retval = !(strcmp(client->instance, type_string));
+            }
         }
     }
     
@@ -588,6 +668,7 @@ static void option_apply(client_t *client, option *opt, prefs *p)
     Bool type_bool;
     
     switch (opt->option_name) {
+        /* ADDOPT 8 */
         case DISPLAYTITLEBAR:
             get_bool(opt->option_value, &p->titlebar);
             break;
@@ -604,6 +685,15 @@ static void option_apply(client_t *client, option *opt, prefs *p)
             break;
         case FOCUSPOLICY:
             get_int(opt->option_value, &p->focus_policy);
+            break;
+        case ALWAYSONTOP:
+            get_bool(opt->option_value, &p->always_on_top);
+            break;
+        case ALWAYSONBOTTOM:
+            get_bool(opt->option_value, &p->always_on_bottom);
+            break;
+        case PASSFOCUSCLICK:
+            get_bool(opt->option_value, &p->pass_focus_click);
             break;
     }
 }
