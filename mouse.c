@@ -214,7 +214,8 @@ void mouse_move_client(XEvent *xevent)
         event1.xconfigure.y = client->y - TITLE_HEIGHT;
         event1.xconfigure.width = client->width;
         event1.xconfigure.height = client->height - TITLE_HEIGHT;
-        event1.xconfigure.above = None; /* FIXME */
+        event1.xconfigure.border_width = 0;
+        event1.xconfigure.above = client->frame; /* FIXME */
         event1.xconfigure.override_redirect = False;
         XSendEvent(dpy, client->window, False, StructureNotifyMask, &event1);
         XFlush(dpy);
@@ -481,6 +482,12 @@ static void process_resize(client_t *client, int new_x, int new_y,
             case NW:
                 if (client->width - x_diff > 1
                     && new_x < orig->x + orig->width) {
+                    if (client->xsh->flags & PMinSize
+                        && client->width - x_diff < client->xsh->min_width)
+                        break;
+                    if (client->xsh->flags & PMaxSize
+                        && client->width - x_diff > client->xsh->max_width)
+                        break;
                     client->x += x_diff;
                     client->width -= x_diff;
                     *old_x += x_diff;
@@ -490,6 +497,12 @@ static void process_resize(client_t *client, int new_x, int new_y,
             case SE:
             case NE:
                 if (client->width + x_diff > 1) {
+                    if (client->xsh->flags & PMinSize
+                        && client->width + x_diff < client->xsh->min_width)
+                        break;
+                    if (client->xsh->flags & PMaxSize
+                        && client->width + x_diff > client->xsh->max_width)
+                        break;
                     client->width += x_diff;
                     *old_x += x_diff;
                 }
@@ -505,6 +518,14 @@ static void process_resize(client_t *client, int new_x, int new_y,
             case NE:
                 if (client->height - y_diff > TITLE_HEIGHT + 1
                     && new_y < orig->y + orig->height) {
+                    if (client->xsh->flags & PMinSize
+                        && client->height - y_diff <
+                           client->xsh->min_height + TITLE_HEIGHT)
+                        break;
+                    if (client->xsh->flags & PMaxSize
+                        && client->height - y_diff >
+                           client->xsh->max_height + TITLE_HEIGHT)
+                        break;
                     client->y += y_diff;
                     client->height -= y_diff;
                     *old_y += y_diff;
@@ -514,6 +535,14 @@ static void process_resize(client_t *client, int new_x, int new_y,
             case SE:
             case SW:
                 if (client->height + y_diff > TITLE_HEIGHT + 1) {
+                    if (client->xsh->flags & PMinSize
+                        && client->height + y_diff <
+                           client->xsh->min_height + TITLE_HEIGHT)
+                        break;
+                    if (client->xsh->flags & PMaxSize
+                        && client->height + y_diff >
+                           client->xsh->max_height + TITLE_HEIGHT)
+                        break;
                     client->height += y_diff;
                     *old_y += y_diff;
                 }
@@ -530,8 +559,6 @@ static void process_resize(client_t *client, int new_x, int new_y,
      * to the line segment */
     if (x != client->x || y != client->y
         || w != client->width || h != client->height) {
-
-        constrain_geometry(client);
 
         XDrawRectangle(dpy, root_window, root_invert_gc, x, y, w, h);
         XDrawRectangle(dpy, root_window, root_invert_gc,
@@ -559,12 +586,14 @@ static void display_geometry(char *s, client_t *client)
         free(client->name);
         client->name = titlebar_display;
     }
-    snprintf(client->name, 256, "[%s %s] %dx%d+%d+%d",
-             s, client->instance, client->x, client->y,
-             client->width / w_inc, (client->height - TITLE_HEIGHT) / h_inc);
+    snprintf(client->name, 256, "%dx%d+%d+%d [%s %s]",
+             client->x, client->y, client->width / w_inc,
+             (client->height - TITLE_HEIGHT) / h_inc,
+             s, client->instance);
     client_paint_titlebar(client);
 }
 
+/* FIXME: remove */
 static void constrain_geometry(client_t *client)
 {
     if (client->width < 1) client->width = 1;
