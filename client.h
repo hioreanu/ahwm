@@ -17,10 +17,15 @@
 
 extern XContext window_context;
 
+/*
+ * this is the information we store with each top-level window
+ */
+
 typedef struct _client_t {
     Window    window;
     Window    parent;
     Window    transient_for;
+    XWMHints *xwmh;
     char     *name;
     int       x;
     int       y;
@@ -28,10 +33,11 @@ typedef struct _client_t {
     int       height;
     int       workspace;
     int       state;
-    XWMHints *xwmh;
     /* state is one of {WithdrawnState, NormalState, IconicState} */
     /* we ignore this since we don't deal with icons */
-    struct _client_t *prevfocus;
+    /* these are stored as doubly linked lists in focus.c: */
+    struct _client_t *next;
+    struct _client_t *prev;
 } client_t;
 
 client_t *client_create(Window);
