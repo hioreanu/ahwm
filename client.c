@@ -416,7 +416,7 @@ void client_set_name(client_t *client)
     if (xtp.value != NULL) XFree(xtp.value);
 
     debug(("\tClient 0x%08X is %s\n", (unsigned int)client, client->name));
-    if (strcmp(client->name, "aumix") == 0) client->prefs.always_on_top = 1;
+    if (strcmp(client->name, "aumix") == 0) client->prefs.omnipresent = 1;
 }
 
 void client_set_instance_class(client_t *client)
@@ -732,9 +732,4 @@ void client_sendmessage(client_t *client, Atom data0, Time timestamp,
     xcme.data.l[3] = data3;
     xcme.data.l[4] = data4;
     XSendEvent(dpy, client->window, False, 0, (XEvent *)&xcme);
-}
-
-void client_raise(client_t *client)
-{
-    stacking_raise(client);
 }

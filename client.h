@@ -106,9 +106,9 @@ typedef struct _client_t {
     struct _prefs {
         unsigned int skip_alt_tab:1;
         unsigned int pass_focus_click:1;
-        unsigned int titlebar:1; /* FIXME */
-        unsigned int always_on_top:1; /* FIXME */
-        unsigned int always_on_bottom:1; /* FIXME */
+        unsigned int always_on_top:1;
+        unsigned int always_on_bottom:1;
+        unsigned int omnipresent:1;
         unsigned int sticky:1;  /* FIXME */
     } prefs;
     char pad[1];

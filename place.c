@@ -18,20 +18,35 @@
 #define MAX(x,y) ((x) > (y) ? (x) : (y))
 #endif
 
+struct xyclient {
+    int x;
+    int y;
+    client_t *client;
+};
+
+static Bool place_corner_helper(client_t *client, void *v)
+{
+    struct xyclient *xyclient = (struct xyclient *)v;
+    
+    if (client != xyclient->client
+        && client->x <= xyclient->x
+        && client->y <= xyclient->y
+        && client->x + client->width >= xyclient->x
+        && client->y + client->height >= xyclient->y)
+        return False;
+    return True;
+}
+
 /* try to place in specified corner if possible */
 static Bool place_corner(client_t *client, int x, int y)
 {
-    client_t *c;
+    struct xyclient xyclient;
 
-    c = focus_current;
-    if (c != NULL) {
-        do {
-            if (c != client && c->x <= x && c->y <= y
-                && c->x + c->width >= x && c->y + c->height >= y)
-                return False;
-            c = c->next_focus;
-        } while (c != focus_current);
-    }
+    xyclient.x = x;
+    xyclient.y = y;
+    xyclient.client = client;
+    if (focus_forall(place_corner_helper, (void *)&xyclient) == False)
+        return False;
 
     debug(("\tplacing in corner %d,%d\n", x, y));
     client->x = x;

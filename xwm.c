@@ -84,7 +84,7 @@ static int error_handler(Display *dpy, XErrorEvent *error)
 {
     if (error->error_code == BadWindow
         || (error->request_code == X_SetInputFocus
-            && error->error_code == BadValue))
+            && error->error_code == BadMatch))
         return 0;
     fprintf(stderr, "XWM: ");
     return error_default_handler(dpy, error); /* calls exit() */
@@ -230,7 +230,7 @@ int main(int argc, char **argv)
                                  | GCPlaneMask | GCSubwindowMode,
                                  &xgcv);
 
-    window_context = XUniqueContext();
+    window_context = XUniqueContext(); /* FIXME:  move to client_init */
     frame_context = XUniqueContext();
     title_context = XUniqueContext();
 

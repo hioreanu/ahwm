@@ -11,13 +11,6 @@
 #include "workspace.h"
 
 /*
- * The windows in a workspace which can possibly receive the input
- * focus are stored in a ring (a circular doubly-linked list).
- */
-
-extern client_t *focus_stacks[NO_WORKSPACES];
-
-/*
  * The window which contains the current input focus.  This may become
  * invalid after you call any of the functions in this header; call
  * 'focus_ensure()' to ensure that this is current and that this
@@ -25,6 +18,12 @@ extern client_t *focus_stacks[NO_WORKSPACES];
  */
 
 extern client_t *focus_current;
+
+/*
+ * Initialize the focus module
+ */
+
+void focus_init();
 
 /*
  * Add a client to the top of the focus stack for its workspace
@@ -45,6 +44,18 @@ void focus_remove(client_t *, Time);
  */
 
 void focus_set(client_t *, Time);
+
+/*
+ * Apply a function to all currently mapped clients, starting with the
+ * currently focused window.  The void pointer is passed unchanged to
+ * all invocations of the function.  If the invoked function returns
+ * False, processing immediately stops and focus_forall returns False.
+ * If focus_forall applies the function to all mapped windows and the
+ * function returns True each time, focus_forall returns True.
+ */
+
+typedef Bool (*forall_fn)(client_t *, void *);
+Bool focus_forall(forall_fn fn, void *);
 
 /*
  * Ensure some window in the current workspace is focused if possible;
