@@ -26,10 +26,10 @@ void mouse_handle_event(XEvent *xevent)
     }
     if (xevent->xbutton.button == Button1
         && (xevent->xbutton.state & Mod1Mask)) {
-        move_resize_meta_button1(xevent);
+        move_client(xevent);
     } else if (xevent->xbutton.button == Button3
                && (xevent->xbutton.state & Mod1Mask)) {
-        move_resize_meta_button3(xevent);
+        resize_client(xevent);
     } else {
 #ifdef DEBUG
         printf("\tIgnoring unknown mouse event\n");

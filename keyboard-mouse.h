@@ -11,23 +11,13 @@
 
 /* Functions which are called in response to keyboard events: */
 
-typedef int (*key_fn)(Window, Window, Time, int, int, int, int);
+typedef void (*key_fn)(XEvent *);
 
 /*
- * An example function of the above type which does nothing and
- * does not propagate the event to the subwindow.
- * 
- * All of the parameters are from the XKeyEvent structure which
- * came with the event.
- * Returns 1 if the event should be synthesized and propagated
- * to SUBWINDOW (if it exists) or WIN.
- * 
- * This particular function always returns 0, so the event is
- * simply gobbled up and ignored.
+ * An example function of the above type which does nothing
  */
 
-int keyboard_ignore(Window win, Window subwindow, Time t,
-                    int x, int y, int root_x, int root_y);
+void keyboard_ignore(XEvent *);
 
 /*
  * Bind a key to a function.  KEYCODE and MODS are the Keycode and

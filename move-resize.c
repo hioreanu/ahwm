@@ -399,6 +399,24 @@ void resize_client(XEvent *xevent)
                                     CurrentTime);
                     } else {
                         cycle_resize_direction_keyboard(&resize_direction);
+                        switch (resize_direction) {
+                            case NE:
+                                x_start = client->x + client->width;
+                                y_start = client->y;
+                                break;
+                            case NW:
+                                x_start = client->x;
+                                y_start = client->y;
+                                break;
+                            case SW:
+                                x_start = client->x;
+                                y_start = client->y + client->height;
+                                break;
+                            case SE:
+                                x_start = client->x + client->width;
+                                y_start = client->y + client->height;
+                                break;
+                        }
                     }
                     xrefresh();
                     process_resize(client, x_start, y_start, resize_direction,
@@ -656,6 +674,7 @@ static void xrefresh()
                       CWOverrideRedirect | CWBackingStore | CWSaveUnder,
                       &xswa);
     XMapWindow(dpy, w);
+    XSync(dpy, 0);
     XUnmapWindow(dpy, w);
 }
 

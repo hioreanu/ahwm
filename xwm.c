@@ -14,6 +14,7 @@
 #include "focus.h"
 #include "cursor.h"
 #include "mouse.h"
+#include "move-resize.h"
 
 Display *dpy;
 int scr;
@@ -27,12 +28,9 @@ GC root_black_fg_gc;
 GC root_invert_gc;
 XFontStruct *fontstruct;
 
-int alt_tab(Window win, Window subwindow, Time t,
-            int x, int y, int root_x, int root_y);
-int alt_shift_tab(Window win, Window subwindow, Time t,
-                  int x, int y, int root_x, int root_y);
-int control_alt_shift_t(Window w, Window sw, Time t,
-                        int x, int y, int root_x, int root_y);
+void alt_tab(XEvent *);
+void alt_shift_tab(XEvent *);
+void control_alt_shift_t(XEvent *);
 
 static int already_running_windowmanager;
 
@@ -162,6 +160,10 @@ int main(int argc, char **argv)
                           alt_shift_tab);
     keyboard_set_function("Control | Alt | Shift | t", KEYBOARD_DEPRESS,
                           control_alt_shift_t);
+    keyboard_set_function("Control | Alt | Shift | m", KEYBOARD_DEPRESS,
+                          move_client);
+    keyboard_set_function("Control | Alt | Shift | r", KEYBOARD_DEPRESS,
+                          resize_client);
 
     scan_windows();
 
@@ -213,28 +215,22 @@ static void scan_windows()
     XFree(wins);
 }
 
-int alt_tab(Window win, Window subwindow, Time t,
-            int x, int y, int root_x, int root_y)
+void alt_tab(XEvent *e)
 {
     focus_next();
     focus_ensure();
-    return 0;
 }
 
-int alt_shift_tab(Window win, Window subwindow, Time t,
-                  int x, int y, int root_x, int root_y)
+void alt_shift_tab(XEvent *e)
 {
     focus_prev();
     focus_ensure();
-    return 0;
 }
 
-int control_alt_shift_t(Window w, Window sw, Time t,
-                        int x, int y, int root_x, int root_y)
+void control_alt_shift_t(XEvent *e)
 {
     if (fork() == 0) {
         execlp("/usr/X11R6/bin/xterm", "xterm", NULL);
         _exit(0);
     }
-    return 0;
 }

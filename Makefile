@@ -34,9 +34,11 @@ event.o: xwm.h event.h client.h focus.h workspace.h keyboard.h mouse.h xev.h
 focus.o: focus.h client.h xwm.h workspace.h
 keyboard-test.o: keyboard.h client.h xwm.h
 keyboard.o: keyboard.h client.h xwm.h
-mouse.o: mouse.h client.h xwm.h cursor.h event.h
+mouse.o: mouse.h move-resize.h xwm.h cursor.h
+move-resize.o: move-resize.h client.h xwm.h cursor.h event.h
 workspace.o: workspace.h client.h xwm.h
 xwm.o: xwm.h event.h client.h keyboard.h focus.h cursor.h mouse.h
+xwm.o: move-resize.h
 client.o: xwm.h
 focus.o: client.h xwm.h
 keyboard.o: client.h xwm.h

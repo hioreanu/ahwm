@@ -27,10 +27,9 @@ typedef struct _keybinding {
 
 keybinding *bindings = NULL;
 
-int keyboard_ignore(Window win, Window subwindow, Time t,
-                    int x, int y, int root_x, int root_y)
+void keyboard_ignore(XEvent *e)
 {
-    return 0;
+    return;
 }
 
 void keyboard_set_function_ex(int keycode, unsigned int modifiers,
@@ -82,7 +81,7 @@ void keyboard_grab_keys(Window w)
 void keyboard_process(XKeyEvent *xevent)
 {
     keybinding *kb;
-    int code, propagate;
+    int code;
     client_t *client;
 
 #ifdef DEBUG
@@ -100,22 +99,7 @@ void keyboard_process(XKeyEvent *xevent)
         if (kb->keycode == code) {
             if (kb->modifiers == xevent->state
                 && (kb->depress | xevent->type) == xevent->type) {
-                propagate = (*kb->function)(xevent->window, xevent->subwindow,
-                                            xevent->time, xevent->x, xevent->y,
-                                            xevent->x_root, xevent->y_root);
-                if (propagate) {
-                    /* ensure we send it to the right window and
-                     * not a frame or something */
-                    if ( (client = client_find(xevent->window)) == NULL)
-                        return;
-                    XSendEvent(dpy,
-                               xevent->subwindow != None ? xevent->subwindow
-                                                         : client->window,
-                               False,
-                               xevent->type == KeyPress ? KeyPressMask
-                                                        : KeyReleaseMask,
-                               (XEvent *)xevent);
-                }
+                (*kb->function)((XEvent *)xevent);
                 return;
             }
         }

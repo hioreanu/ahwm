@@ -9,11 +9,43 @@
 
 #include <X11/Xlib.h>
 
-void move_resize_meta_button1(XEvent *xevent);
-void move_resize_meta_button3(XEvent *xevent);
-void move_client(XEvent *xevent, unsigned int init_state,
-                 unsigned int init_button, unsigned int init_button_mask);
-void resize_client(XEvent *xevent, unsigned int init_state,
-                   unsigned int init_button, unsigned int init_button_mask);
+/*
+ * Functions for moving and resizing a client window, suitable for
+ * binding to a mouse click or a keyboard press.
+ * 
+ * Whether invoked from mouse or keyboard, the following keys are
+ * available for both move and resize (keyboard is grabbed):
+ * 
+ * Enter - End the move/resize, applying the changes
+ * Escape - End the move/resize, discarding the changes
+ * Up, Down, Left, Right, j, k, h, l - move or resize
+ * Control - change from resizing to moving and vice versa
+ * 
+ * When invoked from a mouse button down event, the mouse can also be
+ * used to move/resize the client (mouse is grabbed).  If invoked from
+ * the keyboard, does not grab the pointer.
+ * 
+ * When resizing with the mouse, the quadrant of the client which
+ * contains the pointer determines the resize direction (Up+Left,
+ * Down+Right, etc.).  When invoked from the keyboard, the resize
+ * direction will initially be Down+Right.
+ * 
+ * Additionally, when resizing, hitting the Shift key (left or right)
+ * will do the following:
+ * 
+ * keyboard resize:  cycle the resize direction in the following order:
+ *                   Down+Right -> Up+Right -> Up+Left -> Down+Left -> ....
+ * 
+ * mouse resize:  cycle the resize direction based upon the initial
+ *                resize direction; for example:
+ *                Down+Right -> Down -> Right -> Down+Right -> ....
+ * 
+ * These functions will grab the keyboard and may grab the mouse; they
+ * also have their own event loops.  It does not make sense to move
+ * and resize at the same time (use Control key to toggle).
+ */
+
+void move_client(XEvent *xevent);
+void resize_client(XEvent *xevent);
 
 #endif /* MOVE_RESIZE_H */
