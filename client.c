@@ -28,6 +28,7 @@ client_t *client_create(Window w)
 {
     client_t *client;
     XWindowAttributes xwa;
+    Bool has_titlebar = True;
 
     if (XGetWindowAttributes(dpy, w, &xwa) == 0) return NULL;
     if (xwa.override_redirect) {
@@ -64,13 +65,27 @@ client_t *client_create(Window w)
     client->window_event_mask = xwa.your_event_mask | StructureNotifyMask
                                 | PropertyChangeMask;
     XSelectInput(dpy, client->window, client->window_event_mask);
-    client_reparent(client, True);
+
+#ifdef SHAPE
+    if (shape_supported) {
+        int tmp;
+        unsigned int tmp2;
+        int shaped;
+
+        XShapeSelectInput(dpy, client->window, ShapeNotifyMask);
+        XShapeQueryExtents(dpy, client->window, &shaped, tmp, tmp,
+                           tmp2, tmp, tmp, tmp, tmp2, tmp2);
+        has_titlebar = !shaped;
+    }
+#endif /* SHAPE */
+    
+    client_reparent(client, has_titlebar);
     if (client->frame == None) {
         fprintf(stderr, "Could not reparent window\n");
         free(client);
         return NULL;
     }
-    client_add_titlebar(client);
+    if (has_titlebar) client_add_titlebar(client);
     
     if (focus_canfocus(client)) focus_add(client);
 
@@ -256,6 +271,7 @@ void client_destroy(client_t *client)
 }
 
 /* snarfed mostly from ctwm and WindowMaker */
+/* FIXME:  use XFetchName */
 void client_set_name(client_t *client)
 {
     XTextProperty xtp;

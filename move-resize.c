@@ -4,6 +4,12 @@
  * copyright privileges.
  */
 
+/*
+ * this is probably the most complex part of the window manager
+ * because I'm unhappy with all the implementations of this that I've
+ * seen.
+ */
+
 #include "move-resize.h"
 #include "client.h"
 #include "cursor.h"
@@ -44,11 +50,11 @@ typedef enum {
     FIRST, MIDDLE, LAST
 } resize_ordinal_t;
 
-static int keycode_Escape = 0, keycode_Shift_L, keycode_Shift_R;
+static int keycode_Escape = 0;
 static int keycode_Return, keycode_Up, keycode_Down, keycode_Left;
 static int keycode_Right, keycode_j, keycode_k, keycode_l, keycode_h;
 static int keycode_w, keycode_a, keycode_s, keycode_d;
-static int keycode_Control_L, keycode_Control_R;
+static int keycode_Control_L, keycode_Control_R, keycode_space;
 
 static int moving = 0;
 static int sizing = 0;
@@ -74,6 +80,7 @@ static void move_constrain(client_t *client);
 static int get_width_resize_inc(client_t *client);
 static int get_height_resize_inc(client_t *client);
 static void move_inform_client(client_t *client);
+static Bool mouse_over_client(client_t *client);
 
 void resize_maximize(XEvent *xevent)
 {
@@ -125,7 +132,7 @@ void move_client(XEvent *xevent)
 {
     client_t *client = NULL;
     int x_start, y_start;       /* only used for mouse move */
-    int orig_x, orig_y;
+    int orig_x, orig_y, delta;
     int have_mouse;
     unsigned int init_button;
     XEvent event1;
@@ -144,7 +151,6 @@ void move_client(XEvent *xevent)
         have_mouse = 0;
     } else {
         fprintf(stderr, "XWM: Error, move_client called incorrectly\n");
-        XUngrabPointer(dpy, CurrentTime);
         return;
     }
     if (client == NULL) {
@@ -161,12 +167,10 @@ void move_client(XEvent *xevent)
      * cause any problems: */
     /* focus_set(client); */
     /* focus_ensure(); */
-    if (have_mouse) {
-        XGrabPointer(dpy, root_window, True,
-                     PointerMotionMask | ButtonReleaseMask,
-                     GrabModeAsync, GrabModeAsync, None,
-                     cursor_moving, CurrentTime);
-    }
+    XGrabPointer(dpy, root_window, True,
+                 PointerMotionMask | ButtonReleaseMask | ButtonPressMask,
+                 GrabModeAsync, GrabModeAsync, None,
+                 cursor_moving, CurrentTime);
     XGrabKeyboard(dpy, root_window, True, GrabModeAsync, GrabModeAsync,
                   CurrentTime);
     display_geometry("Moving", client);
@@ -179,13 +183,21 @@ void move_client(XEvent *xevent)
         switch (xevent->type) {
             case EnterNotify:
             case LeaveNotify:
-            case ButtonPress:
                 /* we have a separate event loop here because we want
                  * to gobble up all EnterNotify and LeaveNotify events
                  * while moving or resizing the window */
-                /* we also don't care about button presses */
                 break;
-            
+            case ButtonPress:
+                /* if one clicks in window while moving with keyboard,
+                 * behave as if moving with mouse */
+                if (!have_mouse && mouse_over_client(client)) {
+                    have_mouse = 1;
+                    x_start = xevent->xbutton.x_root;
+                    y_start = xevent->xbutton.y_root;
+                    init_button = xevent->xbutton.button;
+                }
+                break;
+                
             case MotionNotify:
                 if (!have_mouse) break;
                 xevent = compress_motion(xevent);
@@ -211,38 +223,60 @@ void move_client(XEvent *xevent)
                 if (xevent->xkey.keycode == keycode_Up ||
                     xevent->xkey.keycode == keycode_k ||
                     xevent->xkey.keycode == keycode_w) {
-                    if (have_mouse) {
-                        XWarpPointer(dpy, None, None, 0, 0, 0, 0, 0, -1);
+                    if (xevent->xkey.state & ShiftMask) {
+                        delta = -(client->y);
                     } else {
-                        client->y--;
-                        move_constrain(client);
+                        delta = -1;
+                    }
+                    client->y += delta;
+                    move_constrain(client);
+                    if (have_mouse) {
+                        XWarpPointer(dpy, None, None, 0, 0, 0, 0, 0, delta);
+                        y_start += delta;
                     }
                 } else if (xevent->xkey.keycode == keycode_Down ||
                            xevent->xkey.keycode == keycode_j ||
                            xevent->xkey.keycode == keycode_s) {
-                    if (have_mouse) {
-                        XWarpPointer(dpy, None, None, 0, 0, 0, 0, 0, 1);
+                    if (xevent->xkey.state & ShiftMask) {
+                        delta =
+                          DisplayHeight(dpy, scr) - client->y - client->height;
                     } else {
-                        client->y++;
-                        move_constrain(client);
+                        delta = 1;
+                    }
+                    client->y += delta;
+                    move_constrain(client);
+                    if (have_mouse) {
+                        XWarpPointer(dpy, None, None, 0, 0, 0, 0, 0, delta);
+                        y_start += delta;
                     }
                 } else if (xevent->xkey.keycode == keycode_Left ||
                            xevent->xkey.keycode == keycode_h ||
                            xevent->xkey.keycode == keycode_a) {
-                    if (have_mouse) {
-                        XWarpPointer(dpy, None, None, 0, 0, 0, 0, -1, 0);
+                    if (xevent->xkey.state & ShiftMask) {
+                        delta = -(client->x);
                     } else {
-                        client->x--;
-                        move_constrain(client);
+                        delta = -1;
+                    }
+                    client->x += delta;
+                    move_constrain(client);
+                    if (have_mouse) {
+                        XWarpPointer(dpy, None, None, 0, 0, 0, 0, delta, 0);
+                        x_start += delta;
                     }
                 } else if (xevent->xkey.keycode == keycode_Right ||
                            xevent->xkey.keycode == keycode_l ||
                            xevent->xkey.keycode == keycode_d) {
-                    if (have_mouse) {
-                        XWarpPointer(dpy, None, None, 0, 0, 0, 0, 1, 0);
+                    if (xevent->xkey.state & ShiftMask) {
+                        delta =
+                            DisplayWidth(dpy, scr) - client->x - client->width;
                     } else {
-                        client->x++;
-                        move_constrain(client);
+                        delta = 1;
+                    }
+                    client->x += delta;
+                    move_constrain(client);
+                    if (have_mouse) {
+                        XWarpPointer(dpy, None, None, 0, 0, 0, 0, delta, 0);
+                        x_start += delta;
                     }
                 } else if (xevent->xkey.keycode == keycode_Return) {
                     action = DONE;
@@ -323,6 +357,27 @@ void move_client(XEvent *xevent)
     }
 }
 
+static Bool mouse_over_client(client_t *client)
+{
+    Window junk1;
+    int junk2, rootx, rooty;
+    unsigned int junk3;
+                    
+    if (XQueryPointer(dpy, root_window, &junk1, &junk1,
+                      &rootx, &rooty, &junk2, &junk2,
+                      &junk3) == False)
+        return False;
+    if (rootx >= client->x &&
+        rootx <= client->x + client->width &&
+        rooty >= client->y &&
+        rooty <= client->y + client->height) {
+
+        return True;
+    } else {
+        return False;
+    }
+}
+
 /* ICCCM 4.1.5 */
 static void move_inform_client(client_t *client)
 {
@@ -400,7 +455,7 @@ void resize_client(XEvent *xevent)
 #ifdef DEBUG
         printf("\tNot resizing a non-client\n");
 #endif /* DEBUG */
-        if (have_mouse) XUngrabPointer(dpy, CurrentTime);
+        XUngrabPointer(dpy, CurrentTime);
         return;
     }
     
@@ -416,10 +471,18 @@ void resize_client(XEvent *xevent)
                      GrabModeAsync, GrabModeAsync, None,
                      cursor_direction_map[resize_direction],
                      CurrentTime);
+    } else {
+        /* different cursor */        
+        XGrabPointer(dpy, root_window, True,
+                     PointerMotionMask | ButtonPressMask
+                     | ButtonReleaseMask,
+                     GrabModeAsync, GrabModeAsync, None,
+                     cursor_moving, CurrentTime);
     }
     XGrabKeyboard(dpy, root_window, True,
                   GrabModeAsync, GrabModeAsync,
                   CurrentTime);
+    /* just draws the initial drafting lines with FIRST argument */
     process_resize(client, x_start, y_start,
                    resize_direction, old_resize_direction,
                    &x_start, &y_start, &orig, FIRST);
@@ -431,15 +494,37 @@ void resize_client(XEvent *xevent)
         switch (xevent->type) {
             case EnterNotify:
             case LeaveNotify:
-            case ButtonPress:
                 break;
 
+            case ButtonPress:
+                if (!have_mouse && mouse_over_client(client)) {
+                    have_mouse = 1;
+                    x_start = xevent->xbutton.x_root;
+                    y_start = xevent->xbutton.y_root;
+                    init_button = xevent->xbutton.button;
+                    resize_direction =
+                        get_direction(client, xevent->xbutton.x_root,
+                                      xevent->xbutton.y_root);
+                    XChangeActivePointerGrab(dpy,
+                          PointerMotionMask
+                          | ButtonPressMask | ButtonReleaseMask,
+                          cursor_direction_map[resize_direction],
+                          CurrentTime);
+                    /* may have changed resize direction, redraw lines */
+                    xrefresh();
+                    process_resize(client, x_start, y_start, resize_direction,
+                                   old_resize_direction, &x_start, &y_start,
+                                   &orig, FIRST);
+                }
+                break;
+                
             case KeyPress:
                 if (xevent->xkey.keycode == keycode_Escape) {
                     action = RESET;
                     break;
                 } else if (xevent->xkey.keycode == keycode_Return) {
                     if (have_mouse) {
+                        /* cleans up drafting lines with LAST arg */
                         process_resize(client, xevent->xkey.x_root,
                                        xevent->xkey.y_root, resize_direction,
                                        old_resize_direction, &x_start,
@@ -451,8 +536,7 @@ void resize_client(XEvent *xevent)
                     }
                     action = DONE;
                     break;
-                } else if (xevent->xkey.keycode == keycode_Shift_L ||
-                           xevent->xkey.keycode == keycode_Shift_R) {
+                } else if (xevent->xkey.keycode == keycode_space) {
                     if (have_mouse) {
                         cycle_resize_direction_mouse(&resize_direction,
                                                      &old_resize_direction);
@@ -492,6 +576,8 @@ void resize_client(XEvent *xevent)
                            xevent->xkey.keycode == keycode_w) {
                     if (resize_direction != EAST && resize_direction != WEST) {
                         delta = get_height_resize_inc(client);
+                        /* FIXME:  these should resize to extreme */
+                        if (xevent->xkey.state & ShiftMask) delta *= 10;
                         if (have_mouse) {
                             XWarpPointer(dpy, None, None, 0, 0, 0, 0,
                                          0, -delta);
@@ -507,6 +593,7 @@ void resize_client(XEvent *xevent)
                            xevent->xkey.keycode == keycode_s) {
                     if (resize_direction != EAST && resize_direction != WEST) {
                         delta = get_height_resize_inc(client);
+                        if (xevent->xkey.state & ShiftMask) delta *= 10;
                         if (have_mouse) {
                             XWarpPointer(dpy, None, None, 0, 0, 0, 0,
                                          0, delta);
@@ -522,6 +609,7 @@ void resize_client(XEvent *xevent)
                            xevent->xkey.keycode == keycode_a) {
                     if (resize_direction != NORTH && resize_direction != SOUTH) {
                         delta = get_width_resize_inc(client);
+                        if (xevent->xkey.state & ShiftMask) delta *= 10;
                         if (have_mouse) {
                             XWarpPointer(dpy, None, None, 0, 0, 0, 0,
                                          -delta, 0);
@@ -537,6 +625,7 @@ void resize_client(XEvent *xevent)
                            xevent->xkey.keycode == keycode_d) {
                     if (resize_direction != NORTH && resize_direction != SOUTH) {
                         delta = get_width_resize_inc(client);
+                        if (xevent->xkey.state & ShiftMask) delta *= 10;
                         if (have_mouse) {
                             XWarpPointer(dpy, None, None, 0, 0, 0, 0,
                                          delta, 0);
@@ -621,6 +710,8 @@ void resize_client(XEvent *xevent)
         if (client->titlebar != None) {
             XResizeWindow(dpy, client->window, client->width,
                           client->height - TITLE_HEIGHT);
+            XResizeWindow(dpy, client->titlebar, client->width,
+                          TITLE_HEIGHT);
         } else {
             XResizeWindow(dpy, client->window, client->width, client->height);
         }
@@ -1262,8 +1353,7 @@ static void display_geometry(char *s, client_t *client)
 static void set_keys()
 {
     keycode_Escape = XKeysymToKeycode(dpy, XK_Escape);
-    keycode_Shift_L = XKeysymToKeycode(dpy, XK_Shift_L);
-    keycode_Shift_R = XKeysymToKeycode(dpy, XK_Shift_R);
+    keycode_space = XKeysymToKeycode(dpy, XK_space);
     keycode_Return = XKeysymToKeycode(dpy, XK_Return);
     keycode_Up = XKeysymToKeycode(dpy, XK_Up);
     keycode_Down = XKeysymToKeycode(dpy, XK_Down);

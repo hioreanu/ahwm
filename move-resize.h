@@ -18,8 +18,9 @@
  * 
  * Enter - End the move/resize, applying the changes
  * Escape - End the move/resize, discarding the changes
- * Up, Down, Left, Right, j, k, h, l, w, a, s, d - move or resize
  * Control - change from resizing to moving and vice versa
+ * Up, Down, Left, Right, j, k, h, l, w, a, s, d - move or resize
+ * Shift + one of above - move to extreme edge or resize by 10 units
  * 
  * When invoked from a mouse button down event, the mouse can also be
  * used to move/resize the client (mouse is grabbed).  If invoked from
@@ -30,8 +31,8 @@
  * Down+Right, etc.).  When invoked from the keyboard, the resize
  * direction will initially be Down+Right.
  * 
- * Additionally, when resizing, hitting the Shift key (left or right)
- * will do the following:
+ * Additionally, when resizing, hitting the spacebar will do the
+ * following:
  * 
  * keyboard resize:  cycle the resize direction in the following order:
  *                   Down+Right -> Up+Right -> Up+Left -> Down+Left -> ....
