@@ -45,7 +45,7 @@ static int error_handler(Display *dpy, XErrorEvent *error)
  * 4.  Die if we can't do that because some other windowmanager is running
  * 5.  Set the X error handler
  * 6.  Define the root window cursor and other cursors
- * 7.  Create an XContext for the window management functions
+ * 7.  Create a XContexts for the window management functions
  * 8.  Scan already-created windows and manage them
  * 9.  Go into a select() loop waiting for events
  * 10. Dispatch events
@@ -58,9 +58,6 @@ int main(int argc, char **argv)
     XEvent event;
     int    xfd;
 
-    printf("--------------------------------");
-    printf(" Welcome to xwm ");
-    printf("--------------------------------\n");
     dpy = XOpenDisplay(NULL);
     if (dpy == NULL) {
         fprintf(stderr, "Could not open display '%s'\n", XDisplayName(NULL));
@@ -84,6 +81,10 @@ int main(int argc, char **argv)
         fprintf(stderr, "You're already running a window manager, silly.\n");
         exit(1);
     }
+
+    printf("--------------------------------");
+    printf(" Welcome to xwm ");
+    printf("--------------------------------\n");
         
 //    XSetErrorHandler(error_handler);
     XSetErrorHandler(NULL);
@@ -122,9 +123,7 @@ int main(int argc, char **argv)
 }
 
 /*
- * for all windows
- *    if window does not have the override redirect flag set
- *        call client_create upon that window
+ * Set up all windows that were here before the windowmanager started
  */
 
 static void scan_windows()
@@ -136,25 +135,13 @@ static void scan_windows()
     XQueryTree(dpy, root_window, &w1, &w2, &wins, &n);
     for (i = 0; i < n; i++) {
         client = client_create(wins[i]);  /* client.c */
-        if (client != NULL)
-            keyboard_grab_keys(wins[i]); /* keyboard.c */
+        if (client != NULL && client->state == MAPPED) {
+            if (client->frame != None) {
+                keyboard_grab_keys(client->frame); /* keyboard.c */
+            } else {
+                keyboard_grab_keys(wins[i]); /* keyboard.c */
+            }
+        }
     }
     XFree(wins);
 }
-
-/*
- * ctwm:
-                 ColormapChangeMask | EnterWindowMask |
-                 PropertyChangeMask | SubstructureRedirectMask |
-                 KeyPressMask | ButtonPressMask | ButtonReleaseMask |
-                 StructureNotifyMask
- * windowmaker:
-                 LeaveWindowMask | EnterWindowMask |
-                 PropertyChangeMask | SubstructureNotifyMask |
-                 PointerMotionMask | SubstructureRedirectMask |
-                 KeyPressMask | KeyReleaseMask
- * wm2, 9wm:
-                 SubstructureRedirectMask | SubstructureNotifyMask |
-                 ColormapChangeMask | ButtonPressMask |
-                 ButtonReleaseMask | PropertyChangeMask
- */

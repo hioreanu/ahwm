@@ -22,11 +22,13 @@ clean:
 
 # DO NOT DELETE
 
-client.o: client.h xwm.h workspace.h
-event.o: xwm.h event.h client.h
+client.o: client.h xwm.h workspace.h keyboard.h
+event.o: xwm.h event.h client.h workspace.h
 focus.o: focus.h client.h xwm.h workspace.h
+keyboard.o: keyboard.h client.h xwm.h
 workspace.o: workspace.h client.h xwm.h
 xwm.o: xwm.h event.h client.h
 client.o: xwm.h
 focus.o: client.h xwm.h
+keyboard.o: client.h xwm.h
 workspace.o: client.h xwm.h

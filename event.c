@@ -173,7 +173,13 @@ void event_dispatch(XEvent *event)
 
 static void event_key(XKeyEvent *xevent)
 {
+    KeySym ks;
 
+    ks = XKeycodeToKeysym(dpy, xevent->keycode, 0); /* WTF is the last arg? */
+    
+    printf("\twindow 0x%08X, keycode %d, state %d, keystring %s\n",
+           xevent->window, xevent->keycode, xevent->state,
+           XKeysymToString(ks));
 }
 
 static void event_button(XButtonEvent *xevent)
@@ -260,9 +266,13 @@ static void event_maprequest(XMapRequestEvent *xevent)
     client->workspace = workspace_current;
 
     XMapWindow(xevent->display, client->window);
-    if (client->frame != None)
+    if (client->frame != None) {
         XMapWindow(xevent->display, client->frame);
-    keyboard_grab_keys(client->window);
+        keyboard_grab_keys(client->frame);
+    } else {
+        keyboard_grab_keys(client->window);
+    }
+    
     focus_set(client);
     focus_ensure();
 }

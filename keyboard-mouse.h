@@ -34,7 +34,8 @@ int keyboard_ignore(Window win, Window subwindow, Time t,
  * Modifiers to bind; DEPRESS is KEYBOARD_DEPRESS, KEYBOARD_RELEASE or
  * a logical OR of both, indicating whether to call the function on
  * key press, release or at both times; FN is the function to be
- * called, with the above semantics
+ * called, with the above semantics.  If duplicate keybindings are
+ * assigned, the most recent is used.
  */
 
 void keyboard_set_function_ex(int keycode, unsigned int mods,
@@ -46,7 +47,9 @@ void keyboard_set_function_ex(int keycode, unsigned int mods,
 /*
  * Function to convert a string which describes a keyboard binding to
  * the representation we have to deal with in these functions.
- * KEYCODE and MODIFIERS are return values.
+ * Returns 1 if the string is ok, 0 if it is not in the language
+ * described below.  KEYCODE and MODIFIERS are changed upon reading a
+ * string in the language.
  * 
  * The grammar for KEYSTRING has tokens which are:
  * 1.  One of the symbols from <X11/keysym.h> with the 'XK_' prefix
@@ -68,41 +71,50 @@ void keyboard_set_function_ex(int keycode, unsigned int mods,
  *     All of the symbols in this group are case-sensitive.
  * 
  * 2.  One of the following symbols:
- *     Shift ShiftMask          // standard
- *     Control ControlMask      // standard
- *     Mod1 Mod1Mask            // standard
- *     Mod2 Mod2Mask            // standard
- *     Mod3 Mod3Mask            // standard
- *     Mod4 Mod4Mask            // standard
- *     Mod5 Mod5Mask            // standard
- *     Alt AltMask              // nonstandard
- *     Meta MetaMask            // nonstandard
- *     Hyper HyperMask          // nonstandard
- *     Super SuperMask          // nonstandard
+ *     Shift, ShiftMask          // standard
+ *     Control, ControlMask      // standard
+ *     Mod1, Mod1Mask            // standard
+ *     Mod2, Mod2Mask            // standard
+ *     Mod3, Mod3Mask            // standard
+ *     Mod4, Mod4Mask            // standard
+ *     Mod5, Mod5Mask            // standard
+ *     Alt, AltMask              // nonstandard
+ *     Meta, MetaMask            // nonstandard
+ *     Hyper, HyperMask          // nonstandard
+ *     Super, SuperMask          // nonstandard
  *     All of the symbols in this group are case-insensitive.
  * 
  * The symbols from group (2) above which are marked "nonstandard" are
- * not well-defined; some heuristics are attempted to see which one of
- * the possible "standard" modifiers they represent given the current
- * keyboard mapping.
+ * not well-defined; there is a complex relationship between them
+ * which I am completely ignoring.  I'm assumming 'Alt' and 'Meta'
+ * mean Mod1, Super means Mod3 and Hyper means Mod4 since that's how
+ * my keyboard is set up right now.
+ * None of my keyboards have numlock or capslock keys, so I'm not
+ * going to deal with them (and if these keys annoy you, unmap them
+ * with xmodmap, your application should have remappable keybindings
+ * or a software function to emulate capslock).
+ * You can see what keysyms your modifier keys generate with 'xev'
+ * and you can see what modifier bits they correspond to using
+ * 'xmodmap -pm'
  * 
  * The grammar (informally) is as follows:
  * 
  * STRING       ::= MODLIST* WHITESPACE KEY
- * WHITESPACE   ::= ('\t' | ' ' | '\v' | '\f')*
+ * WHITESPACE   ::= ('\t' | ' ' | '\v' | '\f' | '\n' | '\r')*
  * MODLIST      ::= MODIFIER WHITESPACE '|' WHITESPACE
  * MODIFIER     ::= <one of the above symbols from group 2>
  * KEY          ::= <one of the above symbols from group 1>
  * 
  * For example:
+ * "Meta | Shift | Control | e" is ok
  * " aLT | Tab   " is ok
  * "Alt | TAB " is NOT ok
- * "Shift | a" should be equivalent to "A"
+ * "Shift | a" should behave the same as "A"
  * "Meta | a" is usually (not always) equivalent to "Mod1 | a"
  */
 
-void keyboard_string_to_keycode(char *keystring,
-                                int *keycode, unsigned int *modifiers);
+int keyboard_string_to_keycode(char *keystring, int *keycode,
+                               unsigned int *modifiers);
 
 /*
  * Utility function which calls keyboard_string_to_keycode() and then
