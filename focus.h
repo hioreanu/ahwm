@@ -120,4 +120,12 @@ void focus_workspace_changed(Time);
 
 void focus_alt_tab(XEvent *e, arglist *ignored);
 
+/*
+ * This module needs to know when a client changes its focus policy to
+ * or from ClickToFocus (in order to grab the focusing mouse click).
+ */
+
+void focus_policy_to_click(client_t *client);
+void focus_policy_from_click(client_t *client);
+
 #endif /* FOCUS_H */

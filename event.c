@@ -462,6 +462,7 @@ static void event_unmap(XUnmapEvent *xevent)
      * throughout the window manager, but this particular area creates
      * the majority of them. */
 
+    debug(("\tRemoving from focus list\n"));
     focus_remove(client, event_timestamp);
     
     if (client->state == NormalState) {
@@ -470,6 +471,7 @@ static void event_unmap(XUnmapEvent *xevent)
         XUnmapWindow(dpy, client->frame);
     }
     client->state = WithdrawnState;
+    debug(("\tUnreparenting\n"));
     client_unreparent(client);
     
     client_inform_state(client);

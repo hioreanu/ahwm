@@ -32,10 +32,6 @@
 
 #ifdef DEBUG
 # ifndef HAVE_VPRINTF
-#  error "XWM needs porting to your system (no vprintf); please contact the author."
-# endif
-#else
-# ifndef HAVE_VPRINTF
 void _debug(char *fmt, ...) { }
 # else
 void _debug(char *fmt, ...)

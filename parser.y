@@ -46,21 +46,27 @@
 #define parse_debug(x) /* */
 #endif
 
+/* ADDOPT 1.5 FIXME:  renumber */
 %}
 
 %token TOK_DISPLAYTITLEBAR
 %token TOK_OMNIPRESENT
-%token TOK_SKIP_ALT_TAB
 %token TOK_DEFAULTWORKSPACE
 %token TOK_NUMBEROFWORKSPACES
 %token TOK_FOCUS_POLICY
 %token TOK_ALWAYSONTOP
 %token TOK_ALWAYSONBOTTOM
 %token TOK_PASSFOCUSCLICK
+%token TOK_CYCLEBEHAVIOUR
 
 %token TOK_SLOPPY_FOCUS
 %token TOK_CLICK_TO_FOCUS
 %token TOK_DONT_FOCUS
+
+%token TOK_SKIPCYCLE
+%token TOK_RAISEIMMEDIATELY
+%token TOK_RAISEONCYCLEFINISH
+%token TOK_DONTRAISE
 
 %token TOK_TRUE
 %token TOK_FALSE
@@ -145,7 +151,8 @@ char *make_string(char *s);
 %token <value_int> TOK_INTEGER
 %token TOK_FLOAT
 
-%type <value_int> boolean context_option context_name option_name focus_enumeration
+%type <value_int> boolean context_option context_name
+%type <value_int> option_name focus_enumeration cycle_enumeration
 %type <value_int> location function_name
 %type <value_line> line config_file config
 %type <value_option> option
@@ -206,13 +213,13 @@ option: option_name TOK_EQUALS type
 /* ADDOPT 2 */
 option_name: TOK_DISPLAYTITLEBAR { $$ = DISPLAYTITLEBAR; }
            | TOK_OMNIPRESENT { $$ = OMNIPRESENT; }
-           | TOK_SKIP_ALT_TAB { $$ = SKIPALTTAB; }
            | TOK_DEFAULTWORKSPACE { $$ = DEFAULTWORKSPACE; }
            | TOK_NUMBEROFWORKSPACES { $$ = NUMBEROFWORKSPACES; }
            | TOK_FOCUS_POLICY { $$ = FOCUSPOLICY; }
            | TOK_ALWAYSONTOP { $$ = ALWAYSONTOP; }
            | TOK_ALWAYSONBOTTOM { $$ = ALWAYSONBOTTOM; }
            | TOK_PASSFOCUSCLICK { $$ = PASSFOCUSCLICK; }
+           | TOK_CYCLEBEHAVIOUR { $$ = CYCLEBEHAVIOUR; }
 
 type: boolean
       {
@@ -254,10 +261,25 @@ type: boolean
           }
           $$ = typ;
       }
+    | cycle_enumeration
+      {
+          type *typ;
+          typ = malloc(sizeof(type));
+          if (typ != NULL) {
+              typ->type_type = CYCLE_ENUM;
+              typ->type_value.cycle_enum = $1;
+          }
+          $$ = typ;
+      }
 
 focus_enumeration: TOK_SLOPPY_FOCUS { $$ = TYPE_SLOPPY_FOCUS; }
                  | TOK_CLICK_TO_FOCUS { $$ = TYPE_CLICK_TO_FOCUS; }
                  | TOK_DONT_FOCUS { $$ = TYPE_DONT_FOCUS; }
+
+cycle_enumeration: TOK_SKIPCYCLE { $$ = TYPE_SKIP_CYCLE }
+                 | TOK_RAISEIMMEDIATELY { $$ = TYPE_RAISE_IMMEDIATELY }
+                 | TOK_RAISEONCYCLEFINISH { $$ = TYPE_RAISE_ON_CYCLE_FINISH }
+                 | TOK_DONTRAISE { $$ = TYPE_DONT_RAISE }
 
 boolean: TOK_TRUE { $$ = 1; }
        | TOK_FALSE { $$ = 0; }

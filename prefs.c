@@ -62,12 +62,12 @@
 typedef struct _prefs {
     Bool titlebar;
     Bool omnipresent;
-    Bool skip_alt_tab;
     int workspace;
     int focus_policy;
     Bool always_on_top;
     Bool always_on_bottom;
     Bool pass_focus_click;
+    int cycle_behaviour;
 } prefs;
 
 static void get_int(type *typ, int *val);
@@ -97,12 +97,12 @@ static line *defaults, *contexts;
 int pref_no_workspaces = 7;
 Bool pref_display_titlebar = True;
 Bool pref_omnipresent = False;
-Bool pref_skip_alt_tab = False;
 int pref_default_workspace = 0;
 int pref_default_focus_policy = TYPE_SLOPPY_FOCUS;
 Bool pref_default_on_top = False;
 Bool pref_default_on_bottom = False;
 Bool pref_pass_focus_click = False;
+int pref_default_cycle_behaviour = TYPE_RAISE_IMMEDIATELY;
 
 void prefs_init()
 {
@@ -162,10 +162,6 @@ void prefs_init()
                         get_bool(lp->line_value.option->option_value,
                                  &pref_omnipresent);
                         break;
-                    case SKIPALTTAB:
-                        get_bool(lp->line_value.option->option_value,
-                                 &pref_skip_alt_tab);
-                        break;
                     case DEFAULTWORKSPACE:
                         get_int(lp->line_value.option->option_value,
                                 &pref_default_workspace);
@@ -189,6 +185,10 @@ void prefs_init()
                     case PASSFOCUSCLICK:
                         get_bool(lp->line_value.option->option_value,
                                  &pref_pass_focus_click);
+                        break;
+                    case CYCLEBEHAVIOUR:
+                        get_int(lp->line_value.option->option_value,
+                                &pref_default_cycle_behaviour);
                         break;
                 }
                 break;
@@ -308,12 +308,6 @@ static Bool type_check_option(option *opt)
                         "XWM: Omnipresent not given boolean value\n");
             }
             break;
-        case SKIPALTTAB:
-            if ( (retval = CHECK_BOOL(opt->option_value)) == False) {
-                fprintf(stderr,
-                        "XWM: SkipAltTab not given boolean value\n");
-            }
-            break;
         case DEFAULTWORKSPACE:
             if ( (retval = CHECK_INT(opt->option_value)) == False) {
                 fprintf(stderr,
@@ -344,6 +338,14 @@ static Bool type_check_option(option *opt)
             if ( (retval = CHECK_BOOL(opt->option_value)) == False) {
                 fprintf(stderr,
                         "XWM: PassFocusClick not given boolean value\n");
+            }
+            break;
+        case CYCLEBEHAVIOUR:
+            if (opt->option_value->type_type != CYCLE_ENUM) {
+                fprintf(stderr, "XWM:  Unknown value for CycleBehaviour\n");
+                retval = False;
+            } else {
+                retval = True;
             }
             break;
         default:
@@ -428,8 +430,6 @@ static Bool type_check_function(function *fn)
                 return False;
             }
             if (CHECK_STRING(fn->function_args->arglist_arg) == True) {
-                printf("In type_check_function, %s\n",
-                       fn->function_args->arglist_arg->type_value.stringval);
                 return True;
             }
             break;
@@ -438,19 +438,33 @@ static Bool type_check_function(function *fn)
     }
 }
 
+/*
+ * this function has two stages:
+ * first, we get the preferences for the client; eg, we see if the
+ * client needs a titlebar.
+ * second, we apply those preferences; eg, we add or remove the
+ * titlebar.
+ * This function may be called at any time during the client's
+ * lifetime, so we can't assume anything about the client's state
+ * (ie, whether the client has been reparented, mapped, etc.).
+ * We break it up into two stages so we don't, for example, add
+ * and remove a titlebar multiple times on each call.
+ */
+
 void prefs_apply(client_t *client)
 {
     prefs p;
+    position_size ps;
 
     /* ADDOPT 9 */
     p.titlebar = pref_display_titlebar;
     p.omnipresent = pref_omnipresent;
-    p.skip_alt_tab = pref_skip_alt_tab;
     p.workspace = pref_default_workspace;
     p.focus_policy = pref_default_focus_policy;
     p.always_on_top = pref_default_on_top;
     p.always_on_bottom = pref_default_on_bottom;
     p.pass_focus_click = pref_pass_focus_click;
+    p.cycle_behaviour = pref_default_cycle_behaviour;
 
     prefs_apply_internal(client, contexts, &p);
 
@@ -471,10 +485,19 @@ void prefs_apply(client_t *client)
             if (client->frame != None) client_remove_titlebar(client);
         }
     }
-    if (p.skip_alt_tab) {
-        client->skip_alt_tab = 1;
-    } else {
-        client->skip_alt_tab = 0;
+    switch (p.cycle_behaviour) {
+        case TYPE_SKIP_CYCLE:
+            client->cycle_behaviour = SkipCycle;
+            break;
+        case TYPE_RAISE_IMMEDIATELY:
+            client->cycle_behaviour = RaiseImmediately;
+            break;
+        case TYPE_RAISE_ON_CYCLE_FINISH:
+            client->cycle_behaviour = RaiseOnCycleFinish;
+            break;
+        case TYPE_DONT_RAISE:
+            client->cycle_behaviour = DontRaise;
+            break;
     }
     if (p.omnipresent) {
         client->omnipresent = 1;
@@ -483,24 +506,53 @@ void prefs_apply(client_t *client)
     }
     switch (p.focus_policy) {
         case TYPE_SLOPPY_FOCUS:
+            if (client->focus_policy == ClickToFocus) {
+                focus_policy_from_click(client);
+            }
             client->focus_policy = SloppyFocus;
             break;
         case TYPE_CLICK_TO_FOCUS:
+            if (client->focus_policy != ClickToFocus) {
+                focus_policy_to_click(client);
+            }
             client->focus_policy = ClickToFocus;
             break;
         case TYPE_DONT_FOCUS:
+            if (client->focus_policy == ClickToFocus) {
+                focus_policy_from_click(client);
+            }
             client->focus_policy = DontFocus;
             break;
     }
     if (p.always_on_top) {
-        client->always_on_top = 1;
+        if (client->always_on_top == 0) {
+            client->always_on_top = 1;
+            /* moves to top of always-on-top windows: */
+            stacking_remove(client);
+            stacking_add(client);
+        }
     } else {
-        client->always_on_top = 0;
+        if (client->always_on_top == 1) {
+            client->always_on_top = 0;
+            /* moves to top of not always-on-top windows: */
+            stacking_remove(client);
+            stacking_add(client);
+        }
     }
     if (p.always_on_bottom) {
-        client->always_on_bottom = 1;
+        if (client->always_on_bottom == 0) {
+            client->always_on_bottom = 1;
+            /* moves to top of always-on-bottom windows: */
+            stacking_remove(client);
+            stacking_add(client);
+        }
     } else {
-        client->always_on_top = 0;
+        if (client->always_on_bottom == 1) {
+            client->always_on_bottom = 0;
+            /* moves to top of not always-on-bottom windows: */
+            stacking_remove(client);
+            stacking_add(client);
+        }
     }
     if (p.pass_focus_click) {
         client->pass_focus_click = 1;
@@ -510,7 +562,7 @@ void prefs_apply(client_t *client)
     /* ADDOPT 10 */
     /* For adding an option, at this point, do something with the
      * client window, or set a flag in client_t and ensure
-     * this flag is applied whenever needed */
+     * this flag is used whenever needed */
 
 }
 
@@ -554,7 +606,8 @@ static void prefs_apply_internal(client_t *client, line *block, prefs *p)
 static void get_int(type *typ, int *val)
 {
     *val = 0;
-    if (typ->type_type == INTEGER || typ->type_type == FOCUS_ENUM) {
+    
+    if (typ->type_type != STRING && typ->type_type != BOOLEAN) {
         *val = typ->type_value.intval;
     }
 }
@@ -675,9 +728,6 @@ static void option_apply(client_t *client, option *opt, prefs *p)
         case OMNIPRESENT:
             get_bool(opt->option_value, &p->omnipresent);
             break;
-        case SKIPALTTAB:
-            get_bool(opt->option_value, &p->skip_alt_tab);
-            break;
         case DEFAULTWORKSPACE:
             if (client->state == WithdrawnState) {
                 get_int(opt->option_value, &p->workspace);
@@ -685,6 +735,9 @@ static void option_apply(client_t *client, option *opt, prefs *p)
             break;
         case FOCUSPOLICY:
             get_int(opt->option_value, &p->focus_policy);
+            break;
+        case CYCLEBEHAVIOUR:
+            get_int(opt->option_value, &p->cycle_behaviour);
             break;
         case ALWAYSONTOP:
             get_bool(opt->option_value, &p->always_on_top);

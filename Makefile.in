@@ -42,39 +42,58 @@ wc: wordcount
 clean:
 	@rm -f parser.c parser.h lexer.c *.@OBJEXT@ *~ *core xwm # TAGS
 
-# FIXME:  need to figure out how to integrate this with Makefile.in
+# FIXME:  just copying this over to Makefile.in, need to automate
 # DO NOT DELETE
 
-client.@OBJEXT@: client.h xwm.h workspace.h keyboard-mouse.h cursor.h focus.h
-client.@OBJEXT@: event.h malloc.h debug.h ewmh.h move-resize.h stacking.h
-colormap.@OBJEXT@: colormap.h client.h xwm.h
-cursor.@OBJEXT@: cursor.h xwm.h
-debug.@OBJEXT@: debug.h
-event.@OBJEXT@: xwm.h event.h client.h focus.h workspace.h keyboard-mouse.h xev.h
-event.@OBJEXT@: malloc.h move-resize.h debug.h ewmh.h place.h stacking.h
-ewmh.@OBJEXT@: xwm.h ewmh.h client.h malloc.h debug.h focus.h workspace.h kill.h
-focus.@OBJEXT@: focus.h client.h xwm.h workspace.h debug.h event.h ewmh.h
-focus.@OBJEXT@: keyboard-mouse.h stacking.h malloc.h
-icccm.@OBJEXT@: xwm.h icccm.h debug.h
-keyboard-mouse.@OBJEXT@: keyboard-mouse.h client.h xwm.h malloc.h workspace.h
-keyboard-mouse.@OBJEXT@: debug.h event.h focus.h cursor.h
-kill.@OBJEXT@: kill.h client.h xwm.h event.h debug.h
-malloc.@OBJEXT@: malloc.h
-move-resize.@OBJEXT@: move-resize.h client.h xwm.h cursor.h event.h malloc.h debug.h
-place.@OBJEXT@: place.h client.h xwm.h workspace.h debug.h focus.h stacking.h
-qux.@OBJEXT@: client.h xwm.h
-stacking.@OBJEXT@: client.h xwm.h stacking.h malloc.h workspace.h debug.h
-workspace.@OBJEXT@: workspace.h client.h xwm.h focus.h event.h debug.h ewmh.h
-workspace.@OBJEXT@: stacking.h
-xev.@OBJEXT@: malloc.h
-xwm.@OBJEXT@: xwm.h event.h client.h keyboard-mouse.h focus.h workspace.h cursor.h
-xwm.@OBJEXT@: move-resize.h kill.h icccm.h ewmh.h
-client.@OBJEXT@: xwm.h
-colormap.@OBJEXT@: client.h xwm.h
-ewmh.@OBJEXT@: client.h xwm.h
-focus.@OBJEXT@: client.h xwm.h workspace.h
-keyboard-mouse.@OBJEXT@: client.h xwm.h
-kill.@OBJEXT@: client.h xwm.h
-place.@OBJEXT@: client.h xwm.h
-stacking.@OBJEXT@: client.h xwm.h
-workspace.@OBJEXT@: client.h xwm.h
+client.@OBJEXT@: config.h client.h xwm.h workspace.h prefs.h keyboard-mouse.h
+client.@OBJEXT@: cursor.h focus.h event.h malloc.h debug.h ewmh.h move-resize.h
+client.@OBJEXT@: stacking.h
+colormap.@OBJEXT@: config.h colormap.h client.h xwm.h
+compat.@OBJEXT@: config.h compat.h
+cursor.@OBJEXT@: config.h cursor.h xwm.h
+debug.@OBJEXT@: config.h debug.h
+event.@OBJEXT@: config.h xwm.h event.h client.h focus.h workspace.h prefs.h
+event.@OBJEXT@: keyboard-mouse.h xev.h malloc.h move-resize.h debug.h ewmh.h place.h
+event.@OBJEXT@: stacking.h
+ewmh.@OBJEXT@: config.h xwm.h ewmh.h client.h malloc.h debug.h focus.h workspace.h
+ewmh.@OBJEXT@: prefs.h kill.h
+focus.@OBJEXT@: config.h focus.h client.h xwm.h workspace.h prefs.h debug.h event.h
+focus.@OBJEXT@: ewmh.h keyboard-mouse.h stacking.h malloc.h
+icccm.@OBJEXT@: config.h xwm.h icccm.h debug.h
+keyboard-mouse.@OBJEXT@: config.h keyboard-mouse.h client.h xwm.h prefs.h malloc.h
+keyboard-mouse.@OBJEXT@: workspace.h event.h focus.h cursor.h debug.h
+kill.@OBJEXT@: config.h kill.h client.h xwm.h prefs.h event.h debug.h
+malloc.@OBJEXT@: config.h xwm.h malloc.h
+move-resize.@OBJEXT@: config.h move-resize.h prefs.h client.h xwm.h cursor.h event.h
+move-resize.@OBJEXT@: malloc.h debug.h focus.h workspace.h
+place.@OBJEXT@: config.h place.h client.h xwm.h workspace.h prefs.h debug.h focus.h
+place.@OBJEXT@: stacking.h
+prefs.@OBJEXT@: config.h prefs.h client.h xwm.h debug.h workspace.h keyboard-mouse.h
+prefs.@OBJEXT@: focus.h kill.h move-resize.h
+qux.@OBJEXT@: client.h config.h xwm.h
+stacking.@OBJEXT@: config.h client.h xwm.h stacking.h malloc.h workspace.h prefs.h
+stacking.@OBJEXT@: debug.h
+workspace.@OBJEXT@: config.h workspace.h client.h xwm.h prefs.h focus.h event.h
+workspace.@OBJEXT@: debug.h ewmh.h stacking.h
+xev.@OBJEXT@: config.h malloc.h xwm.h
+xwm.@OBJEXT@: config.h xwm.h event.h client.h keyboard-mouse.h prefs.h focus.h
+xwm.@OBJEXT@: workspace.h cursor.h move-resize.h kill.h icccm.h ewmh.h
+client.@OBJEXT@: config.h xwm.h
+colormap.@OBJEXT@: config.h client.h xwm.h
+compat.@OBJEXT@: config.h
+cursor.@OBJEXT@: config.h
+debug.@OBJEXT@: config.h
+event.@OBJEXT@: config.h
+ewmh.@OBJEXT@: config.h client.h xwm.h
+focus.@OBJEXT@: config.h client.h xwm.h workspace.h prefs.h
+icccm.@OBJEXT@: config.h
+keyboard-mouse.@OBJEXT@: config.h client.h xwm.h prefs.h
+kill.@OBJEXT@: config.h client.h xwm.h prefs.h
+malloc.@OBJEXT@: config.h xwm.h
+move-resize.@OBJEXT@: config.h prefs.h client.h xwm.h
+place.@OBJEXT@: config.h client.h xwm.h
+prefs.@OBJEXT@: config.h client.h xwm.h
+stacking.@OBJEXT@: config.h client.h xwm.h
+workspace.@OBJEXT@: config.h client.h xwm.h prefs.h
+xev.@OBJEXT@: config.h
+xwm.@OBJEXT@: config.h

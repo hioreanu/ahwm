@@ -46,7 +46,8 @@ system is set up; use one of the following guidelines:
 
 4. If none of the above apply to your system, you're using some home-grown
    system or one of those unusual "commercial" unix variants; in this case,
-   you're on your own, but you probably already know what you're doing.
+   you're on your own.  Hopefully your system has some documentation that
+   might help you change your window manager.
 
 What follows are the standard autoconf installation instructions.
 

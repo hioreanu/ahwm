@@ -56,6 +56,7 @@ XContext title_context;
 
 static void client_create_frame(client_t *client, position_size *win_position);
 static void remove_transient_from_leader(client_t *client);
+static void client_add_titlebar_internal(client_t *client);
 
 client_t *client_create(Window w)
 {
@@ -91,6 +92,7 @@ client_t *client_create(Window w)
     client->ignore_unmapnotify = 0;
     client->pass_focus_click = 1;
     client->focus_policy = SloppyFocus;
+    client->cycle_behaviour = RaiseImmediately;
     
     /* God, this sucks.  I want the border width to be zero on all
      * clients, so I need to change the client's border width at some
@@ -154,7 +156,7 @@ client_t *client_create(Window w)
         Free(client);
         return NULL;
     }
-    if (client->has_titlebar) client_add_titlebar(client);
+    if (client->has_titlebar) client_add_titlebar_internal(client);
 
     if (XSaveContext(dpy, w, window_context, (void *)client) != 0) {
         fprintf(stderr, "XWM: XSaveContext failed, could not save window\n");
@@ -286,7 +288,7 @@ void client_unreparent(client_t *client)
     XSetWindowBorderWidth(dpy, client->window, client->orig_border_width);
 }
 
-void client_add_titlebar(client_t *client)
+static void client_add_titlebar_internal(client_t *client)
 {
     XSetWindowAttributes xswa;
     int mask;
@@ -316,7 +318,23 @@ void client_add_titlebar(client_t *client)
                     "XWM: XSaveContext failed, could not save titlebar\n");
         }
     }
+
     client->has_titlebar = 1;
+}
+
+void client_add_titlebar(client_t *client)
+{
+    position_size ps;
+    
+    client_add_titlebar_internal(client);
+    ps.x = client->x;
+    ps.y = client->y;
+    ps.width = client->width;
+    ps.height = client->height;
+    client_get_position_size_hints(client, &ps);
+    client_create_frame(client, &ps);
+    XMoveWindow(dpy, client->window, 0, TITLE_HEIGHT);
+    XMapWindow(dpy, client->titlebar);
 }
 
 void client_remove_titlebar(client_t *client)
@@ -339,23 +357,16 @@ void client_remove_titlebar(client_t *client)
     } else {
         reparented = False;
     }
-    
+
     client_position_noframe(client, &ps);
     XUnmapWindow(dpy, client->titlebar);
     XDestroyWindow(dpy, client->titlebar);
     XDeleteContext(dpy, client->titlebar, title_context);
     client->titlebar = None;
-    XReparentWindow(dpy, client->window, root_window, ps.x, ps.y);
-    XUnmapWindow(dpy, client->frame);
-    XDestroyWindow(dpy, client->frame);
-    XDeleteContext(dpy, client->frame, frame_context);
-    client->frame = None;
-    client->x = ps.x;
-    client->y = ps.y;
-    client->width = ps.width;
-    client->height = ps.height;
-    client_create_frame(client, &ps);
-    if (reparented) client_reparent(client);
+
+    client_create_frame(client, &ps); /* just resets frame's position */
+    XMoveWindow(dpy, client->window, 0, 0);
+    debug(("\tDone removing titlebar\n"));
 }
 
 client_t *client_find(Window w)
@@ -446,15 +457,6 @@ void client_set_name(client_t *client)
     if (xtp.value != NULL) XFree(xtp.value);
 
     debug(("\tClient %#lx is %s\n", (unsigned int)client, client->name));
-    if (strcmp(client->name, "kicker") == 0
-        || strcmp(client->name, "lt-kicker") == 0) {
-        client->focus_policy = DontFocus;
-        client->skip_alt_tab = 1;
-        client->always_on_top = 1;
-/*        client->sticky = 1; */
-        client->omnipresent = 1;
-        client_remove_titlebar(client);
-    }
 }
 
 void client_set_instance_class(client_t *client)

@@ -429,6 +429,22 @@ static void focus_change_current(client_t *new, Time timestamp,
     XFlush(dpy);
 }
 
+void focus_policy_to_click(client_t *client)
+{
+    if (client != focus_current) {
+        debug(("\tGrabbing Button 1 of 0x%08x\n", old));
+        XGrabButton(dpy, Button1, 0, client->frame,
+                    True, ButtonPressMask, GrabModeSync,
+                    GrabModeAsync, None, None);
+        keyboard_grab_keys(client->frame); /* FIXME */
+    }
+}
+
+void focus_policy_from_click(client_t *client)
+{
+    XUngrabButton(dpy, Button1, 0, client->frame);
+}
+
 /*
  * After extensive experimentation, I determined that this is the best
  * way for this function to behave.
@@ -500,9 +516,13 @@ void focus_alt_tab(XEvent *xevent, arglist *ignored)
                         node = get_next(node);
                     }
                     /* FIXME:  aren't we checking this twice? */
-                    if (!(node->client->skip_alt_tab
-                          || node->client->focus_policy == DontFocus))
+                    if (!(node->client->cycle_behaviour == SkipCycle
+                          || node->client->focus_policy == DontFocus)) {
                         focus_set_internal(node, event_timestamp, False);
+                        if (node->client->cycle_behaviour == RaiseImmediately) {
+                            focus_ensure(CurrentTime);
+                        }
+                    }
                 } else {
                     state = REPLAY_KEYBOARD;
                 }
@@ -552,20 +572,19 @@ static focus_node *get_prev(focus_node *node)
     focus_node *p;
 
     for (p = node->prev; p != node; p = p->prev) {
-        if (!(p->client->skip_alt_tab
+        if (!(p->client->cycle_behaviour == SkipCycle
               || p->client->focus_policy == DontFocus))
             return p;
     }
     return node->prev;
 }
 
-/* FIXME:  DontFocus and skip_alt_tab should have separate priorities */
 static focus_node *get_next(focus_node *node)
 {
     focus_node *p;
 
     for (p = node->next; p != node; p = p->next) {
-        if (!(p->client->skip_alt_tab
+        if (!(p->client->cycle_behaviour == SkipCycle
               || p->client->focus_policy == DontFocus))
             return p;
     }

@@ -110,11 +110,13 @@ typedef struct _client_t {
     unsigned int ignore_unmapnotify : 1;
 
     /* user preferences */
+    /* FIXME: 2-bit fields not defined in C, test with autoconf */
     enum { ClickToFocus, SloppyFocus, DontFocus } focus_policy : 2;
     enum { Fixed, Smart, Cascade, Mouse } map_policy : 2;
+    enum { SkipCycle, RaiseImmediately,
+           RaiseOnCycleFinish, DontRaise } cycle_behaviour : 2;
     unsigned int has_titlebar : 1;
     unsigned int is_shaped : 1;
-    unsigned int skip_alt_tab : 1;
     unsigned int pass_focus_click : 1;
     unsigned int always_on_top : 1;
     unsigned int always_on_bottom : 1;

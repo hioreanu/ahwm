@@ -163,15 +163,19 @@ void move_with_transients(client_t *client, unsigned int ws)
     }
     debug(("\tMoving window %#lx ('%.10s') to workspace %d\n",
            client->window, client->name, ws));
+    
     xswa.background_pixel =
         workspace_darkest_highlight[ws - 1];
     XChangeWindowAttributes(dpy, client->titlebar, CWBackPixel, &xswa);
+    
     focus_remove(client, event_timestamp);
     ewmh_client_list_remove(client);
     debug(("\tUnmapping frame %#lx in workspace move\n", client->frame));
     XUnmapWindow(dpy, client->frame);
     client->workspace = ws;
     focus_add(client, event_timestamp);
+    
+    prefs_apply(client);
 }
 
 void workspace_client_moveto_bindable(XEvent *xevent, arglist *args)

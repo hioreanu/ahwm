@@ -70,12 +70,14 @@ struct _line {
 };
 
 struct _type {
-    enum { BOOLEAN, INTEGER, STRING, FOCUS_ENUM } type_type;
+    enum { BOOLEAN, INTEGER, STRING, FOCUS_ENUM, CYCLE_ENUM } type_type;
     union {
         int intval;
         char *stringval;
         enum { TYPE_SLOPPY_FOCUS, TYPE_CLICK_TO_FOCUS,
                TYPE_DONT_FOCUS } focus_enum;
+        enum { TYPE_SKIP_CYCLE, TYPE_RAISE_IMMEDIATELY,
+               TYPE_RAISE_ON_CYCLE_FINISH, TYPE_DONT_RAISE } cycle_enum;
     } type_value;
 };
 
@@ -100,13 +102,13 @@ struct _context {
 struct _option {
     enum { DISPLAYTITLEBAR,
            OMNIPRESENT,
-           SKIPALTTAB,
            DEFAULTWORKSPACE,
            FOCUSPOLICY,
            NUMBEROFWORKSPACES,
            ALWAYSONTOP,
            PASSFOCUSCLICK,
-           ALWAYSONBOTTOM } option_name;
+           ALWAYSONBOTTOM,
+           CYCLEBEHAVIOUR } option_name;
     type *option_value;
 };
 
@@ -168,10 +170,13 @@ extern line *preferences;
 
 /* INTERFACE */
 
-/* The defaults from the configuration file */
-extern int pref_no_workspaces;
-extern Bool pref_display_titlebar;
-extern int pref_default_workspace;
+/*
+ * There is only one function to interface to this module.  This
+ * function should be called:
+ * 1. when the client is created
+ * 2. after anything that can be used as a context selector changes
+ *    (such as the client's window name or workspace)
+ */
 
 void prefs_apply(client_t *client);
 
