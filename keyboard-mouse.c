@@ -312,20 +312,53 @@ void keyboard_quote(XEvent *e, void *v)
     last_quote_time = e->xkey.time;
 }
 
+Window under_pointer()
+{
+    Window child, junk1, new;
+    int junk2;
+    unsigned int junk3;
+
+    if (XQueryPointer(dpy, root_window, &junk1, &child,
+                      &junk2, &junk2, &junk2, &junk2, &junk3) == 0) {
+        debug(("XQueryPointer returns zero\n"));
+        return None;
+    }
+    debug(("Child is 0x%08X\n", child));
+    if (child != focus_current->frame) {
+        debug(("child is not focus_current\n"));
+        return None;
+    }
+
+    for (;;) {
+        if (XQueryPointer(dpy, child, &junk1, &new,
+                          &junk2, &junk2, &junk2, &junk2, &junk3) == 0) {
+            debug(("XQueryPointer returns zero\n"));
+            return None;
+        }
+        debug(("New is 0x%08X\n", new));
+        if (new == None || new == child) return child;
+        child = new;
+    }
+}
+
 /* FIXME:  use XGetInputFocus */
 void keyboard_unquote(XKeyEvent *e)
 {
     XSetWindowAttributes xswa;
+    Window child;
     
     debug(("\tUnquoting\n"));
     quoting = False;
     xswa.background_pixel = workspace_pixels[workspace_current - 1];
     XChangeWindowAttributes(dpy, root_window, CWBackPixel, &xswa);
     XClearWindow(dpy, root_window);
+    child = under_pointer();
+    if (child != focus_current->window) e->subwindow = child;
+    else e->subwindow = None;
     e->time = last_quote_time;
     e->window = focus_current->window;
-    XSendEvent(dpy, focus_current->window, True,
-               NoEventMask, (XEvent *)e);
+    XSendEvent(dpy, InputFocus, True,
+               KeyPressMask, (XEvent *)e);
 }
 
 void keyboard_process(XKeyEvent *xevent)

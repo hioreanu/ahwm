@@ -4,21 +4,20 @@ xhost localhost > /dev/null 2>&1
 xhost 127.0.0.1 > /dev/null 2>&1
 xsetroot -solid darkslategray
 xmodmap ~/.xmodmap-laptop
-#xmodmap ./xmodmap
+xmodmap ./xmodmap
+xrdb -merge < ./Xdefaults
 xset dpms 6000 6002 6004
 xsetroot -cursor_name left_ptr
 #exec xterm
 #xterm &
 #sleep 1
 
-#exec /home/ach/tmp/wmaker-inst/bin/wmaker
-#exec ./9wm
 #exec wmaker
+#exec ./9wm
 #exec enlightenment
 #exec fvwm2
 #exec twm
 #exec ctwm
-#exec mwm
 export MALLOC_CHECK_=2
 exec ./xwm
 

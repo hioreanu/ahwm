@@ -58,9 +58,16 @@ void keyboard_init();
  * in) is not returned.  Of course, this takes an exponential amount
  * of time and space (specifically factorial of the number of locking
  * modifiers, which is exponential), so hopefully the user doesn't
- * have six locking modifiers.  I am considering the following keysyms
- * 'locking' modifiers (based purely upon the fact that they end with
- * '_Lock'):
+ * have six locking modifiers.  To quote Knuth (Art of Computer
+ * Programming, 1.2.5):
+ * 
+ * "It is helpful to keep the value 10! = 3,628,800 in mind; one
+ * should remember that 10! is about 3 and half million.  In a sense,
+ * this number represents an approximate dividing line between things
+ * that are practical to compute and things that are not."
+ * 
+ * I am considering the following keysyms 'locking' modifiers (based
+ * purely upon the fact that they end with '_Lock'):
  * 
  *      XK_Scroll_Lock
  *      XK_Num_Lock

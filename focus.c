@@ -199,7 +199,7 @@ void focus_ensure(Time timestamp)
         return;
     }
 
-    debug(("\tSetting focus to 0x%08X ('%.10s')...\n",
+    debug(("\tCalling XSetInputFocus(0x%08X) ('%.10s')\n",
            (unsigned int)focus_current->window, focus_current->name));
 
     ewmh_active_window_update();
@@ -213,22 +213,20 @@ void focus_ensure(Time timestamp)
     if (focus_current->xwmh != NULL &&
         focus_current->xwmh->flags & InputHint &&
         focus_current->xwmh->input == False) {
+        /* FIXME:  we shouldn't call XSetInputFocus here */
+        debug(("\tInput hint is False\n"));
         XSetInputFocus(dpy, root_window, RevertToPointerRoot, CurrentTime);
-        debug(("\tdoesn't want focus\n"));
-        if (focus_current->protocols & PROTO_TAKE_FOCUS) {
-            client_sendmessage(focus_current, WM_TAKE_FOCUS,
-                               timestamp, 0, 0, 0);
-            debug(("\tglobally active focus\n"));
-        }
     } else {
-        debug(("\twants focus\n"));
+        debug(("\tInput hint is True\n"));
         XSetInputFocus(dpy, focus_current->window,
                        RevertToPointerRoot, timestamp);
-        if (focus_current->protocols & PROTO_TAKE_FOCUS) {
-            debug(("\twill forcibly take focus\n"));
-            client_sendmessage(focus_current, WM_TAKE_FOCUS,
-                               timestamp, 0, 0, 0);
-        }
+    }
+    if (focus_current->protocols & PROTO_TAKE_FOCUS) {
+        debug(("\tUses TAKE_FOCUS protocol\n"));
+        client_sendmessage(focus_current, WM_TAKE_FOCUS,
+                           timestamp, 0, 0, 0);
+    } else {
+        debug(("\tDoesn't use TAKE_FOCUS protocol\n"));
     }
 
     client_raise(focus_current);

@@ -284,6 +284,7 @@ static void event_enter(XCrossingEvent *xevent)
     }
 
     client = client_find(xevent->window);
+    client_print("EnterNotify", client);
     if (client != NULL && client->state == NormalState) {
         if (client->flags.ignore_enternotify != 0) {
             debug(("\tclient has ignore_enternotify\n"));
@@ -822,12 +823,13 @@ static void event_focusin(XFocusChangeEvent *xevent)
         /* someone stole our focus without asking for permission
          * or is using funky input focus model (eg, Globally Active) */
         client = client_find(xevent->window);
+        client_print("FocusIn", client);
         if (client == NULL) {
             fprintf(stderr, "XWM: Could not find client on FocusIn event\n");
             return;
         }
         debug(("\tSetting focus\n"));
-        focus_set(client, event_timestamp);
+        focus_set(client, event_timestamp); /* FIXME:  shouldn't XSetInputFocus */
     } else {
         debug(("\tNot setting focus\n"));
     }

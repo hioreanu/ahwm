@@ -38,7 +38,6 @@ static char *workspace_colors[NO_WORKSPACES] = {
 };
 
 static void alloc_workspace_colors();
-static void moveit(client_t *client, int ws);
 
 void workspace_goto(XEvent *xevent, void *v)
 {
@@ -70,7 +69,10 @@ void workspace_goto(XEvent *xevent, void *v)
     }
     workspace_current = new_workspace;
     workspace_update_color();
-    
+
+    /* FIXME:  getting multiple EnterNotify events per window when
+     * we have transients here - must use 'mapped' flag, not raise
+     * a window more than once */
     client = focus_stacks[workspace_current - 1];
     if (client != NULL) {
         tmp = client;
@@ -78,11 +80,9 @@ void workspace_goto(XEvent *xevent, void *v)
              client != tmp;
              client = client->prev_focus) {
             debug(("\tRemapping 0x%08X ('%.10s')\n", client, client->name));
-//            client_reparent(client);
             client_raise(client);
         }
         debug(("\tRemapping 0x%08X ('%.10s')\n", client, client->name));
-//        client_reparent(client);
         client_raise(client);
     }
     focus_current = focus_stacks[workspace_current - 1];
@@ -90,10 +90,18 @@ void workspace_goto(XEvent *xevent, void *v)
     ewmh_current_desktop_update();
 }
 
-static void moveit(client_t *client, int ws)
+void move_with_transients(client_t *client, int ws)
 {
+    client_t *transient;
     XSetWindowAttributes xswa;
-
+    
+    for (transient = client->transients;
+         transient != NULL;
+         transient = transient->next_transient) {
+        if (transient->workspace == client->workspace) {
+            move_with_transients(transient, ws);
+        }
+    }
     debug(("\tMoving window 0x%08X ('%.10s') to workspace %d\n",
            client->window, client->name, ws));
     xswa.background_pixel =
@@ -101,7 +109,7 @@ static void moveit(client_t *client, int ws)
     XChangeWindowAttributes(dpy, client->titlebar, CWBackPixel, &xswa);
     focus_remove(client, event_timestamp);
     ewmh_client_list_remove(client);
-    debug(("\tUnmapping frame 0x%08X in moveit\n", client->frame));
+    debug(("\tUnmapping frame 0x%08X in workspace move\n", client->frame));
     XUnmapWindow(dpy, client->frame);
     client->workspace = ws;
     focus_add(client, event_timestamp);
@@ -110,7 +118,7 @@ static void moveit(client_t *client, int ws)
 void workspace_client_moveto(XEvent *xevent, void *v)
 {
     int ws = (int)v;
-    client_t *client, *transient;
+    client_t *client;
 
     client = client_find(event_window(xevent));
     if (client == NULL) {
@@ -131,14 +139,7 @@ void workspace_client_moveto(XEvent *xevent, void *v)
      * FIXME:  try to ensure the focus list remains somewhat
      * intact as we move the transients */
 
-    for (transient = client->transients;
-         transient != NULL;
-         transient = transient->next_transient) {
-        if (transient->workspace == client->workspace) {
-            moveit(transient, ws);
-        }
-    }
-    moveit(client, ws);
+    move_with_transients(client, ws);
 }
 
 /* addition and subtraction without overflow */

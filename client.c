@@ -37,6 +37,7 @@ client_t *client_list = NULL;
 
 static void client_create_frame(client_t *client, Bool has_titlebar,
                                 position_size *win_position);
+static void remove_transient_from_leader(client_t *client);
 
 client_t *client_create(Window w)
 {
@@ -106,9 +107,9 @@ client_t *client_create(Window w)
     }
 
     client->frame_event_mask = SubstructureRedirectMask | EnterWindowMask
-                               | FocusChangeMask | StructureNotifyMask;
+        | FocusChangeMask | StructureNotifyMask;
     client->window_event_mask = xwa.your_event_mask | StructureNotifyMask
-                                | PropertyChangeMask;
+        | PropertyChangeMask;
     XSelectInput(dpy, client->window, client->window_event_mask);
 
 #ifdef SHAPE
@@ -191,7 +192,7 @@ static void client_create_frame(client_t *client, Bool has_titlebar,
 
     w = client->window;
     mask = CWBackPixmap | CWBackPixel | CWCursor
-           | CWEventMask | CWOverrideRedirect;
+        | CWEventMask | CWOverrideRedirect;
     xswa.cursor = cursor_normal;
     xswa.background_pixmap = None;
     xswa.background_pixel = black;
@@ -355,6 +356,16 @@ client_t *client_find(Window w)
 
 void client_destroy(client_t *client)
 {
+    client_t *c, *tmp;
+
+    /* apparently we need this here */
+    remove_transient_from_leader(client);
+    for (c = client->transients; c != NULL; c = tmp) {
+        tmp = c->next_transient;
+        c->next_transient = NULL;
+        c->transient_for = None;
+    }
+    
     XDeleteContext(dpy, client->window, window_context);
     XDeleteContext(dpy, client->frame, frame_context);
     XUnmapWindow(dpy, client->frame);
@@ -465,21 +476,9 @@ void client_set_xsh(client_t *client)
     }
 }
 
-/*
- * FIXME:  not ICCCM- and EWMH-compliant
- */
-
-void client_set_transient_for(client_t *client)
+static void remove_transient_from_leader(client_t *client)
 {
-    Window new_transient_for;
     client_t *leader, *c, *tmp;
-
-    if (XGetTransientForHint(dpy, client->window, &new_transient_for) == 0)
-        new_transient_for = None;
-
-    if (client->transient_for == new_transient_for) return;
-    
-    /* remove client from old leader's 'transients' list if needed */
     
     if (client->transient_for != None
         && ( (leader = client_find(client->transient_for)) != NULL)) {
@@ -499,6 +498,24 @@ void client_set_transient_for(client_t *client)
             c = c->next_transient;
         }
     }
+}
+
+/*
+ * FIXME:  not ICCCM- and EWMH-compliant
+ */
+
+void client_set_transient_for(client_t *client)
+{
+    Window new_transient_for;
+    client_t *leader;
+
+    if (XGetTransientForHint(dpy, client->window, &new_transient_for) == 0)
+        new_transient_for = None;
+
+    if (client->transient_for == new_transient_for) return;
+    
+    /* remove client from old leader's 'transients' list if needed */
+    remove_transient_from_leader(client);
 
     /* add client to new leader's 'transients' list if possible; if
      * that's not possible, no big deal, just means client's
@@ -629,7 +646,9 @@ void _client_print(char *s, client_t *client)
            s, (unsigned int)client, (unsigned int)client->window,
            (unsigned int)client->frame));
     debug(("%-19s name = '%.10s', instance = '%.10s', class = '%.10s'\n",
-           s, client->name, client->instance, client->class));
+           s, client->name,
+           client->instance == NULL ? "NULL" : client->instance,
+           client->class == NULL ? "NULL" : client->class));
 }
 
 void client_paint_titlebar(client_t *client)
@@ -731,14 +750,151 @@ void client_sendmessage(client_t *client, Atom data0, Time timestamp,
     XSendEvent(dpy, client->window, False, 0, (XEvent *)&xcme);
 }
 
+/*
+ * Raising a window presents a somewhat interesting problem because we
+ * want to hold the following invariant:
+ * 
+ * A client's transient windows are always on top of the client.
+ * 
+ * The problem arises because one can have arbitrarily complex trees
+ * of transient windows (a window may have any number of transients
+ * but it will only have one or zero windows for which it is
+ * transient).  In order to raise a window, we must raise the entire
+ * tree, ensuring that the each node along the path up from the window
+ * requested to the root must be raised among all nodes at the same
+ * height in the tree.  We also don't want to raise a window more than
+ * once because that may generate multiple EnterNotify events on that
+ * window and I don't want the ignore_enternotify flag to become an
+ * integer instead of a bit flag.
+ * 
+ * Consider the following tree, with the root node being 'A', and the
+ * node we want raised being 'D' (with 'B' and 'C' being the path from
+ * the requested window to the root window):
+ * 
+ * A
+ * |- 1
+ * |  `- 2
+ * |- B
+ * |  |- 10
+ * |  |- C
+ * |  |  |- 14
+ * |  |  |- D
+ * |  |  |  |- 16
+ * |  |  |  |  `- 17
+ * |  |  |  `- 18
+ * |  |  `- 15
+ * |  `- 11
+ * |     |- 12
+ * |     `- 13
+ * `- 3
+ *    |- 4
+ *    |  `- 5
+ *    |     |- 6
+ *    |     `- 7
+ *    `- 8
+ *       `- 9
+ * 
+ * The nodes will be raised in the following order:
+ * A 1 2 3 4 5 6 7 8 9 B 10 11 12 13 C 14 15 D 16 17 18
+ * This holds the invariant, and ensures that each of A, B, C, D is
+ * raised among its siblings.
+ * 
+ * The algorithm goes as follows:
+ * 
+ * raise(D) =
+ * 
+ * go up to C, ignoring D
+ *     go up to B, ignoring C
+ *         go up to A, ignoring B
+ *             can't go any further up
+ *             raise A
+ *             raise all subtrees of A except B
+ *         raise B
+ *         raise all subtrees of B except C
+ *     raise C
+ *     raise all subtrees of C except D
+ * raise D
+ * raise all subtrees of D
+ */
+
+static void raise_and_ignore_enternotify(client_t *client);
+
+static void raise_tree(client_t *node, client_t *ignore, Bool go_up)
+{
+    client_t *parent, *c;
+    
+    if (go_up && node->transient_for != None) {
+        parent = client_find(node->transient_for);
+        if (parent != NULL) {
+            raise_tree(parent, node, True);
+        }
+    }
+    
+    raise_and_ignore_enternotify(node);
+
+    for (c = node->transients; c != NULL; c = c->next_transient) {
+        if (c != ignore)
+            raise_tree(c, NULL, False);
+    }
+}
+
+/*
+ * We must know three things to figure out when one of our actions
+ * will generate an EnterNotify event - faster to call XQueryPointer
+ * once instead of whenever we raise a window
+ */
+
+static Window raising_under_pointer;
+static int raising_x, raising_y;
+
+void client_raise(client_t *client)
+{
+    Window junk1;
+    int junk2;
+    unsigned int junk3;
+    
+    if (XQueryPointer(dpy, root_window, &junk1,
+                      &raising_under_pointer, &raising_x, &raising_y,
+                      &junk2, &junk2, &junk3) == False) {
+        raising_x = raising_y = -1;
+        raising_under_pointer = None;
+    }
+    
+    raise_tree(client, NULL, True);
+}
+
+static void raise_and_ignore_enternotify(client_t *client)
+{
+    if (client->workspace == workspace_current
+        && client->state == NormalState) {
+        if (client->frame != raising_under_pointer
+            && raising_x >= client->x
+            && raising_y >= client->y
+            && raising_x <= client->x + client->width
+            && raising_y <= client->y + client->height) {
+            debug(("\tSetting ignore_enternotify for '%s' in client_raise\n",
+                   client->name));
+            client->flags.ignore_enternotify = 1;
+            raising_under_pointer = client->frame;
+        }
+        debug(("\tRaising window 0x%08X\n", client->window));
+        XMapRaised(dpy, client->frame);
+    }
+}
+
+#if 0
 static void client_raise_internal(client_t *client, int x, int y,
-                                  Window *under_pointer);
+                                  Window *under_pointer, client_t *orig);
+static void raise_and_ignore_enternotify(client_t *client, int x, int y,
+                                         Window *under_pointer);
 
 void client_raise(client_t *client) 
 {
     client_t *transient_for;
-    Window junk1, under_pointer;
-    int x, y, junk2;
+    Window under_pointer;
+    int x, y;
+    Window junk1;
+    int junk2;
     unsigned int junk3;
 
     if (client == NULL) return;
@@ -754,7 +910,6 @@ void client_raise(client_t *client)
          * transient windows. */
         
         client_raise(transient_for);
-        XMapRaised(dpy, client->frame);
         return;
     }
     
@@ -764,14 +919,12 @@ void client_raise(client_t *client)
         under_pointer = None;
     }
     
-    client_raise_internal(client, x, y, &under_pointer);
+    client_raise_internal(client, x, y, &under_pointer, NULL);
 }
 
-void client_raise_internal(client_t *client, int x, int y,
-                           Window *under_pointer)
+static void raise_and_ignore_enternotify(client_t *client, int x, int y,
+                                         Window *under_pointer)
 {
-    client_t *c;
-
     if (client->workspace == workspace_current
         && client->state == NormalState) {
         if (client->frame != *under_pointer
@@ -784,10 +937,26 @@ void client_raise_internal(client_t *client, int x, int y,
             client->flags.ignore_enternotify = 1;
             *under_pointer = client->frame;
         }
+        debug(("\tRaising window 0x%08X\n", client->window));
         XMapRaised(dpy, client->frame);
     }
-    
-    for (c = client->transients; c != NULL; c = c->next_transient) {
-        client_raise_internal(c, x, y, under_pointer);
-    }
 }
+
+void client_raise_internal(client_t *client, int x, int y,
+                           Window *under_pointer, client_t *orig)
+{
+    client_t *c;
+    Bool found_orig = False;
+
+    raise_and_ignore_enternotify(client, x, y, under_pointer);
+
+    for (c = client->transients; c != NULL; c = c->next_transient) {
+        if (c == orig)
+            found_orig = True;
+        else
+            client_raise_internal(c, x, y, under_pointer, client);
+    }
+    if (found_orig)
+        client_raise_internal(orig, x, y, under_pointer, client);
+}
+#endif
