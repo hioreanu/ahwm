@@ -9,6 +9,10 @@
 #include "cursor.h"
 #include <stdio.h>
 
+#ifndef MIN
+#define MIN(x,y) ((x) < (y) ? (x) : (y))
+#endif
+
 static XEvent *compress_motion(XEvent *xevent);
 static void process_resize(client_t *client, int new_x, int new_y,
                            resize_direction_t direction,
@@ -184,8 +188,30 @@ void mouse_move_client(XEvent *xevent)
  */
 
 typedef enum {
-    NW, NE, SE, SW, NORTH, SOUTH, EAST, WEST, UNKNOWN
+    NW = 0, NE, SE, SW, NORTH, SOUTH, EAST, WEST, UNKNOWN
 } resize_direction_t;
+
+/* the cursors that go with the above directions */
+Cursor direction_cursor_map[] = {
+    cursor_nw_se,               /* NW */
+    cursor_ne_sw,               /* NE */
+    cursor_nw_se,               /* SE */
+    cursor_ne_sw,               /* SW */
+    cursor_n_s,                 /* NORTH */
+    cursor_n_s,                 /* SOUTH */
+    cursor_e_w,                 /* EAST */
+    cursor_e_w,                 /* WEST */
+    cursor_normal,              /* UNKNOWN */
+}
+
+/*
+ * One of the four quadrants of a window like in plane geometry
+ */
+
+typedef enum {
+    I = 1, II, III, IV
+} quadrant_t;
+    
 
 /*
  * This gets a bit hairy...similar to the move window code above but a
@@ -201,8 +227,9 @@ typedef enum {
 void mouse_resize_client(XEvent *xevent)
 {
     static client_t *client = NULL;
-    static int x_start, y_start;
+    static int x_start, y_start, got_direction;
     static resize_direction_t resize_direction = UNKNOWN;
+    static quadrant_t quadrant = IV;
     XEvent event1;
     
     do {
@@ -226,6 +253,9 @@ void mouse_resize_client(XEvent *xevent)
                         }
                         x_start = xevent->xbutton.x_root;
                         y_start = xevent->xbutton.y_root;
+                        quadrant = get_quadrant(client,
+                                                xevent->xbutton.x_root,
+                                                xevent->xbutton.y_root);
 #ifdef DEBUG
                         printf("\tGrabbing the mouse for resizing\n");
 #endif /* DEBUG */
@@ -260,6 +290,7 @@ void mouse_resize_client(XEvent *xevent)
                     goto reset;
                 }
 
+                /* FIXME:  do the wmaker thing, just use quadrant */
                 switch (resize_direction) {
                     case UNKNOWN:
                         if (xevent->xbutton.x_root > x_start) {
@@ -442,10 +473,82 @@ static XEvent *compress_motion(XEvent *xevent)
     return xevent;
 }
 
-static void process_resize(client_t *client, XEvent *xevent,
+static void process_resize(client_t *client, int new_x, new_y,
                            resize_direction_t direction,
                            int *old_x, int *old_y)
 {
-    /* FIXME: stopped here */
-    ;
+    int x_diff, y_diff;
+    int x, y, w, h;
+
+    x = client->x;
+    y = client->y;
+    w = client->width;
+    h = client->height;
+    y_diff = new_y - old_y;
+    x_diff = new_x - old_x;
+    if (direction == WEST || direction == EAST)
+        y_diff = 0;
+    if (direction == NORTH || direction == SOUTH)
+        x_diff = 0;
+    if (client->xsh != NULL && (client->xsh->flags & PResizeInc)) {
+        if (y_diff > client->xsh->height_inc
+            || (-y_diff) > client->xsh->height_inc) {
+            if (y_diff < 0) y_diff += client->xsh->height_inc;
+            y_diff -= (y_diff % client->xsh->height_inc);
+        }
+        if (x_diff > client->xsh->width_inc
+            || (-x_diff) > client->xsh->width_inc) {
+            if (x_diff < 0) x_diff += client->xsh->width_inc;
+            x_diff -= (x_diff % client->xsh->width_inc);
+        }
+    }
+
+    
+    
+    switch (direction) {
+        case WEST:
+            
+
+
+
+
+
+
+
+            
+    }
+    
+
+    
+    client->x += x_diff;
+    client->y += y_diff;
+    
+        
+        
+            
+                
+            
+        
+
 }
+
+
+static quadrant_t get_quadrant(client_t *client, int x, int y)
+{
+    if (x < client->x + ((client->x + client->width) / 2)) {
+        if (y < client->y + ((client->y + client->height) / 2)) {
+            return II;
+        } else {
+            return III;
+        }
+    } else {
+        if (y < client->y + ((client->y + client->height) / 2)) {
+            return I
+        } else {
+            return IV;
+        }
+    }
+}
+
+    
+        

@@ -270,6 +270,13 @@ void client_set_xsh(client_t *client)
         XFree(client->xsh);
         client->xsh = NULL;
     }
+    /* WTF am I supposed to do with an increment of zero? */
+    if (client->xsh & PResizeInc) {
+        if (client->xsh->height_inc <= 0)
+            client->xsh->height_inc = 1;
+        if (client->xsh->width_inc <= 0)
+            client->xsh->width_inc = 1;
+    }
 }
 
 /* ICCCM, 4.1.3.1 */
