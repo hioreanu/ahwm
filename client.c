@@ -72,7 +72,6 @@ client_t *client_create(Window w)
     client->orig_border_width = xwa.border_width;
     client->flags.reparented = 0;
     client->flags.ignore_unmapnotify = 0;
-    client->ignore_enternotify = 0;
     
     /* God, this sucks.  I want the border width to be zero on all
      * clients, so I need to change the client's border width at some
@@ -749,95 +748,6 @@ void client_sendmessage(client_t *client, Atom data0, Time timestamp,
     XSendEvent(dpy, client->window, False, 0, (XEvent *)&xcme);
 }
 
-Window client_ignore_enternotify_add(client_t *client,
-                                     ignore_enternotify_struct *iens)
-{
-    Window junk1;
-    int junk2;
-    unsigned int junk3;
-    ignore_enternotify_struct extra_struct;
-    
-    if (iens == NULL) {
-        iens = &extra_struct;
-
-        if (XQueryPointer(dpy, root_window, &junk1,
-                          &iens->w, &iens->x, &iens->y,
-                          &junk2, &junk2, &junk3) == 0) {
-            debug(("\tstacking: XQueryPointer failed\n"));
-            return None;
-        }
-    }
-    if (client->frame != iens->w
-        && client->x <= iens->x
-        && client->x + client->width >= iens->x
-        && client->y <= iens->y
-        && client->y + client->height >= iens->y) {
-        debug(("\tIncrementing ignore_enternotify for 0x%08X\n", client));
-        client->ignore_enternotify++;
-        return client->frame;
-    } else {
-        return iens->w;
-    }
-}
-
-Window client_ignore_enternotify_del(client_t *client,
-                                     ignore_enternotify_struct *iens) 
-{
-    Window junk1, *children;
-    int i, nchildren, junk2;
-    unsigned int junk3;
-    client_t *c;
-    ignore_enternotify_struct extra_struct;
-    
-    if (iens == NULL) {
-        iens = &extra_struct;
-
-        if (XQueryPointer(dpy, root_window, &junk1, &iens->w,
-                          &iens->x, &iens->y, &junk2, &junk2, &junk3) == 0) {
-            debug(("\tstacking: XQueryPointer failed\n"));
-            return None;
-        }
-    }
-    if (!(client->x <= iens->x
-          && client->x + client->width >= iens->x
-          && client->y <= iens->y
-          && client->y + client->height >= iens->y)) {
-        return iens->w;
-    }
-    if (XQueryTree(dpy, root_window, &junk1, &junk1,
-                   &children, &nchildren) == 0) {
-        debug(("\tstacking: xquerytree failed\n"));
-        return iens->w;
-    }
-    
-    for (i = nchildren - 1; i >= 0; i--) {
-        debug(("\tStacking: --\n"));
-        if (children[i] == client->frame) {
-            debug(("\tStacking: unmapped window\n"));
-            continue;
-        }
-        c = client_find(children[i]);
-        if (c == NULL) {
-            debug(("\tstacking: window 0x%08X is not client\n",
-                   (unsigned int)children[i]));
-            continue;
-        }
-        debug(("\tstacking: client is %s\n", c->name));
-        if (iens->x >= c->x
-            && iens->y >= c->y
-            && iens->x <= c->x + c->width
-            && iens->y <= c->y + c->height) {
-            debug(("\tstacking: client is below pointer\n"));
-            XFree(children);
-            debug(("\tIncrementing ignore_enternotify for 0x%08X\n", c));
-            c->ignore_enternotify++;
-            return iens->w;
-        }
-    }
-    XFree(children);
-    return iens->w;
-}
-
 /*
  * Raising a window presents a somewhat interesting problem because we
  * want to hold the following invariant:
@@ -850,10 +760,7 @@ Window client_ignore_enternotify_del(client_t *client,
  * transient).  In order to raise a window, we must raise the entire
  * tree, ensuring that each node along the path up from the window
  * requested to the root must be raised among all nodes at the same
- * height in the tree.  We also don't want to raise a window more than
- * once because that may generate multiple EnterNotify events on that
- * window and I don't want the ignore_enternotify flag to become an
- * integer instead of a bit flag.
+ * height in the tree.
  * 
  * Consider the following tree, with the root node being 'A', and the
  * node we want raised being 'D' (with 'B' and 'C' being the path from
@@ -908,32 +815,39 @@ Window client_ignore_enternotify_del(client_t *client,
 typedef struct window_buffer {
     Window *w;
     int nused;
-    int navail;
+    int nallocated;
 } window_buffer;
 
 static void raise_tree(client_t *node, client_t *ignore,
-                       Bool go_up, ignore_enternotify_struct *iens)
+                       Bool go_up, window_buffer *wb)
 {
     client_t *parent, *c;
+    Window *tmp;
     
     if (go_up && node->transient_for != None) {
         parent = client_find(node->transient_for);
         if (parent != NULL) {
-            raise_tree(parent, node, True, iens);
+            raise_tree(parent, node, True, wb);
         }
     }
     
     if (node->workspace == workspace_current
         && node->state == NormalState) {
-        debug(("\tRaising window 0x%08X\n", node->window));
-        XSync(dpy, False);
-        XMapRaised(dpy, node->frame);
-        iens->w = client_ignore_enternotify_add(node, iens);
+        if (wb->nallocated == wb->nused) {
+            tmp = Realloc(wb->w, 2 * wb->nallocated * sizeof(Window));
+            if (tmp == NULL) {
+                fprintf(stderr, "XWM: Out of memory while raising window\n");
+                return;
+            }
+            wb->nallocated *= 2;
+        }
+        XMapWindow(dpy, node->frame);
+        wb->w[wb->nused++] = node->frame;
     }
 
     for (c = node->transients; c != NULL; c = c->next_transient) {
         if (c != ignore)
-            raise_tree(c, NULL, False, iens);
+            raise_tree(c, NULL, False, wb);
     }
 }
 
@@ -945,17 +859,31 @@ static void raise_tree(client_t *node, client_t *ignore,
 
 void client_raise(client_t *client)
 {
-    Window junk1;
-    int junk2;
-    unsigned int junk3;
-    ignore_enternotify_struct iens;
-    
-    if (XQueryPointer(dpy, root_window, &junk1,
-                      &iens.w, &iens.x, &iens.y,
-                      &junk2, &junk2, &junk3) == False) {
-        iens.x = iens.y = -1;
-        iens.w = None;
+    static window_buffer wb = {NULL, 0, 0};
+    Window tmp;
+    int i;
+
+    if (wb.w == NULL) {
+        wb.w = Malloc(sizeof(Window));
+        if (wb.w == NULL) {
+            fprintf(stderr, "XWM: Out of memory while raising window\n");
+            XMapRaised(dpy, client->frame);
+            return;
+        }
+        wb.nallocated = 1;
+    }
+    wb.nused = 0;
+
+    raise_tree(client, NULL, True, &wb);
+
+    /* must reverse the array because XRestackWindows works backwards */
+    for (i = 0; 2 * i < wb.nused; i++) {
+        tmp = wb.w[i];
+        wb.w[i] = wb.w[wb.nused - i - 1];
+        wb.w[wb.nused - i - 1] = tmp;
     }
     
-    raise_tree(client, NULL, True, &iens);
+    XRaiseWindow(dpy, wb.w[0]);
+    if (wb.nused != 1)          /* avoid spurious X request */
+        XRestackWindows(dpy, wb.w, wb.nused);
 }
