@@ -66,7 +66,6 @@ int main(int argc, char **argv)
     already_running_windowmanager = 0;
     XSetErrorHandler(tmp_error_handler);
     XSelectInput(dpy, root_window,
-//                 EnterWindowMask | LeaveWindowMask |
                  PropertyChangeMask | SubstructureRedirectMask |
                  SubstructureNotifyMask | KeyPressMask |
                  KeyReleaseMask);
@@ -89,7 +88,7 @@ int main(int argc, char **argv)
     printf("Setting root input focus...");
     XSetInputFocus(dpy, root_window, RevertToNone, CurrentTime);
     printf("ok\n");
-    focus_ensure();
+    focus_ensure();             /* focus.c */
     
     xfd = ConnectionNumber(dpy);
     fcntl(xfd, F_SETFD, FD_CLOEXEC);

@@ -10,6 +10,7 @@
 #include "xwm.h"
 #include "event.h"
 #include "client.h"
+#include "workspace.h"
 
 static void event_key(XKeyEvent *);
 static void event_button(XButtonEvent *);
@@ -158,14 +159,32 @@ static void event_create(XCreateWindowEvent *xevent)
 
 static void event_destroy(XDestroyWindowEvent *xevent)
 {
-    printf("Got a destroy window event...\n");
+    client_t *client;
+    
+    client = client_find(xevent->window);
+    printf("Got a destroy event for client 0x%08X...\n", client);
+    if (client == NULL) {
+        printf("unable to find client, shouldn't happen\n");
+        return;
+    }
+    focus_remove(client);
+    focus_ensure();
+    client_destroy(client);
 }
 
 static void event_unmap(XUnmapEvent *xevent)
 {
-    printf("Got an unmap event...\n");
-/* FIXME:  we would need to figure out what to focus if this
- * was the focused window... */
+    client_t *client;
+    
+    client = client_find(xevent->window);
+    printf("Got an unmap event for client 0x%08X...\n", client);
+    if (client == NULL) {
+        printf("unable to find client, shouldn't happen\n");
+        return;
+    }
+    client->state = UNMAPPED;
+    focus_remove(client);
+    focus_ensure();
 }
 
 static void event_maprequest(XMapRequestEvent *xevent)
@@ -178,16 +197,16 @@ static void event_maprequest(XMapRequestEvent *xevent)
         printf("unable to find client, shouldn't happen\n");
         return;
     }
-    client->state = NormalState;
-
-    if (client->state == WithdrawnState) {
-        printf("Withdrawn...\n");
-    } else if (client->state == NormalState) {
-        printf("Normal...\n");
-    } else if (client->state == IconicState) {
-        printf("Iconic...\n");
+    if (client->state == MAPPED) {
+        focus_remove(client);
     }
+    client->state = MAPPED;
+    client->workspace = workspace_current;
+
     XMapWindow(xevent->display, client->window);
+    keyboard_grab_keys(client);
+    focus_set(client);
+    focus_ensure();
 }
 
 static void event_configurerequest(XConfigureRequestEvent *xevent)

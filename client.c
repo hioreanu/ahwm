@@ -7,6 +7,7 @@
 
 #include "client.h"
 #include "workspace.h"
+#include "keyboard.h"
 
 XContext window_context;
 

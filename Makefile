@@ -4,8 +4,8 @@ SHELL=/bin/sh
 CFLAGS=-I/usr/X11R6/include -L/usr/X11R6/lib -g
 LIBS=-lX11
 
-xwm: xwm.o client.o event.o focus.o workspace.o
-	$(CC) $(CFLAGS) xwm.o client.o event.o focus.o workspace.o -o xwm $(LIBS)
+xwm: xwm.o client.o event.o focus.o workspace.o keyboard.o
+	$(CC) $(CFLAGS) xwm.o client.o event.o focus.o workspace.o keyboard.o -o xwm $(LIBS)
 
 .SUFFIXES: .c .o
 .c.o: $*.h $*.c
