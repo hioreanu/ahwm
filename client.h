@@ -319,6 +319,12 @@ void client_position_noframe(client_t *, position_size *);
 /*
  * Set the postion_size argument to the client's desired position and
  * size based upon the client's hints.
+ * 
+ * This function should never be called.
+ * I'm leaving it here in case someone believes it is actually missing.
+ * xsh->{x,y,width,height} should never be used for anything
+ * according to ICCCM, and things actually break if you do use them.
+ * Client can set same hints by changing window before mapping it.
  */
 
 void client_get_position_size_hints(client_t *client, position_size *ps);
