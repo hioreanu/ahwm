@@ -5,7 +5,7 @@ CFLAGS=-DSHAPE -O2 -I/usr/X11R6/include -L/usr/X11R6/lib
 CFLAGS=-g -Wall -DSHAPE -DDEBUG=1 -I/usr/X11R6/include -L/usr/X11R6/lib
 LIBS=-lX11 -lXext
 
-OBJS=xwm.o client.o event.o focus.o workspace.o keyboard-mouse.o xev.o cursor.o move-resize.o error.o kill.o malloc.o icccm.o colormap.o ewmh.o debug.o
+OBJS=xwm.o client.o event.o focus.o workspace.o keyboard-mouse.o xev.o cursor.o move-resize.o error.o kill.o malloc.o icccm.o colormap.o ewmh.o debug.o place.o
 
 all: xwm
 
@@ -38,7 +38,7 @@ cursor.o: cursor.h xwm.h
 debug.o: debug.h
 error.o: error.h xwm.h
 event.o: xwm.h event.h client.h focus.h workspace.h keyboard-mouse.h xev.h
-event.o: error.h malloc.h move-resize.h debug.h ewmh.h
+event.o: error.h malloc.h move-resize.h debug.h ewmh.h place.h
 ewmh.o: xwm.h ewmh.h client.h malloc.h debug.h focus.h workspace.h
 focus.o: focus.h client.h xwm.h workspace.h debug.h event.h ewmh.h
 icccm.o: xwm.h icccm.h
@@ -47,6 +47,7 @@ keyboard-mouse.o: debug.h event.h focus.h cursor.h
 kill.o: kill.h client.h xwm.h event.h debug.h
 malloc.o: malloc.h
 move-resize.o: move-resize.h client.h xwm.h cursor.h event.h malloc.h debug.h
+place.o: place.h client.h xwm.h workspace.h debug.h
 workspace.o: workspace.h client.h xwm.h focus.h event.h debug.h ewmh.h
 xev.o: malloc.h
 xwm.o: xwm.h event.h client.h keyboard-mouse.h focus.h workspace.h cursor.h

@@ -4,15 +4,16 @@ xhost localhost > /dev/null 2>&1
 xhost 127.0.0.1 > /dev/null 2>&1
 xsetroot -solid darkslategray
 xmodmap ~/.xmodmap-laptop
-xmodmap ./xmodmap
+#xmodmap ./xmodmap
 xrdb -merge < ./Xdefaults
 xset dpms 6000 6002 6004
 xsetroot -cursor_name left_ptr
 #exec xterm
-#xterm &
-#sleep 1
+xterm &
+sleep 1
 
 #exec wmaker
+#exec kwin
 #exec ./9wm
 #exec enlightenment
 #exec fvwm2

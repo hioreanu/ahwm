@@ -106,6 +106,8 @@ typedef struct _client_t {
 #define PROTO_SAVE_YOURSELF 02
 #define PROTO_DELETE_WINDOW 04
 
+extern client_t *client_list;
+
 typedef struct _position_size {
     int x, y, width, height;
 } position_size;

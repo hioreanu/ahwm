@@ -24,6 +24,7 @@
 #include "move-resize.h"
 #include "debug.h"
 #include "ewmh.h"
+#include "place.h"
 
 #ifdef SHAPE
 #include <X11/extensions/shape.h>
@@ -530,6 +531,9 @@ static void event_maprequest(XMapRequestEvent *xevent)
     if (client->state == NormalState) {
         if (client->flags.reparented == 0)
             client_reparent(client);
+        if (client->xsh == NULL
+            || !(client->xsh->flags & (USPosition | PPosition)))
+            place(client);
         XMapWindow(xevent->display, client->window);
         XMapWindow(xevent->display, client->frame);
         if (client->titlebar != None) {
