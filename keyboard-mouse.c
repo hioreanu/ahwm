@@ -46,7 +46,6 @@
 #include "event.h"
 #include "focus.h"
 #include "cursor.h"
-#define DEBUG 1
 #include "debug.h"
 
 #ifndef MIN
