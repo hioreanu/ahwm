@@ -220,8 +220,8 @@ static void focus_add_internal(focus_node *node, int ws, Time timestamp)
         if (node->next == node)
             focus_stacks[ws - 1] = node;
     } else {
-        debug(("\tSetting focus stack of workspace %d to %#lx ('%.10s')\n",
-               ws, node->client->window, node->client->name));
+        debug(("\tSetting focus stack of workspace %d to %s\n",
+               ws, client_dbg(node->client)));
         focus_stacks[ws - 1] = node;
         if (ws == workspace_current) {
             focus_change_current(node->client, timestamp, True, True);
@@ -275,10 +275,8 @@ static void focus_remove_internal(focus_node *node, int ws, Time timestamp)
     node->next->prev = node->prev;
     /* if was focused for workspace, update workspace pointer */
     if (focus_stacks[ws - 1] == node) {
-        debug(("\tSetting focus stack of workspace "
-               "%d to %#lx ('%.10s')\n",
-               ws, new->client->window,
-               new->client->name));
+        debug(("\tSetting focus stack of workspace %d to %s\n",
+               ws, client_dbg(new->client)));
         focus_stacks[ws - 1] = new;
     }
     /* if only client left on workspace, set to NULL */
@@ -348,10 +346,8 @@ static void focus_set_internal(focus_node *node, Time timestamp,
     }
     do {
         if (p == node) {
-            debug(("\tSetting focus stack of workspace %d "
-                   "to %#lx ('%.10s')\n",
-                   node->client->workspace, node->client->window,
-                   node->client->name));
+            debug(("\tSetting focus stack of workspace %d to %s\n",
+                   node->client->workspace, client_dbg(node->client)));
             focus_stacks[node->client->workspace - 1] = node;
             if (node->client->workspace == workspace_current) {
                 focus_change_current(node->client, timestamp,
@@ -388,8 +384,7 @@ void focus_ensure(Time timestamp)
         return;
     }
 
-    debug(("\tCalling XSetInputFocus(%#lx) ('%.10s')\n",
-           (unsigned long)focus_current->window, focus_current->name));
+    debug(("\tCalling XSetInputFocus %s\n", client_dbg(focus_current)));
 
     ewmh_active_window_update();
 
@@ -437,7 +432,7 @@ static void focus_change_current(client_t *new, Time timestamp,
     if (call_focus_ensure) focus_ensure(timestamp);
     if (grab_buttons && old != new) {
         if (old != NULL && old->focus_policy == ClickToFocus) {
-            debug(("\tGrabbing Button 1 of 0x%08x\n", old));
+            debug(("\tGrabbing Button 1 of %s\n", client_dbg(old)));
             XGrabButton(dpy, Button1, 0, old->frame,
                         True, ButtonPressMask, GrabModeSync,
                         GrabModeAsync, None, None);
@@ -452,7 +447,7 @@ static void focus_change_current(client_t *new, Time timestamp,
 void focus_policy_to_click(client_t *client)
 {
     if (client != focus_current) {
-        debug(("\tGrabbing Button 1 of 0x%08x\n", client));
+        debug(("\tGrabbing Button 1 of %s\n", client_dbg(client)));
         XGrabButton(dpy, Button1, 0, client->frame,
                     True, ButtonPressMask, GrabModeSync,
                     GrabModeAsync, None, None);
@@ -521,7 +516,7 @@ void focus_cycle_next(XEvent *xevent, arglist *ignored)
     in_alt_tab = True;
     orig_focus = focus_stacks[workspace_current - 1];
     debug(("\torig_focus = '%s'\n",
-           orig_focus ? orig_focus->client->name : "NULL"));
+           orig_focus ? client_dbg(orig_focus->client) : "NULL"));
 
     XGrabKeyboard(dpy, root_window, True, GrabModeAsync,
                   GrabModeAsync, CurrentTime);
@@ -629,8 +624,7 @@ void focus_cycle_next(XEvent *xevent, arglist *ignored)
             keyboard_replay(&xevent->xkey);
     }
     
-    debug(("\tfocus_current = '%.10s'\n",
-           focus_current ? focus_current->name : "NULL"));
+    debug(("\tfocus_current = %s\n", client_dbg(focus_current)));
     debug(("\tLeaving alt-tab\n"));
 }
 

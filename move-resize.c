@@ -294,7 +294,7 @@ void move_resize(XEvent *xevent, arglist *al)
     height /= get_height_resize_inc(client);
     width /= get_width_resize_inc(client);
     snprintf(def_geom, 80, "%dx%d+%d+%d", width, height, x, y);
-    debug(("def_geom = %s\n", def_geom));
+    debug(("\tdef_geom = %s\n", def_geom));
 
     /* XWMGeometry() loses when you pass it NULL for size hints */
     if (client->xsh != NULL) {
@@ -306,7 +306,7 @@ void move_resize(XEvent *xevent, arglist *al)
     
     mask = XWMGeometry(dpy, scr, user_geom, def_geom, 0, xsh_p,
                        &x, &y, &width, &height, &gravity);
-    debug(("Set: %s %s %s %s %s %s; x = %d, y = %d, width = %d, height = %d\n",
+    debug(("\tSet: %s %s %s %s %s %s; x = %d, y = %d, width = %d, height = %d\n",
            mask & XValue ? "XValue" : "",
            mask & YValue ? "YValue" : "",
            mask & WidthValue ? "WidthValue" : "",
@@ -374,7 +374,7 @@ void move_client(XEvent *xevent, arglist *ignored)
     }
     if (client == NULL) {
         fprintf(stderr, "AHWM: Not moving a non-client\n");
-        debug(("Ungrabbing pointer 4\n"));
+        debug(("\tUngrabbing pointer 4\n"));
         XUngrabPointer(dpy, CurrentTime);
         return;
     }
@@ -562,7 +562,7 @@ void move_client(XEvent *xevent, arglist *ignored)
         }
     }
 
-    debug(("Ungrabbing pointer 5\n"));
+    debug(("\tUngrabbing pointer 5\n"));
     XUngrabPointer(dpy, CurrentTime);
     XUngrabKeyboard(dpy, CurrentTime);
     moving = 0;
@@ -749,7 +749,7 @@ void resize_client(XEvent *xevent, arglist *al)
     }
     if (client == NULL) {
         debug(("\tNot resizing a non-client\n"));
-        debug(("Ungrabbing pointer 6\n"));
+        debug(("\tUngrabbing pointer 6\n"));
         XUngrabPointer(dpy, CurrentTime);
         return;
     }
@@ -1021,7 +1021,7 @@ void resize_client(XEvent *xevent, arglist *al)
         paint_titlebar(client);
     }
 
-    debug(("Ungrabbing pointer 7\n"));
+    debug(("\tUngrabbing pointer 7\n"));
     XUngrabPointer(dpy, CurrentTime);
     XUngrabKeyboard(dpy, CurrentTime);
     sizing = 0;

@@ -694,7 +694,7 @@ static void event_configurerequest(XConfigureRequestEvent *xevent)
         XConfigureWindow(xevent->display, client->window, new_mask, &xwc);
     }
 
-    debug(("Orig border width = %d\n", client->orig_border_width));
+    debug(("\tOrig border width = %d\n", client->orig_border_width));
     
     if (xevent->value_mask & CWStackMode) {
         /* FIXME:  deal with the sibling, Opposite correctly */
@@ -713,8 +713,8 @@ static void event_configurerequest(XConfigureRequestEvent *xevent)
             debug(("\tLowering window\n"));
             XLowerWindow(dpy, client->frame);
         } else {
-            debug(("\tIgnoring stacking request %d for client %#lx (%s)\n",
-                   xevent->detail, (unsigned int)client, client->name));
+            debug(("\tIgnoring stacking request %d for client %s\n",
+                   xevent->detail, client_dbg(client)));
         }
     } else if (new_mask == 0) {
         debug(("\tSending fake ConfigureNotify\n"));
@@ -751,10 +751,10 @@ static void event_reparentnotify(XReparentEvent *xevent)
         return;
     }
     client2 = client_find(xevent->parent);
-    debug(("\tClient %#lx (%s) was reparented to %#lx (%s)\n",
-           xevent->window, client->name, xevent->parent,
-           (client2 == NULL ? "non-client window" :
-            client2->name)));
+    debug(("\tClient %s was reparented to %#lx \n",
+           client_dbg(client), xevent->parent,
+           (client2 == NULL ? "(non-client window)" :
+            client_dbg(client2))));
     debug(("\tdestroying client\n"));
     client_destroy(client);
 }
@@ -925,8 +925,8 @@ static void event_focusin(XFocusChangeEvent *xevent)
         if (focus_current != NULL) {
             XSetInputFocus(dpy, focus_current->window,
                            RevertToPointerRoot, CurrentTime);
-            debug(("Setting focus to %#lx in event_focusin",
-                   focus_current->window));
+            debug(("\tSetting focus to %s in event_focusin\n",
+                   client_dbg(focus_current)));
         }
     }
 #if 0 /* FIXME */

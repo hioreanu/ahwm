@@ -1,4 +1,7 @@
 TODO before release:
+- ensure everything includes compat.h if needed
+- invocations of client_find() don't use event_window()
+- ewmh 1.2, much more sane
 - timer_t declared in sys/types.h on FreeBSD
 - new section in manual about binding clicks, drags, double clicks
 - new section in manual about killing windows, document heuristics, etc.
@@ -13,6 +16,10 @@ TODO before release:
 - test with a modern version of Sun's X implementation
 - function ToggleOmnipresent
 - xmms placement does not work
+- input focus FALSE, should not focus at all (kpager)
+- put window on two desktops using kpager, does strange things
+- _NET_WM_WINDOW_TYPE_MENU goes into alt-tab at launch
+- kicker: never focus, even on click, always pass focus click
 
 Wishlist:
 - motif hints override is!
@@ -264,3 +271,6 @@ xterm bug
 
 BUG - strange interaction in window moving edge-resistance, sometimes
 pointer leaves window when moving quickly, can't reproduce
+
+BUG - high load, kill konqueror (C-q), frame does not disappear,
+force-kill frame, crash, can't reproduce

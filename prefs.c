@@ -855,8 +855,9 @@ static Bool context_applies(client_t *client, context *cntxt)
                 retval = False;
             } else {
                 retval = !(strcmp(client->class, type_string));
-                debug(("Using window class (%s, %s), returning %d\n",
-                       client->class, type_string, retval));
+                if (retval) {
+                    debug(("\tPrefs: matched window class '%s'\n", client->class));
+                }
             }
         }
     } else if (cntxt->context_selector & SEL_WINDOWINSTANCE) {

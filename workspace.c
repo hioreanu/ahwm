@@ -54,8 +54,7 @@ static Bool unmap(client_t *client, void *v)
         client->workspace = (unsigned int)v;
     } else {
         XUnmapWindow(dpy, client->frame);
-        debug(("\tUnmapping frame %#lx in workspace_goto\n",
-               client->frame));
+        debug(("\tUnmapping %s in workspace_goto\n", client_dbg(client)));
         ewmh_client_list_remove(client);
     }
     return True;
@@ -63,7 +62,7 @@ static Bool unmap(client_t *client, void *v)
 
 static Bool map(client_t *client, void *v)
 {
-    debug(("\tRemapping %#lx ('%.10s')\n", client, client->name));
+    debug(("\tRemapping %s\n", client_dbg(client)));
     XMapWindow(dpy, client->frame);
     return True;
 }
@@ -131,11 +130,10 @@ void move_with_transients(client_t *client, unsigned int ws)
             }
         }
     }
-    debug(("\tMoving window %#lx ('%.10s') to workspace %d\n",
-           client->window, client->name, ws));
+    debug(("\tMoving %s to workspace %d\n", client_dbg(client), ws));
     
     focus_remove(client, event_timestamp);
-    debug(("\tUnmapping frame %#lx in workspace move\n", client->frame));
+    debug(("\tUnmapping %s in workspace move\n", client_dbg(client)));
     XUnmapWindow(dpy, client->frame);
     client->workspace = ws;
     ewmh_desktop_update(client);

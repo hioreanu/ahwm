@@ -491,12 +491,12 @@ void ewmh_wm_state_apply(client_t *client)
                            sizeof(Atom), False, XA_ATOM,
                            &actual, &fmt, &nitems, &bytes_after_return,
                            (unsigned char **)&states) != Success) {
-        debug(("XGetWindowProperty(_NET_WM_STATE) failed\n"));
+        debug(("\tXGetWindowProperty(_NET_WM_STATE) failed\n"));
         return;
     }
 
     if (nitems == 0 || fmt != 32 || actual != XA_ATOM) {
-        debug(("nitems = %d, fmt = %d\n", nitems, fmt));
+        debug(("\tnitems = %d, fmt = %d\n", nitems, fmt));
         if (states != NULL) XFree(states);
         return;
     }
@@ -603,14 +603,14 @@ void ewmh_wm_strut_apply(client_t *client)
                            sizeof(Atom), False, XA_ATOM,
                            &actual, &fmt, &nitems, &bytes_after_return,
                            (unsigned char **)&values) != Success) {
-        debug(("XGetWindowProperty(_NET_WM_STRUT) failed\n"));
+        debug(("\tXGetWindowProperty(_NET_WM_STRUT) failed\n"));
         if (changed)
             update_wm_workarea();
         return;
     }
 
     if (actual != _NET_WM_STRUT || fmt != 32 || nitems != 4) {
-        debug(("atom = %d, expected = %d, fmt = %d, nitems = %d\n",
+        debug(("\tatom = %d, expected = %d, fmt = %d, nitems = %d\n",
                actual, _NET_WM_STRUT, fmt, nitems));
         if (changed)
             update_wm_workarea();
@@ -676,11 +676,11 @@ void ewmh_win_hints_apply(client_t *client)
                            sizeof(Atom), False, XA_CARDINAL,
                            &actual, &fmt, &nitems, &bytes_after_return,
                            (unsigned char **)&hint) != Success) {
-        debug(("XGetWindowProperty(_WIN_HINTS) failed\n"));
+        debug(("\tXGetWindowProperty(_WIN_HINTS) failed\n"));
         return;
     }
     if (nitems == 0 || fmt != 32 || actual != XA_CARDINAL) {
-        debug(("nitems = %d, fmt = %d\n", nitems, fmt));
+        debug(("\tnitems = %d, fmt = %d\n", nitems, fmt));
         if (hint != NULL) XFree(hint);
         return;
     }
@@ -706,11 +706,11 @@ void ewmh_win_state_apply(client_t *client)
                            sizeof(Atom), False, XA_CARDINAL,
                            &actual, &fmt, &nitems, &bytes_after_return,
                            (unsigned char **)&hint) != Success) {
-        debug(("XGetWindowProperty(_WIN_STATE) failed\n"));
+        debug(("\tXGetWindowProperty(_WIN_STATE) failed\n"));
         return;
     }
     if (nitems == 0 || fmt != 32 || actual != XA_CARDINAL) {
-        debug(("nitems = %d, fmt = %d\n", nitems, fmt));
+        debug(("\tnitems = %d, fmt = %d\n", nitems, fmt));
         if (hint != NULL) XFree(hint);
         return;
     }
@@ -746,11 +746,11 @@ void ewmh_win_workspace_apply(client_t *client)
                            sizeof(Atom), False, XA_CARDINAL,
                            &actual, &fmt, &nitems, &bytes_after_return,
                            (unsigned char **)&hint) != Success) {
-        debug(("XGetWindowProperty(_WIN_STATE) failed\n"));
+        debug(("\tXGetWindowProperty(_WIN_STATE) failed\n"));
         return;
     }
     if (nitems == 0 || fmt != 32 || actual != XA_CARDINAL) {
-        debug(("nitems = %d, fmt = %d\n", nitems, fmt));
+        debug(("\tnitems = %d, fmt = %d\n", nitems, fmt));
         if (hint != NULL) XFree(hint);
         return;
     }
@@ -776,11 +776,11 @@ void ewmh_win_layer_apply(client_t *client)
                            sizeof(Atom), False, XA_CARDINAL,
                            &actual, &fmt, &nitems, &bytes_after_return,
                            (unsigned char **)&hint) != Success) {
-        debug(("XGetWindowProperty(_WIN_STATE) failed\n"));
+        debug(("\tXGetWindowProperty(_WIN_STATE) failed\n"));
         return;
     }
     if (nitems == 0 || fmt != 32 || actual != XA_CARDINAL) {
-        debug(("nitems = %d, fmt = %d\n", nitems, fmt));
+        debug(("\tnitems = %d, fmt = %d\n", nitems, fmt));
         if (hint != NULL) XFree(hint);
         return;
     }
@@ -811,11 +811,11 @@ void ewmh_wm_desktop_apply(client_t *client)
                            sizeof(Atom), False, XA_CARDINAL,
                            &actual, &fmt, &nitems, &bytes_after_return,
                            (unsigned char **)&ws) != Success) {
-        debug(("XGetWindowProperty(_NET_WM_DESKTOP) failed\n"));
+        debug(("\tXGetWindowProperty(_NET_WM_DESKTOP) failed\n"));
         return;
     }
     if (nitems == 0 || fmt != 32 || actual != XA_CARDINAL) {
-        debug(("nitems = %d, fmt = %d\n", nitems, fmt));
+        debug(("\tnitems = %d, fmt = %d\n", nitems, fmt));
         if (ws != NULL) XFree(ws);
         return;
     }
@@ -853,7 +853,7 @@ void ewmh_window_type_apply(client_t *client)
                            sizeof(Atom), False, XA_ATOM,
                            &actual, &fmt, &nitems, &bytes_after_return,
                            (unsigned char **)&types) != Success) {
-        debug(("XGetWindowProperty(_NET_WM_WINDOW_TYPE) failed\n"));
+        debug(("\tXGetWindowProperty(_NET_WM_WINDOW_TYPE) failed\n"));
         return;
     }
     if (fmt != 32 || nitems == 0) return;
@@ -1044,25 +1044,32 @@ Bool ewmh_handle_clientmessage(XClientMessageEvent *xevent)
     data3 = xevent->data.l[2];
     
     if (xevent->message_type == _NET_CURRENT_DESKTOP) {
+        debug(("\tChanging workspace due to EWMH message\n"));
         workspace_goto((unsigned int)(data + 1));
         return True;
     } else if (xevent->message_type == _NET_ACTIVE_WINDOW) {
         if (client != NULL) {
+            debug(("\tChanging active window due to EWMH message\n"));
             focus_set(client, CurrentTime);
             stacking_raise(client);
         }
         return True;
     } else if (xevent->message_type == _NET_CLOSE_WINDOW) {
+        debug(("\tKilling window due to EWMH message\n"));
         kill_nicely((XEvent *)xevent, NULL); /* ugly but works ok */
         return True;
     } else if (xevent->message_type == _NET_WM_DESKTOP) {
         if (data == 0xFFFFFFFF) {
             if (client->omnipresent_set <= HintSet) {
+                debug(("\tSetting %s omnipresent due to EWMH message\n",
+                       client_dbg(client)));
                 client->omnipresent = 1;
                 client->omnipresent_set = HintSet;
             }
         } else {
             if (client->workspace_set <= HintSet) {
+                debug(("\tMoving client %s to workspace %d due to EWMH message\n",
+                       client_dbg(client), (unsigned int)(data + 1)));
                 client->workspace_set = HintSet;
                 workspace_client_moveto(client, (unsigned int)(data + 1));
             }
@@ -1208,9 +1215,10 @@ Bool ewmh_handle_clientmessage(XClientMessageEvent *xevent)
                 resize_maximize_client(client, MAX_HORIZ, MAX_UNMAXED);
         }
         return True;
-    } else if (xevent->message_type == _WIN_WORKSPACE ||
-               xevent->message_type == _NET_WM_DESKTOP) {
+    } else if (xevent->message_type == _WIN_WORKSPACE) {
         if (client->workspace_set <= HintSet) {
+            debug(("\tMoving client %s to workspace %d due to GNOME message\n",
+                   client_dbg(client), (unsigned int)(data + 1)));
             client->workspace_set = HintSet;
             workspace_client_moveto(client, (unsigned int)(data + 1));
         }
@@ -1313,8 +1321,8 @@ void ewmh_client_list_add(client_t *client)
         }
     }
     ewmh_client_list[nclients++] = client->window;
-    debug(("\tAdding window %#lx to _NET_CLIENT_LIST, %d clients\n",
-           client->window, nclients));
+    debug(("\tAdding window %s to _NET_CLIENT_LIST, %d clients\n",
+           client_dbg(client), nclients));
     XChangeProperty(dpy, root_window, _NET_CLIENT_LIST,
                     XA_WINDOW, 32, PropModeReplace,
                     (unsigned char *)ewmh_client_list, nclients);
@@ -1333,8 +1341,8 @@ void ewmh_client_list_remove(client_t *client)
                 ewmh_client_list[i - 1] = ewmh_client_list[i];
             }
             nclients--;
-            debug(("\tRemoving window %#lx from _NET_CLIENT_LIST, %d clients\n",
-                   client->window, nclients));
+            debug(("\tRemoving window %s from _NET_CLIENT_LIST, %d clients\n",
+                   client_dbg(client), nclients));
             XChangeProperty(dpy, root_window, _NET_CLIENT_LIST,
                             XA_WINDOW, 32, PropModeReplace,
                             (unsigned char *)ewmh_client_list, nclients);
@@ -1347,7 +1355,7 @@ void ewmh_client_list_remove(client_t *client)
 
 void ewmh_stacking_list_update(Window *w, int nwindows)
 {
-    debug(("Updating _NET_CLIENT_LIST_STACKING, i=%d\n", nwindows));
+    debug(("\tUpdating _NET_CLIENT_LIST_STACKING, i=%d\n", nwindows));
     XChangeProperty(dpy, root_window, _NET_CLIENT_LIST_STACKING,
                     XA_WINDOW, 32, PropModeReplace,
                     (unsigned char *)w, nwindows);

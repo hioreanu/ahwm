@@ -52,6 +52,7 @@
 #include "prefs.h"
 #include "mwm.h"
 #include "colormap.h"
+#include "compat.h"
 
 int TITLE_HEIGHT = 15;
 
@@ -348,8 +349,7 @@ static void update_move_offset(client_t *client)
 void client_reparent(client_t *client)
 {
     /* reparent the window and map window and frame */
-    debug(("\tReparenting window %#lx ('%.10s')\n",
-           client->window, client->name));
+    debug(("\tReparenting %s\n", client_dbg(client)));
     XAddToSaveSet(dpy, client->window);
     XSetWindowBorderWidth(dpy, client->window, 0);
     if (client->titlebar != None) {
@@ -378,7 +378,7 @@ static void client_add_titlebar_internal(client_t *client)
     int mask;
 
     if (client->titlebar != None) {
-        debug(("Client already has titlebar, not touching it"));
+        debug(("\tClient already has titlebar, not touching it"));
         return;
     }
     debug(("\tAdding titlebar\n"));
@@ -391,7 +391,7 @@ static void client_add_titlebar_internal(client_t *client)
     xswa.override_redirect = True;
     xswa.win_gravity = NorthWestGravity;
 
-    debug(("Client width is %d\n", client->width));
+    debug(("\tClient width is %d\n", client->width));
     
     client->titlebar = XCreateWindow(dpy, client->frame, 0, 0, client->width,
                                      TITLE_HEIGHT, 0, DefaultDepth(dpy, scr),
@@ -865,4 +865,15 @@ void client_sendmessage(client_t *client, Atom data0, Time timestamp,
     xcme.data.l[3] = data3;
     xcme.data.l[4] = data4;
     XSendEvent(dpy, client->window, False, 0, (XEvent *)&xcme);
+}
+
+char *client_dbg(client_t *client)
+{
+    static char buf[40];
+
+    if (client == NULL)
+        return "(NULL)";
+    snprintf(buf, 40, "(%.10s,%lx,%lx,%lx)", client->name,
+             client->window, client->frame, (unsigned long)client);
+    return buf;
 }

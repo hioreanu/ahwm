@@ -539,7 +539,7 @@ void keyboard_replay(XKeyEvent *e)
         e->y = y;
     }
     e->window = event;
-    debug(("Sending keyboard event\n"));
+    debug(("\tSending keyboard event\n"));
     XSendEvent(dpy, event, True, mask, (XEvent *)e);
 }
 
@@ -949,17 +949,17 @@ Bool mouse_handle_event(XEvent *xevent)
                         || (grabbed_button == xevent->xbutton.button
                             && xevent->type == ButtonRelease
                             && in_window(xevent, xevent->xbutton.window))) {
-                        debug(("Calling function\n"));
+                        debug(("\tCalling function\n"));
                         (*mb->function)(xevent, mb->args);
                     } else {
-                        debug(("Not calling function\n"));
+                        debug(("\tNot calling function\n"));
                     }
                 }
-                debug(("Ungrabbing pointer 1\n"));
+                debug(("\tUngrabbing pointer 1\n"));
                 XUngrabPointer(dpy, xevent->xbutton.time);
                 grabbed_button = 0;
             } else {
-                debug(("GRABBING POINTER\n"));
+                debug(("\tGRABBING POINTER\n"));
 
                 XGrabPointer(dpy, xevent->xbutton.window, False,
                              ButtonReleaseMask | ButtonPressMask,
@@ -975,12 +975,12 @@ Bool mouse_handle_event(XEvent *xevent)
     if (grabbed_button != 0
         && xevent->type == ButtonRelease
         && xevent->xbutton.button == grabbed_button) {
-        debug(("Ungrabbing pointer 2\n"));
+        debug(("\tUngrabbing pointer 2\n"));
         XUngrabPointer(dpy, xevent->xbutton.time);
         grabbed_button = 0;
         return True;
     } else if (grabbed_button == 0) {
-        debug(("Ungrabbing pointer 3\n"));
+        debug(("\tUngrabbing pointer 3\n"));
         XUngrabPointer(dpy, xevent->xbutton.time);
     }
     if (xevent->xbutton.window == root_window) {
@@ -1226,16 +1226,16 @@ static void get_event_child_windows_keyboard(Window *event, Window *child,
     for (;;) {
         if (XQueryPointer(dpy, new, &junk1, &new,
                           &junk2, &junk2, &junk2, &junk2, &junk3) == 0) {
-            debug(("XQueryPointer returns zero\n"));
+            debug(("\tXQueryPointer returns zero\n"));
             return;
         }
         if (XGetWindowAttributes(dpy, new, &xwa) == 0) {
-            debug(("XGetWindowAttributes fails, returning\n"));
+            debug(("\tXGetWindowAttributes fails, returning\n"));
             return;
         }
         if (client_find(new) != NULL) return;
         *child = new;
-        debug(("New is 0x%08X\n", new));
+        debug(("\tNew is 0x%08X\n", new));
         if (new == None || new == *child) return;
     }
 }

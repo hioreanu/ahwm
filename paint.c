@@ -261,7 +261,7 @@ void paint_calculate_colors(client_t *client, char *normal,
     xc_focused.blue = 0;
     xc_focused.green = 0;
 
-    debug(("%s, %s, %s, %s\n", normal, focused, text, focused_text));
+    debug(("\tColors:  %s, %s, %s, %s\n", normal, focused, text, focused_text));
     
     /* parse four given colors, save "exact" representation */
     if (normal != NULL) {
@@ -304,7 +304,7 @@ void paint_calculate_colors(client_t *client, char *normal,
              new_dquad[TEXT], new_dquad[FOCUSED_TEXT]);
     if (i != -1) {
         client->color_index = i;
-        debug(("Found it: %d\n", i));
+        debug(("\tColor index found: %d\n", i));
         return;
     }
 
@@ -329,7 +329,7 @@ void paint_calculate_colors(client_t *client, char *normal,
            &new_dquad,
            NCOLORS * sizeof(unsigned long));
     client->color_index = nallocated++;
-    debug(("Allocated new entry: %d\n", nallocated-1));
+    debug(("\tAllocated new color entry: %d\n", nallocated-1));
     /* FIXME:  should investigate changing window's background
      * color in case X decides to show that at some point */
     /* FIXME:  might also need to repaint right now */
@@ -359,7 +359,7 @@ void paint_titlebar(client_t *client)
     if (client == NULL || client->titlebar == None) return;
 
     ndx = client->color_index;
-    debug(("index = %d, nallocated = %d\n", ndx, nallocated));
+    debug(("\tColor index = %d, nallocated = %d\n", ndx, nallocated));
     if (ndx >= nallocated) {
         fprintf(stderr,
                 "AHWM:  Assertion failed: client->color_index >= nallocated\n");

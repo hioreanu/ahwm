@@ -351,4 +351,11 @@ void _client_print(char *, client_t *);
 void client_sendmessage(client_t *client, Atom data0, Time timestamp,
                         long data2, long data3, long data4);
 
+/*
+ * returns the client's name for use in debug() function
+ * writes to static memory - this is not re-entrant
+ */
+
+char *client_dbg(client_t *client);
+
 #endif /* CLIENT_H */

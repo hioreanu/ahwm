@@ -52,19 +52,19 @@ void mwm_apply(client_t *client)
                            sizeof(mwm_hints), False, _MOTIF_WM_HINTS,
                            &actual, &fmt, &nitems, &bytes_after_return,
                            (unsigned char **)&hints) != Success) {
-        debug(("XGetWindowProperty(_MOTIF_WM_HINTS) FAILED!\n"));
+        debug(("\tXGetWindowProperty(_MOTIF_WM_HINTS) FAILED!\n"));
         return;
     }
 
     if (actual != _MOTIF_WM_HINTS || fmt != 32) {
-        debug(("Actual = %d, _MOTIF_WM_HINTS = %d, fmt = %d\n",
+        debug(("\tActual = %d, _MOTIF_WM_HINTS = %d, fmt = %d\n",
                actual, _MOTIF_WM_HINTS, fmt));
         if (hints != NULL) XFree(hints);
         return;
     }
     
-    debug(("%s has set: %s%s%s%s\n",
-           client->name,
+    debug(("\t%s has set: %s%s%s%s\n",
+           client_dbg(client),
            hints->flags & MWM_FLAGS_FUNCTIONS ? "functions " : "",
            hints->flags & MWM_FLAGS_DECORATIONS ? "decorations " : "",
            hints->flags & MWM_FLAGS_INPUT_MODE ? "input_mode " : "",
@@ -77,9 +77,9 @@ void mwm_apply(client_t *client)
     if ((hints->flags & MWM_FLAGS_DECORATIONS) &&
         (!(hints->decorations & MWM_DECORATIONS_TITLEBAR))) {
         
-        debug(("Removing titlebar of %s because of Motif hints\n",
-               client->name));
         if (client->has_titlebar_set <= HintSet) {
+            debug(("Removing titlebar of %s because of Motif hints\n",
+                   client_dbg(client)));
             client_remove_titlebar(client);
             client->has_titlebar_set = HintSet;
         }

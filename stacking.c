@@ -457,7 +457,7 @@ static void raise_tree(client_t *node, client_t *ignore, Bool go_up)
     }
     if (parent == NULL || order(node, parent) >= 0) {
         restack(node, True);
-        debug(("\tRaising client %#lx ('%.10s')\n", node, node->name));
+        debug(("\tRaising client %s\n", client_dbg(node)));
     }
 
     if (node->keep_transients_on_top == 0)

@@ -126,7 +126,7 @@ Bool kill_using_net_wm_pid(client_t *client)
                            sizeof(CARD32), False, XA_CARDINAL,
                            &actual, &fmt, &nitems, &bytes_after_return,
                            (unsigned char **)&pid) != Success) {
-        debug(("XGetWindowProperty(_NET_WM_PID) failed\n"));
+        debug(("\tXGetWindowProperty(_NET_WM_PID) failed\n"));
         return False;
     }
     if (pid == NULL || actual != XA_CARDINAL || fmt != 32 || nitems != 1) {
@@ -139,7 +139,7 @@ Bool kill_using_net_wm_pid(client_t *client)
                            sizeof(char *), False, XA_STRING,
                            &actual, &fmt, &nitems, &bytes_after_return,
                            (unsigned char **)&their_hostname) != Success) {
-        debug(("XGetWindowProperty(_NET_WM_PID) failed\n"));
+        debug(("\tXGetWindowProperty(_NET_WM_PID) failed\n"));
         return False;
     }
     if (their_hostname == NULL || actual != XA_STRING || fmt != 8) {
@@ -150,7 +150,7 @@ Bool kill_using_net_wm_pid(client_t *client)
     }
     if (strcmp(my_hostname, their_hostname) == 0) {
         kill((pid_t)*pid, SIGTERM);
-        debug(("killed %d (%s) using _NET_WM_PID\n", *pid, client->name));
+        debug(("killed %d (%s) using _NET_WM_PID\n", *pid, client_dbg(client)));
         XFree(pid);
         XFree(their_hostname);
         return True;
