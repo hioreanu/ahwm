@@ -39,7 +39,7 @@ void keyboard_set_function_ex(int keycode, unsigned int modifiers,
 
     newbinding = malloc(sizeof(keybinding));
     if (newbinding == NULL) {
-        printf("\tCannot bind key, out of memory\n");
+        fprintf(stderr, "Cannot bind key, out of memory\n");
         return;
     }
     newbinding->next = bindings;
@@ -58,7 +58,7 @@ void keyboard_set_function(char *keystring, int depress, key_fn fn)
     unsigned int modifiers;
 
     if (keyboard_string_to_keycode(keystring, &keycode, &modifiers) != 1) {
-        printf("\tCannot bind key, bad keystring '%s'\n", keystring);
+        fprintf(stderr, "Cannot bind key, bad keystring '%s'\n", keystring);
         return;
     }
     keyboard_set_function_ex(keycode, modifiers, depress, fn);
@@ -67,8 +67,11 @@ void keyboard_set_function(char *keystring, int depress, key_fn fn)
 void keyboard_grab_keys(Window w)
 {
     keybinding *kb;
-    
+
+#ifdef DEBUG
     printf("\tGrabbing keys of window 0x%08X\n", w);
+#endif /* DEBUG */
+    
     for (kb = bindings; kb != NULL; kb = kb->next) {
         XGrabKey(dpy, kb->keycode, kb->modifiers, w, True,
                  GrabModeAsync, GrabModeAsync);
@@ -80,6 +83,15 @@ void keyboard_process(XKeyEvent *xevent)
     keybinding *kb;
     int code, propagate;
     client_t *client;
+
+#ifdef DEBUG
+    KeySym ks;
+
+    ks = XKeycodeToKeysym(dpy, xevent->keycode, 0);
+    printf("\twindow 0x%08X, keycode %d, state %d, keystring %s\n",
+           xevent->window, xevent->keycode, xevent->state,
+           XKeysymToString(ks));
+#endif /* DEBUG */
 
     code = xevent->keycode;
 
@@ -95,8 +107,9 @@ void keyboard_process(XKeyEvent *xevent)
                      * not a frame or something */
                     if ( (client = client_find(xevent->window)) == NULL)
                         return;
-                    XSendEvent(dpy, xevent->subwindow != None ? xevent->subwindow
-                                                              : client->window,
+                    XSendEvent(dpy,
+                               xevent->subwindow != None ? xevent->subwindow
+                                                         : client->window,
                                False,
                                xevent->type == KeyPress ? KeyPressMask
                                                         : KeyReleaseMask,
@@ -129,7 +142,6 @@ int keyboard_string_to_keycode(char *keystring, int *keycode_ret,
         while (isspace(*keystring)) keystring++;
         cp1 = strchr(keystring, '|');
         if (cp1 == NULL) {
-            fprintf(stderr, "Left with '%s'\n", keystring);
             strncpy(buf, keystring, 512);
             buf[511] = '\0';
             while (isspace(*(buf + strlen(buf) - 1)))
@@ -154,7 +166,6 @@ int keyboard_string_to_keycode(char *keystring, int *keycode_ret,
         while (isspace(*cp2)) cp2--;
         memcpy(buf, keystring, MIN(511, cp2 - keystring + 1));
         buf[MIN(511, cp2 - keystring + 1)] = '\0';
-        fprintf(stderr, "Found a modifier '%s'\n", buf);
 
         /* FIXME: strcasecmp may not be very standard, rewrite */
         if (strcasecmp(buf, "Mod1") == 0) {

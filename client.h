@@ -36,7 +36,7 @@ typedef struct _client_t {
     Window frame;               /* contains titlebar, parent of above */
     Window transient_for;       /* FIXME */
     XWMHints *xwmh;             /* Hints or NULL */
-    char *name;                 /* FIXME */
+    char *name;                 /* window's name (from XA_WM_NAME) */
     int x;                      /* position */
     int y;                      /* position */
     int width;                  /* size */

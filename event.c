@@ -179,14 +179,7 @@ void event_dispatch(XEvent *event)
 
 static void event_key(XKeyEvent *xevent)
 {
-    KeySym ks;
-
-    ks = XKeycodeToKeysym(dpy, xevent->keycode, 0); /* WTF is the last arg? */
-    
-    printf("\twindow 0x%08X, keycode %d, state %d, keystring %s\n",
-           xevent->window, xevent->keycode, xevent->state,
-           XKeysymToString(ks));
-    keyboard_process(xevent);
+    keyboard_process(xevent);   /* keyboard.c */
 }
 
 static void event_button(XButtonEvent *xevent)
@@ -209,8 +202,10 @@ static void event_enter_leave(XCrossingEvent *xevent)
     if (xevent->detail == NotifyInferior) return;
 
     client = client_find(xevent->window);
+#ifdef DEBUG
     client_print("Enter/Leave:", client);
     printf("\tmode = %d, detail = %d\n", xevent->mode, xevent->detail);
+#endif /* DEBUG */
     if (client != NULL && focus_canfocus(client)) {
         focus_set(client);      /* focus.c */
         focus_ensure();
@@ -222,13 +217,17 @@ static void event_create(XCreateWindowEvent *xevent)
     client_t *client;
 
     if (xevent->override_redirect) {
+#ifdef DEBUG
         printf("\tWindow 0x%08X has override_redirect, ignoring\n",
                xevent->window);
+#endif /* DEBUG */
         return;
     }
 
     client = client_create(xevent->window);
+#ifdef DEBUG
     client_print("Create:", client);
+#endif /* DEBUG */
     if (client == NULL) return;
     client->x = xevent->x;
     client->y = xevent->y;
@@ -241,7 +240,9 @@ static void event_destroy(XDestroyWindowEvent *xevent)
     client_t *client;
     
     client = client_find(xevent->window);
+#ifdef DEBUG
     client_print("Destroy:", client);
+#endif /* DEBUG */
     if (client == NULL) {
         return;
     }
@@ -255,7 +256,9 @@ static void event_unmap(XUnmapEvent *xevent)
     client_t *client;
     
     client = client_find(xevent->window);
+#ifdef DEBUG
     client_print("Unmap:", client);
+#endif /* DEBUG */
     if (client == NULL) return;
     client->state = UNMAPPED;
     if (client->frame != None)
@@ -269,9 +272,11 @@ static void event_maprequest(XMapRequestEvent *xevent)
     client_t *client;
     
     client = client_find(xevent->window);
+#ifdef DEBUG
     client_print("Map Request:", client);
+#endif /* DEBUG */
     if (client == NULL) {
-        printf("\tunable to find client, shouldn't happen\n");
+        fprintf(stderr, "unable to find client, shouldn't happen\n");
         return;
     }
     if (client->state == MAPPED) {
@@ -298,7 +303,9 @@ static void event_configurerequest(XConfigureRequestEvent *xevent)
     XWindowChanges  xwc;
     
     client = client_find(xevent->window);
+#ifdef DEBUG
     client_print("Configure Request:", client);
+#endif /* DEBUG */
     if (xevent->value_mask & CWX)
         client->x      = xevent->x;
     if (xevent->value_mask & CWY)
@@ -336,7 +343,7 @@ static void event_configurerequest(XConfigureRequestEvent *xevent)
 
 static void event_property(XPropertyEvent *xevent)
 {
-    /* probably don't need to do anything here */
+    if (icccm_prop_changed(xevent)) return;
 }
 
 static void event_colormap(XColormapEvent *xevent)

@@ -101,10 +101,13 @@ void focus_ensure()
         XSetInputFocus(dpy, root_window, RevertToPointerRoot, CurrentTime);
         return;
     }
+
+#ifdef DEBUG
     printf("\tSetting focus to 0x%08X...", focus_current->window);
     fflush(stdout);
+#endif /* DEBUG */
+
     XSetInputFocus(dpy, focus_current->window,
                    RevertToPointerRoot, CurrentTime);
-    printf("ok\n");
     XMapRaised(dpy, focus_current->frame);
 }

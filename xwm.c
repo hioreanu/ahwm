@@ -41,7 +41,7 @@ static int tmp_error_handler(Display *dpy, XErrorEvent *error)
 
 static int error_handler(Display *dpy, XErrorEvent *error)
 {
-    printf("Caught some sort of error.\n");
+    fprintf(stderr, "Caught some sort of X error.\n");
     return -1;
 }
 
@@ -57,7 +57,7 @@ static int error_handler(Display *dpy, XErrorEvent *error)
  * 9.  Go into a select() loop waiting for events
  * 10. Dispatch events
  * 
- * Should also probably set some properties on the root window....
+ * FIXME:  Should also probably set some properties on the root window....
  */
 
 int main(int argc, char **argv)
@@ -92,9 +92,12 @@ int main(int argc, char **argv)
     printf("--------------------------------");
     printf(" Welcome to xwm ");
     printf("--------------------------------\n");
-        
-//    XSetErrorHandler(error_handler);
+
+#ifdef DEBUG
     XSetErrorHandler(NULL);
+#else
+    XSetErrorHandler(error_handler);
+#endif /* DEBUG */
     XSynchronize(dpy, True);
 
 //    keyboard_grab_keys(root_window);
@@ -112,20 +115,21 @@ int main(int argc, char **argv)
 
     scan_windows();
 
-    printf("\tSetting root input focus...");
     XSetInputFocus(dpy, root_window, RevertToPointerRoot, CurrentTime);
-    printf("ok\n");
     focus_ensure();             /* focus.c */
     
     xfd = ConnectionNumber(dpy);
     fcntl(xfd, F_SETFD, FD_CLOEXEC);
 
     XSync(dpy, 0);
+
+#ifdef DEBUG
     if (fork() == 0) {
         sleep(1);
         execlp("/usr/X11R6/bin/xterm", "xterm", NULL);
     }
-    printf("\tInitialization complete\n");
+#endif /* DEBUG */
+
     for (;;) {
         event_get(xfd, &event); /* event.c */
         event_dispatch(&event); /* event.c */
