@@ -94,8 +94,10 @@ client_t *client_create(Window w)
         XShapeQueryExtents(dpy, client->window, &shaped, &tmp, &tmp,
                            &tmp2, &tmp2, &tmp, &tmp, &tmp, &tmp2, &tmp2);
         has_titlebar = !shaped;
+#ifdef DEBUG
         if (shaped) printf("SHAPED\n");
         else printf("NOT SHAPED\n");
+#endif /* DEBUG */
     }
 #endif /* SHAPE */
 
@@ -105,7 +107,7 @@ client_t *client_create(Window w)
     requested_geometry.height = xwa.height;
     client_reparent(client, has_titlebar, &requested_geometry);
     if (client->frame == None) {
-        fprintf(stderr, "Could not reparent window\n");
+        fprintf(stderr, "XWM: Could not reparent window\n");
         Free(client);
         return NULL;
     }

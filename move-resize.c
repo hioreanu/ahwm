@@ -64,7 +64,7 @@ static int sizing = 0;
 /* optimization, see display_geometry() */
 static char *titlebar_display = NULL;
 
-static XEvent *compress_motion(XEvent *xevent);
+static void compress_motion(XEvent *xevent);
 static void process_resize(client_t *client, int new_x, int new_y,
                            resize_direction_t direction,
                            resize_direction_t old_direction,
@@ -206,7 +206,7 @@ void move_client(XEvent *xevent)
                 
             case MotionNotify:
                 if (!have_mouse) break;
-                xevent = compress_motion(xevent);
+                compress_motion(xevent);
                 if (client == NULL) {
                     fprintf(stderr,
                             "XWM: error, null client while moving\n");
@@ -665,7 +665,7 @@ void resize_client(XEvent *xevent)
             case MotionNotify:
                 if (!have_mouse) break;
                 
-                xevent = compress_motion(xevent);
+                compress_motion(xevent);
 
                 if (client == NULL) {
                     fprintf(stderr, "XWM: error, null client in resize\n");
@@ -860,29 +860,34 @@ static void xrefresh()
 }
 
 /* compress motion events, idea taken from windowmaker */
-/* returns most recent event to deal with */
-/* fixme:  deal with this more elegantly, process events
- * which do not have right modifiers separately */
-static XEvent *compress_motion(XEvent *xevent)
+static void compress_motion(XEvent *xevent)
 {
-    static XEvent newer;
+    XEvent ev1, ev2, *newer, *older;
 
-    while (XCheckMaskEvent(dpy, ButtonMotionMask, &newer)) {
-        if (newer.type == MotionNotify
-            && newer.xmotion.window == xevent->xmotion.window
-            && newer.xmotion.state == xevent->xmotion.state) {
-            xevent = &newer;
-#ifdef DEBUG
-            printf("\tMotion event compressed (%d,%d)\n",
-                   xevent->xmotion.x_root, xevent->xmotion.y_root);
-#endif /* DEBUG */
+    older = &ev1;
+    newer = NULL; /* newer is the most recent event we can use */
+    
+    while (XCheckMaskEvent(dpy, ButtonMotionMask, older)) {
+        if (older->type == MotionNotify
+            && older->xmotion.window == xevent->xmotion.window
+            && older->xmotion.state == xevent->xmotion.state) {
+
+            newer = older;
+            if (older == &ev1) older = &ev2;
+            else older = &ev1;
         } else {
-            /* can't happen */
-            fprintf(stderr,
-                    "XWM: accidentally ate up an event!\n");
+            XPutBackEvent(dpy, older);
+            break;
         }
     }
-    return xevent;
+    if (newer != NULL) {
+#ifdef DEBUG
+        printf("\tMotion event compressed (%d,%d) -> (%d,%d)\n",
+               xevent->xmotion.x_root, xevent->xmotion.x_root,
+               newer->xmotion.x_root, newer->xmotion.y_root);
+#endif /* DEBUG */
+        memcpy(xevent, newer, sizeof(xevent));
+    }
 }
 
 /*

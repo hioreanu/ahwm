@@ -132,16 +132,24 @@ void focus_ensure(Time timestamp)
         focus_current->xwmh->flags & InputHint &&
         focus_current->xwmh->input == False) {
         XSetInputFocus(dpy, root_window, RevertToPointerRoot, CurrentTime);
+#ifdef DEBUG
         printf("DOESN'T WANT FOCUS\n");
+#endif /* DEBUG */
         if (focus_current->protocols & PROTO_TAKE_FOCUS) {
             client_sendmessage(focus_current, WM_TAKE_FOCUS,
                                timestamp, 0, 0, 0);
+#ifdef DEBUG
             printf("GLOBALLY ACTIVE FOCUS\n");
+#endif /* DEBUG */
         }
     } else {
+#ifdef DEBUG
         printf("WANTS FOCUS\n");
+#endif /* DEBUG */
         if (focus_current->protocols & PROTO_TAKE_FOCUS) {
+#ifdef DEBUG
             printf("WILL TAKE FOCUS\n");
+#endif /* DEBUG */
             client_sendmessage(focus_current, WM_TAKE_FOCUS,
                                timestamp, 0, 0, 0);
         }

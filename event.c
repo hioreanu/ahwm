@@ -388,7 +388,7 @@ static void event_maprequest(XMapRequestEvent *xevent)
     client_print("Map Request:", client);
 #endif /* DEBUG */
     if (client == NULL) {
-        fprintf(stderr, "unable to find client, shouldn't happen\n");
+        fprintf(stderr, "XWM: unable to find client, shouldn't happen\n");
         return;
     }
     if (client->state == NormalState) {
@@ -593,8 +593,7 @@ static void event_expose(XExposeEvent *xevent)
 static void event_focus(XFocusChangeEvent *xevent)
 {
     client_t *client;
-    
-    printf("FOCUS EVENT (%d,%d)\n", xevent->mode, xevent->detail);
+
     if (xevent->type == FocusIn
         && xevent->mode == NotifyNormal
         && xevent->detail == NotifyNonlinearVirtual) {
@@ -602,7 +601,7 @@ static void event_focus(XFocusChangeEvent *xevent)
          * or is using funky input focus model (eg, Globally Active) */
         client = client_find(xevent->window);
         if (client == NULL) {
-            fprintf(stderr, "Could not find client on FocusIn event\n");
+            fprintf(stderr, "XWM: Could not find client on FocusIn event\n");
             return;
         }
         focus_set(client, event_timestamp);
