@@ -23,16 +23,11 @@
  * SUCH DAMAGE.
  */
 /*
- * This stuff is speed-critical, so we pull all the stops.  The most
- * unfortunate thing is the latency involved with the gettimeofday
- * system call - don't see any way around it that preserves the
- * correct functionality.
- * 
- * If we are using lots of timers (like hundreds or thousands) than it
- * pays to keep the list of active timers somehow sorted so we don't
- * have to go through all of them on timer_run.  I think using a heap
- * would work out best for this.  However, we don't expect to have
- * more than four or five timers, so using a simple array is a win.
+ * This stuff is speed-critical, so we pull all the stops.  The
+ * latency associated with a gettimeofday() system call is killer, so
+ * we avoid those like a bad cliché.  We keep the timers sorted using
+ * a heap.  This is the only place where we use a heap, so we don't
+ * abstract out the priority queue data type.
  */
 
 #include "timer.h"
@@ -40,77 +35,146 @@
 #include <sys/types.h>
 #include <sys/time.h>
 #include <unistd.h>
+#include <errno.h>
+#include <stdio.h>
+#include <stdlib.h>
 
-/* max number of active timers
- * could also grow array dynamically, but no need for that in AHWM */
-#define NTIMERS 8
+/* we use a standard heap */
+#define RCHILD(i) (2*(i)+1)
+#define LCHILD(i) (2*(i)+2)
+#define PARENT(i) (((i)-1)/2)
 
 struct _timer_t {
-    enum { FREE, ACTIVE } state;
+    enum { DONE, ACTIVE } state;
+    int index;
     struct timeval tv;
     timer_fn fn;
     void *arg;
 };
 
+static timer_t **timers;
+
+static int nused, nallocated;
+
 static int timeval_compare(struct timeval *tv1, struct timeval *tv2);
 static void timeval_normalize(struct timeval *tv);
 static void timer_run_with_tv(struct timeval *now);
+static void remove_timer(timer_t *t);
 
-static timer_t array[NTIMERS];
-
-/* small optimization, avoid walking list if timer_run calls timer_new */
-static int first_free = -1;
-
-/* small optimization, avoid walking list in timer_next_time */
-static int minimum = -1;
-
-static int in_timer_run = 0;
-
-/* FIXME: have this called */
 void timer_init()
 {
-    int i;
-    for (i = 0; i < NTIMERS; i++) {
-        array[i].state = FREE;
+    /* start out with eight timers */
+    timers = malloc(sizeof(timer_t *) * 8);
+    if (timers == NULL) {
+        perror("malloc");
+        exit(1);
     }
+    nallocated = 8;
+}
+
+int timer_pending(timer_t *t)
+{
+    return t->state == ACTIVE ? 1 : 0;
 }
 
 timer_t *timer_new(int msecs, timer_fn fn, void *arg)
 {
+    timer_t *t, *tmp, **tmp2;
+    struct timeval now;
     int i;
-    struct timeval tv;
 
-    if (first_free != -1) {
-        i = first_free;
-        first_free = -1;
-        if (in_timer_run == 0) {
-            gettimeofday(&tv, NULL);
-            array[i].tv = tv;
-        }
-        /* else leave array[i].tv as-is, save a call to gettimeofday() */
-    } else {
-        for (i = 0; i < NTIMERS; i++) {
-            if (array[i].state == FREE) {
-                break;
-            }
-        }
-        if (i == NTIMERS) {
+    t = malloc(sizeof(timer_t));
+    if (t == NULL) {
+        return NULL;
+    }
+    /* enlarge array if needed (we never shrink it again) */
+    if (nused == nallocated) {
+        tmp2 = realloc(timers, nallocated * 2);
+        if (tmp2 == NULL) {
             return NULL;
         }
-        gettimeofday(&tv, NULL);
-        array[i].tv = tv;
+        timers = tmp2;
+        nallocated *= 2;
     }
-    array[i].state = ACTIVE;
-    array[i].fn = fn;
-    array[i].arg = arg;
-    array[i].tv.tv_usec += msecs * 1000;
-    timeval_normalize(&array[i].tv);
-    if (minimum == -1 ||
-        timeval_compare(&array[minimum].tv, &array[i].tv) > 0) {
+
+    gettimeofday(&now, NULL);
+    t->state = ACTIVE;
+    t->fn = fn;
+    t->arg = arg;
+    t->tv.tv_sec = now.tv_sec;
+    t->tv.tv_usec = now.tv_usec + msecs * 1000;
+    timeval_normalize(&t->tv);
+
+    /* put element in last position of complete tree */
+    timers[nused] = t;
+    t->index = nused++;
+
+    /* if this is the only element, it's in correct position */
+    if (nused == 1) {
+        return t;
+    }
+    
+    /* sift up */
+    i = nused - 1;
+    while (timeval_compare(&timers[PARENT(i)]->tv, &timers[i]->tv) < 0) {
+        /* swap */
+        tmp = timers[i];
+        timers[i] = timers[PARENT(i)];
+        timers[PARENT(i)] = tmp;
+        timers[i]->index = i;
+        timers[PARENT(i)]->index = PARENT(i);
+
+        i = PARENT(i);
+    }
+    return t;
+}
+
+/*
+ * Remove an element of the heap, not necessarily the top one.
+ * 
+ * Swapping with the last element and sifting down works with all
+ * elements of the heap, not only the top one.
+ */
+
+static void remove_timer(timer_t *t)
+{
+    int i, smallest;
+    timer_t *tmp;
+
+    if (t->state == DONE) {
+        return;
+    }
+    i = t->index;
+    t->state = DONE;
+    tmp = t;
+    timers[i] = timers[nused - 1];
+    timers[nused - 1] = tmp;
+    nused--;
+
+    for (;;) {
+        /* find the smallest child */
+        smallest = LCHILD(i);
+        if (smallest >= nused) {
+            break;
+        }
+        if (RCHILD(i) < nused &&
+            timeval_compare(&timers[RCHILD(i)]->tv,
+                            &timers[smallest]->tv) > 0) {
+            smallest = RCHILD(i);
+        }
+        /* sift down if needed */
+        if (timeval_compare(&timers[i]->tv, &timers[smallest]->tv) < 0) {
+            tmp = timers[i];
+            timers[i] = timers[smallest];
+            timers[smallest] = tmp;
+            timers[i]->index = i;
+            timers[smallest]->index = smallest;
             
-        minimum = i;
+            i = smallest;
+        } else {
+            break;
+        }
     }
-    return &(array[i]);
 }
 
 /* assumes both members are positive */
@@ -124,8 +188,6 @@ static void timeval_normalize(struct timeval *tv)
 
 /* -1: tv1 later; 0: tv1 = tv2; 1: tv2 later */
 /* assumes both args have been "normalized" */
-/* FIXME: examine assembly, perhaps can change semantics to remove
- * some comparisons */
 static int timeval_compare(struct timeval *tv1, struct timeval *tv2)
 {
     if (tv1->tv_sec == tv2->tv_sec) {
@@ -139,72 +201,38 @@ static int timeval_compare(struct timeval *tv1, struct timeval *tv2)
     }
 }
 
+void timer_cancel(timer_t *t)
+{
+    if (t->state == ACTIVE) {
+        remove_timer(t);
+    }
+    free(t);
+}
+
 int timer_next_time(struct timeval *tv)
 {
-    struct timeval now;
-
+    struct timeval now, next;
+    
     gettimeofday(&now, NULL);
     timer_run_with_tv(&now);
-    if (minimum == -1) return 0;
-    tv->tv_sec = array[minimum].tv.tv_sec - now.tv_sec;
-    if (now.tv_usec > array[minimum].tv.tv_usec) {
+
+    if (nused == 0) {
+        return 0;
+    }
+    next = timers[0]->tv;
+    tv->tv_sec = next.tv_sec - now.tv_sec;
+    if (next.tv_usec < now.tv_usec) {
         now.tv_usec -= 1000000;
         tv->tv_sec--;
     }
-    tv->tv_usec = array[minimum].tv.tv_usec - now.tv_usec;
+    tv->tv_usec = next.tv_usec - now.tv_usec;
     return 1;
-}
-
-void timer_cancel(timer_t *timer)
-{
-    int i;
-
-    timer->state = FREE;
-    if (timer - array == minimum) {
-        minimum = -1;
-        for (i = 0; i < NTIMERS; i++) {
-            if (array[i].state == ACTIVE) {
-                if (minimum == -1 ||
-                    timeval_compare(&array[minimum].tv, &array[i].tv) > 0) {
-                    
-                    minimum = i;
-                }
-            }
-        }
-    }
-}
-
-/* small optimization, don't call gettimeofday twice if possible */
-static void timer_run_with_tv(struct timeval *now)
-{
-    int i, prev_min;
-
-    in_timer_run = 1;
-    prev_min = -1;
-    for (i = 0; i < NTIMERS; i++) {
-        if (array[i].state == ACTIVE) {
-            if (timeval_compare(now, &array[i].tv) <= 0) {
-                array[i].state = FREE;
-                array[i].tv = *now; /* works with first_free, see timer_new() */
-                first_free = i;
-                (array[i].fn)(array[i].arg);
-                if (i == minimum) {
-                    minimum = prev_min;
-                }
-            } else if (minimum == -1 ||
-                       timeval_compare(&array[minimum].tv, &array[i].tv) > 0) {
-                prev_min = minimum;
-                minimum = i;
-            }
-        }
-    }
-    in_timer_run = 0;
 }
 
 void timer_run()
 {
     struct timeval now;
-
+    
     gettimeofday(&now, NULL);
     timer_run_with_tv(&now);
 }
@@ -213,6 +241,16 @@ void timer_run_first()
 {
     struct timeval now;
 
-    now = array[minimum].tv;
-    timer_run_with_tv(&now);
+    if (nused > 0) {
+        now = timers[0]->tv;
+        timer_run_with_tv(&now);
+    }
+}
+
+static void timer_run_with_tv(struct timeval *now)
+{
+    while (nused > 0 && timeval_compare(now, &timers[0]->tv) <= 0) {
+        (timers[0]->fn)(timers[0], timers[0]->arg);
+        remove_timer(timers[0]);
+    }
 }

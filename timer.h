@@ -29,9 +29,7 @@
 /*
  * Provides fine-grained timers.  This allows you to say "call this
  * function in fifty milliseconds."  Needs to be integrated with your
- * main event loop.  This should be plenty fast for a few timers; if
- * you want lots of timers, I have a different implementation with the
- * same interface.
+ * main event loop.
  */
 
 #include <sys/types.h>
@@ -46,10 +44,12 @@ struct _timer_t;
 typedef struct _timer_t timer_t;
 
 /*
- * Functions to be called on timer trigger
+ * Functions to be called on timer trigger; the first argument is the
+ * timer which triggered the action.  These functions are good places
+ * to call timer_cancel.
  */
 
-typedef void (*timer_fn)(void *);
+typedef void (*timer_fn)(timer_t *, void *);
 
 /*
  * init module, no dependencies
@@ -70,10 +70,19 @@ void timer_init();
 timer_t *timer_new(int msecs, timer_fn fn, void *arg);
 
 /*
- * Cancel a timer before it shoots
+ * Cancel and delete a timer before it shoots, or simply delete a
+ * timer that's already shot.  All timers created with timer_new must
+ * be destroyed with timer_cancel or you'll get memory leaks.
  */
 
 void timer_cancel(timer_t *timer);
+
+/*
+ * Returns 1 if timer has not yet triggered; returns 0 if timer has
+ * already shot.
+ */
+
+int timer_pending(timer_t *timer);
 
 /*
  * Copy into TV the next time a timer will shoot.  The value placed
