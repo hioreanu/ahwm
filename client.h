@@ -8,14 +8,20 @@
 
 #include "xwm.h"
 
+/* height of the titlebar */
+#define TITLE_HEIGHT 15
+
 /*
  * we store the data associated with each window using Xlib's XContext
  * mechanism (which has nothing to do with X itself, it's just a hash
- * mechanism built into Xlib as far as I can tell).  This is
+ * mechanism built into Xlib as far as I can tell).  These are
  * initialized in xwm.c and defined in client.c.
+ * window_context associates clients with their main windows
+ * frame_context associates clients with their frame windows
  */
 
 extern XContext window_context;
+extern XContext frame_context;
 
 /* we only care about whether a window is mapped or not */
 
@@ -27,7 +33,7 @@ typedef enum _window_states_t { MAPPED, UNMAPPED } window_states_t;
 
 typedef struct _client_t {
     Window window;              /* the actual window */
-    Window parent;              /* FIXME */
+    Window frame;               /* contains titlebar, parent of above */
     Window transient_for;       /* FIXME */
     XWMHints *xwmh;             /* Hints or NULL */
     char *name;                 /* FIXME */
@@ -63,5 +69,11 @@ client_t *client_find(Window);
  */
 
 void client_delete(client_t *);
+
+/*
+ * print out some information about a client
+ */
+
+void client_print(char *, client_t *);
 
 #endif /* CLIENT_H */
