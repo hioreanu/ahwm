@@ -43,9 +43,19 @@
 /*
  * TODO:
  * 
- * x figure out if _NET_CLIENT_LIST[_STACKING] has windows on all workspaces
  * - use _NET_WORKAREA for move/resize/placement
- * - _NET_WM_MOVERESIZE, should be easy
+ * - _NET_WM_STRUT:  recalculate _NET_WORKAREA
+ * - proxy clicks for GNOME
+ * - some properties must be updated on window if set by ahwm:
+ *   x _NET_WM_DESKTOP
+ *   x _WIN_WORKSPACE
+ *   - _NET_WM_STATE
+ *   - _WIN_STATE
+ *   - _WIN_LAYER
+ * - kicker has a KEEP_ON_TOP WM_STATE not mentioned in EWMH 1.1
+ * - _NET_WM_PING, _NET_WM_PID
+ * x figure out if _NET_CLIENT_LIST[_STACKING] has windows on all workspaces
+ * x _NET_WM_MOVERESIZE, should be easy
  * x honor _NET_WM_DESKTOP, also omnipresence
  * x _NET_WM_WINDOW_TYPE:
  *   DESKTOP:  sticky, no title, omnipresent, SkipCycle, AlwaysOnBottom,
@@ -62,17 +72,7 @@
  *   SHADED:  add a shaded state, only for clients with titlebars
  *   SKIP_TASKBAR:  nothing special
  *   SKIP_PAGER:  nothing special
- * - _NET_WM_STRUT:  recalculate _NET_WORKAREA
- * - _NET_WM_PING, _NET_WM_PID
  * x add horiz, and vert max.
- * - kicker has a KEEP_ON_TOP WM_STATE not mentioned in EWMH 1.1
- * - proxy clicks for GNOME
- * - some properties must be updated on window if set by ahwm:
- *   x _NET_WM_DESKTOP
- *   - _NET_WM_STATE
- *   - _WIN_STATE
- *   - _WIN_WORKSPACE
- *   - _WIN_LAYER
  */
 
 /* bitmasks for _WIN_STATE: */
@@ -102,6 +102,17 @@
 #define WIN_LAYER_DOCK                   8
 #define WIN_LAYER_ABOVE_DOCK             10 
 #define WIN_LAYER_MENU                   12
+
+/* move/resize direction for _NET_WM_MOVERESIZE */
+#define _NET_WM_MOVERESIZE_SIZE_TOPLEFT      0
+#define _NET_WM_MOVERESIZE_SIZE_TOP          1
+#define _NET_WM_MOVERESIZE_SIZE_TOPRIGHT     2
+#define _NET_WM_MOVERESIZE_SIZE_RIGHT        3
+#define _NET_WM_MOVERESIZE_SIZE_BOTTOMRIGHT  4
+#define _NET_WM_MOVERESIZE_SIZE_BOTTOM       5
+#define _NET_WM_MOVERESIZE_SIZE_BOTTOMLEFT   6
+#define _NET_WM_MOVERESIZE_SIZE_LEFT         7
+#define _NET_WM_MOVERESIZE_MOVE              8   /* Movement only */
 
 /*
  * EWMH 1.1 does not clearly state which atoms are "hints" and belong
@@ -1015,6 +1026,32 @@ Bool ewmh_handle_clientmessage(XClientMessageEvent *xevent)
             workspace_client_moveto(client, (unsigned int)(data + 1));
         }
         return True;
+    } else if (xevent->message_type == _NET_WM_MOVERESIZE) {
+        /* We create a fake XEvent and send that off to the
+         * move/resize code to deal with it as if it were
+         * normal button event */
+        /* FIXME: completely untested */
+        XEvent ev;
+        arglist al;
+        type typ;
+        
+        ev.type = ButtonPress;
+        ev.xbutton.window = xevent->window;
+        ev.xbutton.x_root = data;
+        ev.xbutton.y_root = data2;
+        ev.xbutton.x = ev.xbutton.x_root - client->x;
+        ev.xbutton.y = ev.xbutton.y_root - client->y;
+        /* and that's all move/resize code should ever need */
+
+        if (data3 == _NET_WM_MOVERESIZE_MOVE) {
+            move_client(&ev, NULL);
+        } else {
+            al.arglist_next = NULL;
+            al.arglist_arg = &typ;
+            typ.type_type = RESIZE_ENUM;
+            typ.type_value.resize_enum = data3;
+            resize_client(&ev, &al);
+        }
     }
     
     return False;

@@ -85,5 +85,6 @@ extern int shape_event_base;
 struct _arglist;
 void run_program(XEvent *e, struct _arglist *args);
 void xwm_quit(XEvent *e, struct _arglist *ignored);
+void xwm_restart(XEvent *e, struct _arglist *ignored);
 
 #endif /* XWM_H */

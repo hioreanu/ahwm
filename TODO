@@ -1,7 +1,9 @@
 TODO before release:
-- remove titlebars on normal exit, for restarting
-- save focus stacks in some property for restarting
-- use autoconf to check for signal.h
+- _NET_WORKAREA and STRUT
+- proxy clicks for GNOME
+- keep _WM_STATE, _WIN_LAYER updated
+- ask about KEEP_ON_TOP WM_STATE
+- implement "ping" protocol
 - transient for self means something?  Directory property window in konq
 - use XInternAtoms for ewmh.c
 - figure out what the hell 'sticky' means to EWMH
@@ -12,7 +14,6 @@ TODO before release:
 Wishlist:
 - GotoNextWorkspace(integer)
 - CycleNextWorkspaces() (like AltTab())
-- root mouse event proxying for GNOME
 - no need to grab buttons for titlebar binds, just listen for events
 - bindings in contexts
 - shading, perhaps with an optional animation
@@ -138,6 +139,8 @@ Finished, no longer TODO:
 - user-settable font, global option
 - titlebar height depends on font height or user pref, experiment
 - set workspace_current from _NET_CURRENT_DESKTOP, for restarting
+- remove titlebars on normal exit, for restarting
+- save focus stacks in some property for restarting
 
 Abandoned, no longer TODO:
 - "stop" focus, detect when pointer stops in a window (no timeout) -

@@ -46,6 +46,7 @@
 #include "debug.h"
 #include "focus.h"
 #include "paint.h"
+#include "prefs.h"
 
 #ifndef MIN
 #define MIN(x,y) ((x) < (y) ? (x) : (y))
@@ -609,7 +610,7 @@ static void move_constrain(client_t *client)
  * WARNING:  this gets really, really ugly from here on
  */
 
-void resize_client(XEvent *xevent, arglist *ignored)
+void resize_client(XEvent *xevent, arglist *al)
 {
     client_t *client = NULL;
     int x_start, y_start, have_mouse, delta;
@@ -622,7 +623,8 @@ void resize_client(XEvent *xevent, arglist *ignored)
 
     if (moving || sizing) return;
     if (keycode_Escape == 0) set_keys();
-    
+
+    have_mouse = 0;
     if (xevent->type == ButtonPress) {
         have_mouse = 1;
         client = client_find(xevent->xbutton.window);
@@ -641,6 +643,34 @@ void resize_client(XEvent *xevent, arglist *ignored)
             y_start = client->y + client->height;
         }
         resize_direction = SE;
+    }
+    if (al != NULL && al->arglist_arg->type_type == RESIZE_ENUM) {
+        switch (al->arglist_arg->type_value.resize_enum) {
+            case TYPE_TOPLEFT:
+                resize_direction = NW;
+                break;
+            case TYPE_TOP:
+                resize_direction = NORTH;
+                break;
+            case TYPE_TOPRIGHT:
+                resize_direction = NE;
+                break;
+            case TYPE_RIGHT:
+                resize_direction = EAST;
+                break;
+            case TYPE_BOTTOMRIGHT:
+                resize_direction = SE;
+                break;
+            case TYPE_BOTTOM:
+                resize_direction = SOUTH;
+                break;
+            case TYPE_BOTTOMLEFT:
+                resize_direction = SW;
+                break;
+            case TYPE_LEFT:
+                resize_direction = WEST;
+                break;
+        }
     }
     if (client == NULL) {
         debug(("\tNot resizing a non-client\n"));
@@ -948,7 +978,7 @@ void resize_client(XEvent *xevent, arglist *ignored)
             event1.type = KeyPress;
             event1.xkey.window = client->window;
         }
-        move_client(&event1, ignored);
+        move_client(&event1, al);
     }
 }
 

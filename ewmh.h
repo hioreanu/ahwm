@@ -33,17 +33,6 @@
  * somewhat unfinished standards document, but that document is
  * extremely clear and precise.
  *
- * TODO:
- * root messages:
- * _NET_WM_MOVERESIZE
- * 
- * client properties:
- * _NET_WM_DESKTOP,
- * _NET_WM_WINDOW_TYPE,
- * _NET_WM_STATE,
- * _NET_WM_STRUT
- * 
- * the "ping" protocol
  */
 
 #ifndef EWMH_H

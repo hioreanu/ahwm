@@ -76,7 +76,7 @@ struct _line {
 
 struct _type {
     enum { BOOLEAN, INTEGER, STRING, FOCUS_ENUM,
-           CYCLE_ENUM, POSITION_ENUM } type_type;
+           CYCLE_ENUM, POSITION_ENUM, RESIZE_ENUM } type_type;
     union {
         int intval;
         char *stringval;
@@ -86,6 +86,9 @@ struct _type {
                TYPE_RAISE_ON_CYCLE_FINISH, TYPE_DONT_RAISE } cycle_enum;
         enum { TYPE_DISPLAY_LEFT, TYPE_DISPLAY_RIGHT,
                TYPE_DISPLAY_CENTERED, TYPE_DONT_DISPLAY } position_enum;
+        enum { TYPE_TOPLEFT = 0, TYPE_TOP, TYPE_TOPRIGHT, TYPE_RIGHT,
+               TYPE_BOTTOMRIGHT, TYPE_BOTTOM, TYPE_BOTTOMLEFT,
+               TYPE_LEFT } resize_enum;
     } type_value;
 };
 
@@ -177,6 +180,7 @@ struct _function {
            INVOKE = 18,
            SHOWMENU = 19,
            REFRESH = 20,
+           RESTART = 21,
     } function_type;
     arglist *function_args;
 };

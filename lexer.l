@@ -173,6 +173,7 @@ Beep { return TOK_BEEP; }
 Invoke { return TOK_INVOKE; }
 ShowMenu { return TOK_SHOWMENU; }
 Refresh { return TOK_REFRESH; }
+Restart { return TOK_RESTART; }
 
 Define { return TOK_DEFINE; }
 

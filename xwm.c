@@ -92,6 +92,8 @@ int shape_supported;
 int shape_event_base;
 #endif
 
+static char *argv0;
+
 static int already_running_windowmanager;
 static int (*default_error_handler)(Display *, XErrorEvent *);
 
@@ -112,6 +114,7 @@ int main(int argc, char **argv)
     XGCValues xgcv;
     XColor xcolor, junk2;
     
+    argv0 = argv[0];
 #ifdef DEBUG
     /* set non-buffered */
     setvbuf(stdout, NULL, _IONBF, 0);
@@ -141,10 +144,6 @@ int main(int argc, char **argv)
                 "XWM: You're already running a window manager.  Quitting.\n");
         exit(1);
     }
-
-    printf("--------------------------------");
-    printf(" Welcome to XWM ");
-    printf("--------------------------------\n");
 
     /* get the default error handler and set our error handler */
     XSetErrorHandler(NULL);
@@ -384,6 +383,20 @@ void xwm_quit(XEvent *e, struct _arglist *ignored)
     printf("XWM: xwm_quit called, quitting\n");
 #endif
     exit(0);
+}
+
+void xwm_restart(XEvent *e, struct _arglist *ignored)
+{
+    focus_save_stacks();
+    remove_titlebars();
+    fflush(stderr);
+    fflush(stdout);
+    execlp(argv0, argv0, NULL);
+    fprintf(stderr,
+            "XWM:  Could not restart.  XWM was not called with an\n"
+            "absolute pathname and the xwm binary is not in your PATH.\n");
+    fflush(stderr);
+    _exit(1);
 }
 
 static void remove_titlebars()

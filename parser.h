@@ -89,18 +89,19 @@ typedef union {
 #define	TOK_INVOKE	328
 #define	TOK_SHOWMENU	329
 #define	TOK_REFRESH	330
-#define	TOK_SEMI	331
-#define	TOK_EQUALS	332
-#define	TOK_SET_UNCONDITIONALLY	333
-#define	TOK_LBRACE	334
-#define	TOK_RBRACE	335
-#define	TOK_COMMA	336
-#define	TOK_LPAREN	337
-#define	TOK_RPAREN	338
-#define	TOK_DEFINE	339
-#define	TOK_STRING	340
-#define	TOK_INTEGER	341
-#define	TOK_FLOAT	342
+#define	TOK_RESTART	331
+#define	TOK_SEMI	332
+#define	TOK_EQUALS	333
+#define	TOK_SET_UNCONDITIONALLY	334
+#define	TOK_LBRACE	335
+#define	TOK_RBRACE	336
+#define	TOK_COMMA	337
+#define	TOK_LPAREN	338
+#define	TOK_RPAREN	339
+#define	TOK_DEFINE	340
+#define	TOK_STRING	341
+#define	TOK_INTEGER	342
+#define	TOK_FLOAT	343
 
 
 extern YYSTYPE yylval;

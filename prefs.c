@@ -513,6 +513,7 @@ static Bool type_check_function(function *fn)
         case QUIT:
         case BEEP:
         case REFRESH:
+        case RESTART:
             if (fn->function_args == NULL) {
                 return True;
             } else {
@@ -1045,6 +1046,7 @@ key_fn fn_table[] = {
 /* 18 */    invoke,
 /* 19 */    NULL, /* expansion for menu system */
 /* 20 */    NULL, /* refresh/reset */
+/* 21 */    xwm_restart,
 };
 
 static void globally_bind(line *lp)
