@@ -126,7 +126,7 @@ int main(int argc, char **argv)
     XDefineCursor(dpy, root_window, cursor_normal);
 
     fontstruct = XLoadQueryFont(dpy,
-                 "-*-helvetica-medium-r-normal-*-12-*-*-*-*-*-*-*");
+                 "-*-helvetica-bold-r-normal-*-12-*-*-*-*-*-*-*");
 
     xgcv.function = GXcopy;
     xgcv.plane_mask = AllPlanes;
@@ -278,7 +278,7 @@ void run_program(XEvent *e, void *arg)
 /* make it easier to parse debug output */
 void mark(XEvent *e, void *arg)
 {
-    printf("---------------------------------");
+    printf("---------------------------------------");
     printf(" MARK ");
-    printf("---------------------------------\n");
+    printf("---------------------------------------\n");
 }
