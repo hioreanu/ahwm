@@ -30,8 +30,8 @@ void *my_malloc(size_t size, int line, char *file)
     
     malloc_openfile();
     retval = malloc(size);
-    fprintf(malloc_file, "MALLOC %d FROM %s:%d RETURNS 0x%08X\n",
-            size, file, line, (unsigned int)retval);
+    fprintf(malloc_file, "MALLOC %d FROM %s:%d RETURNS %p\n",
+            size, file, line, retval);
     return retval;
 }
 
@@ -41,8 +41,8 @@ void *my_realloc(void *ptr, size_t size, int line, char *file)
 
     malloc_openfile();
     retval = realloc(ptr, size);
-    fprintf(malloc_file, "REALLOC 0x%08X , %d FROM %s:%d RETURNS 0x%08X\n",
-            (unsigned int)ptr, size, file, line, (unsigned int)retval);
+    fprintf(malloc_file, "REALLOC %p , %d FROM %s:%d RETURNS %p\n",
+            ptr, size, file, line, retval);
     return retval;
 }
 
@@ -52,16 +52,16 @@ char *my_strdup(char *ptr, int line, char *file)
 
     malloc_openfile();
     retval = strdup(ptr);
-    fprintf(malloc_file, "STRDUP '%s' FROM %s:%d RETURNS 0x%08X\n",
-            ptr, file, line, (unsigned int)retval);
+    fprintf(malloc_file, "STRDUP '%s' FROM %s:%d RETURNS %p\n",
+            ptr, file, line, retval);
     return retval;
 }
 
 void my_free(void *ptr, int line, char *file)
 {
     malloc_openfile();
-    fprintf(malloc_file, "FREE 0x%08X FROM %s:%d\n",
-            (unsigned int)ptr, file, (unsigned int)line);
+    fprintf(malloc_file, "FREE %p FROM %s:%d\n",
+            ptr, file, line);
     free(ptr);
 }
 

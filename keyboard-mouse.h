@@ -230,10 +230,13 @@ void mouse_unbind(char *mousestring, int depress, int location);
 
 /*
  * Do a "soft" grab on all the keys that are of interest to us - this
- * should be called once when the window is mapped.
+ * should be called once when the window is mapped.  This does not
+ * take a client argument as sometimes we need to grab the keys of a
+ * window that isn't a client (like when we map an override_redirect
+ * window).
  */
 
-void keyboard_grab_keys(client_t *client);
+void keyboard_grab_keys(Window w);
 
 /*
  * Grab the mouse buttons we use for a specified window

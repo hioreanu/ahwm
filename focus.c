@@ -56,6 +56,10 @@ static focus_node *focus_stacks[NO_WORKSPACES] = { NULL };
 
 static XContext focus_contexts[NO_WORKSPACES];
 
+static Bool in_alt_tab = False; /* see focus_alt_tab, focus_ensure */
+
+static Window revert_to = None;
+
 static focus_node *find_node(client_t *);
 static void focus_change_current(client_t *, Time, Bool);
 static void focus_set_internal(focus_node *, Time, Bool);
@@ -65,16 +69,23 @@ static focus_node *get_next(focus_node *);
 static void focus_add_internal(focus_node *, int ws, Time timestamp);
 static void focus_remove_internal(focus_node *, int ws, Time timestamp);
 
-static Bool in_alt_tab = False; /* see focus_alt_tab, focus_ensure */
-
 void focus_init()
 {
     int i;
+    XSetWindowAttributes xswa;
 
     for (i = 0; i < NO_WORKSPACES; i++) {
         focus_contexts[i] = XUniqueContext();
         focus_stacks[i] = NULL;
     }
+    xswa.override_redirect = True;
+    revert_to = XCreateWindow(dpy, root_window, 0, 0, 1, 1, 0, 0,
+                              InputOnly, DefaultVisual(dpy, scr),
+                              CWOverrideRedirect, &xswa);
+    XMapWindow(dpy, revert_to);
+    XFlush(dpy);
+    XSync(dpy, False);
+    keyboard_grab_keys(revert_to);
 }
 
 static focus_node *find_node(client_t *client)
@@ -130,13 +141,13 @@ void focus_add(client_t *client, Time timestamp)
 
     if ( (node = find_node(client)) != NULL)
         focus_remove(client, CurrentTime);
-    if (client->prefs.omnipresent) {
+    if (client->omnipresent) {
         node = Malloc(NO_WORKSPACES * sizeof(focus_node));
         if (node == NULL) {
             fprintf(stderr, "XWM: out of memory while focusing client\n");
             return;
         }
-        debug(("\tOmnipresent node = 0x%lx\n", node));
+        debug(("\tOmnipresent node = %#lx\n", node));
         for (i = 0; i < NO_WORKSPACES; i++) {
             node[i].client = client;
             focus_add_internal(&node[i], i + 1, timestamp);
@@ -166,11 +177,18 @@ static void focus_add_internal(focus_node *node, int ws, Time timestamp)
         old->prev->next = node;
         old->prev = node;
     }
-    debug(("\tSetting focus stack of workspace %d to 0x%08X ('%.10s')\n",
-           ws, node->client->window, node->client->name));
-    focus_stacks[ws - 1] = node;
-    if (ws == workspace_current) {
-        focus_change_current(node->client, timestamp, True);
+    if (node->client->focus_policy == DontFocus) {
+        if (old != NULL)
+            permute(node, old);
+        if (node->next == node)
+            focus_stacks[ws - 1] = node;
+    } else {
+        debug(("\tSetting focus stack of workspace %d to %#lx ('%.10s')\n",
+               ws, node->client->window, node->client->name));
+        focus_stacks[ws - 1] = node;
+        if (ws == workspace_current) {
+            focus_change_current(node->client, timestamp, True);
+        }
     }
     if (XSaveContext(dpy, node->client->window,
                      focus_contexts[ws - 1], (void *)node) != 0) {
@@ -189,13 +207,15 @@ static void focus_add_internal(focus_node *node, int ws, Time timestamp)
 void focus_remove(client_t *client, Time timestamp)
 {
     int i;
-    focus_node *node;
+    focus_node *node = NULL;
 
-    if (client->prefs.omnipresent) {
+    if (client->omnipresent) {
         for (i = NO_WORKSPACES - 1; i >= 0; i--) {
             if (XFindContext(dpy, client->window, focus_contexts[i],
-                             (void *)&node) != 0)
+                             (void *)&node) != 0) {
+                node = NULL;
                 continue;
+            }
             debug(("\tOmnipresent, i = %d, node = 0x%lx\n\n", i, node));
             focus_remove_internal(node, i + 1, timestamp);
         }
@@ -204,21 +224,25 @@ void focus_remove(client_t *client, Time timestamp)
         if (node == NULL) return;
         focus_remove_internal(node, client->workspace, timestamp);
     }
-    free(node);
+    if (node != NULL) Free(node);
 }
 
 static void focus_remove_internal(focus_node *node, int ws, Time timestamp)
 {
+    focus_node *new;
+
+    new = get_next(node);
+    
     /* remove from list */
     node->prev->next = node->next;
     node->next->prev = node->prev;
     /* if was focused for workspace, update workspace pointer */
     if (focus_stacks[ws - 1] == node) {
         debug(("\tSetting focus stack of workspace "
-               "%d to 0x%08X ('%.10s')\n",
-               ws, get_next(node)->client->window,
-               get_next(node)->client->name));
-        focus_stacks[ws - 1] = get_next(node);
+               "%d to %#lx ('%.10s')\n",
+               ws, new->client->window,
+               new->client->name));
+        focus_stacks[ws - 1] = new;
     }
     /* if only client left on workspace, set to NULL */
     if (node->next == node) {
@@ -275,7 +299,7 @@ static void focus_set_internal(focus_node *node, Time timestamp,
     if (node != NULL && node->client == focus_current) return;
 
     if (node == NULL) {
-        XSetInputFocus(dpy, root_window, RevertToPointerRoot, CurrentTime);
+        XSetInputFocus(dpy, revert_to, RevertToPointerRoot, CurrentTime);
         return;
     }
     
@@ -287,7 +311,7 @@ static void focus_set_internal(focus_node *node, Time timestamp,
     do {
         if (p == node) {
             debug(("\tSetting focus stack of workspace %d "
-                   "to 0x%08X ('%.10s')\n",
+                   "to %#lx ('%.10s')\n",
                    node->client->workspace, node->client->window,
                    node->client->name));
             focus_stacks[node->client->workspace - 1] = node;
@@ -313,12 +337,12 @@ static void focus_set_internal(focus_node *node, Time timestamp,
 
 void focus_ensure(Time timestamp)
 {
-    if (focus_current == NULL) {
-        XSetInputFocus(dpy, root_window, RevertToPointerRoot, CurrentTime);
+    if (focus_current == NULL || focus_current->focus_policy == DontFocus) {
+        XSetInputFocus(dpy, revert_to, RevertToPointerRoot, CurrentTime);
         return;
     }
 
-    debug(("\tCalling XSetInputFocus(0x%08X) ('%.10s')\n",
+    debug(("\tCalling XSetInputFocus(%#lx) ('%.10s')\n",
            (unsigned int)focus_current->window, focus_current->name));
 
     ewmh_active_window_update();
@@ -367,13 +391,14 @@ static void focus_change_current(client_t *new, Time timestamp,
     focus_current = new;
     client_paint_titlebar(old);
     client_paint_titlebar(new);
+    if (new != NULL && new->focus_policy == DontFocus) return;
     if (old != new) {
         if (old != NULL && old->focus_policy == ClickToFocus) {
             debug(("\tGrabbing Button 1 of 0x%08x\n", old));
             XGrabButton(dpy, Button1, 0, old->frame,
                         True, ButtonPressMask, GrabModeSync,
                         GrabModeAsync, None, None);
-            keyboard_grab_keys(old);
+            keyboard_grab_keys(old->frame); /* FIXME */
         }
         if (new != NULL && new->focus_policy == ClickToFocus) {
             XUngrabButton(dpy, Button1, 0, new->frame);
@@ -453,7 +478,9 @@ void focus_alt_tab(XEvent *xevent, void *v)
                     } else {
                         node = get_next(node);
                     }
-                    focus_set_internal(node, event_timestamp, False);
+                    if (!(node->client->skip_alt_tab
+                          || node->client->focus_policy == DontFocus))
+                        focus_set_internal(node, event_timestamp, False);
                 } else {
                     state = REPLAY_KEYBOARD;
                 }
@@ -503,17 +530,22 @@ static focus_node *get_prev(focus_node *node)
     focus_node *p;
 
     for (p = node->prev; p != node; p = p->prev) {
-        if (!p->client->prefs.skip_alt_tab) return p;
+        if (!(p->client->skip_alt_tab
+              || p->client->focus_policy == DontFocus))
+            return p;
     }
     return node->prev;
 }
 
+/* FIXME:  DontFocus and skip_alt_tab should have separate priorities */
 static focus_node *get_next(focus_node *node)
 {
     focus_node *p;
 
     for (p = node->next; p != node; p = p->next) {
-        if (!p->client->prefs.skip_alt_tab) return p;
+        if (!(p->client->skip_alt_tab
+              || p->client->focus_policy == DontFocus))
+            return p;
     }
     return node->next;
 }

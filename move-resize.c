@@ -347,7 +347,8 @@ void move_client(XEvent *xevent, void *v)
         }
 
     }
-        
+
+    debug(("\tEnd Move\n"));
     if (client != NULL) {
         XMoveWindow(dpy, client->frame, client->x, client->y);
         if (client->name != NULL) Free(client->name);
@@ -752,7 +753,8 @@ void resize_client(XEvent *xevent, void *v)
                 break;
         }
     }
-    
+
+    debug(("\tEnd Resize\n"));
     if (action == RESET) {
         xrefresh();
         client->x = orig.x;

@@ -334,18 +334,18 @@ void mouse_unbind(char *mousestring, int depress, int location)
     mouse_unbind_ex(button, modifiers, depress, location);
 }
 
-void keyboard_grab_keys(client_t *client)
+void keyboard_grab_keys(Window w)
 {
     keybinding *kb;
     int i;
 
     for (kb = keybindings; kb != NULL; kb = kb->next) {
-        XGrabKey(dpy, kb->keycode, kb->modifiers, client->frame, True,
+        XGrabKey(dpy, kb->keycode, kb->modifiers, w, True,
                  GrabModeAsync, GrabModeAsync);
         for (i = 0; i < n_modifier_combinations; i++) {
             XGrabKey(dpy, kb->keycode,
                      modifier_combinations[i] | kb->modifiers,
-                     client->frame, True, GrabModeAsync, GrabModeAsync);
+                     w, True, GrabModeAsync, GrabModeAsync);
         }
     }
 }
@@ -558,7 +558,7 @@ Bool mouse_handle_event(XEvent *xevent)
             return True;
         }
     }
-    if (set_focus && client->prefs.pass_focus_click)
+    if (set_focus && client->pass_focus_click)
         XAllowEvents(dpy, ReplayPointer, CurrentTime);
     if (grabbed_button != 0
         && xevent->type == ButtonRelease

@@ -102,7 +102,7 @@ static void stacking_add_internal(client_t *client)
 
     nstacking_clients++;
 
-    if (client->prefs.always_on_bottom) {
+    if (client->always_on_bottom) {
         if (lowered_list == NULL) {
             lowered_list = client;
             prev = NULL;
@@ -112,7 +112,7 @@ static void stacking_add_internal(client_t *client)
         lowered_list_end = client;
         next = (normal_list != NULL ? normal_list : raised_list);
         prev = NULL;
-    } else if (client->prefs.always_on_top) {
+    } else if (client->always_on_top) {
         if (raised_list == NULL) {
             raised_list = client;
             prev = (normal_list_end != NULL ?
@@ -146,14 +146,14 @@ static void stacking_remove_internal(client_t *client)
     if (client->prev_stacking != NULL)
         client->prev_stacking->next_stacking = client->next_stacking;
     
-    if (client->prefs.always_on_bottom) {
+    if (client->always_on_bottom) {
         if (client == lowered_list_end)
             lowered_list_end = client->prev_stacking;
         if (client == lowered_list)
             lowered_list = client->next_stacking;
         if (lowered_list != NULL && lowered_list == normal_list)
             lowered_list = NULL;
-    } else if (client->prefs.always_on_top) {
+    } else if (client->always_on_top) {
         if (client == raised_list_end)
             raised_list_end = client->prev_stacking;
         if (client == raised_list)
@@ -190,7 +190,7 @@ static void raise_tree(client_t *node, client_t *ignore, Bool go_up)
         XMapWindow(dpy, node->frame);
         stacking_remove_internal(node);
         stacking_add_internal(node);
-        debug(("\tRaising client 0x%08X ('%.10s')\n", node, node->name));
+        debug(("\tRaising client %#lx ('%.10s')\n", node, node->name));
     }
 
     /* go down */
@@ -323,9 +323,9 @@ static void raise_tree(client_t *node, client_t *ignore, Bool go_up,
     if (node->workspace == workspace_current
         && node->state == NormalState) {
         XMapWindow(dpy, node->frame);
-        if (node->prefs.always_on_bottom) {
+        if (node->always_on_bottom) {
             add_to_buffer(lower, node->frame);
-        } else if (node->prefs.always_on_top) {
+        } else if (node->always_on_top) {
             add_to_buffer(raised, node->frame);
         } else {
             add_to_buffer(normal, node->frame);
@@ -359,7 +359,7 @@ void client_raise(client_t *client)
             if (lowered.w != NULL) free(lowered.w);
             normal.w = raised.w = lowered.w = NULL;
             XMapWindow(dpy, client->frame);
-            if (!client->prefs.always_on_bottom)
+            if (!client->always_on_bottom)
                 XRaiseWindow(dpy, client->frame);
             return;
         }

@@ -13,6 +13,7 @@
 #include "malloc.h"
 #include "debug.h"
 #include "focus.h"
+#include "kill.h"
 
 #define NO_SUPPORTED_HINTS 34
 
@@ -75,7 +76,7 @@ void ewmh_init()
         XInternAtom(dpy, "_NET_WM_WINDOW_TYPE_NORMAL", False);
     _NET_WM_STATE = XInternAtom(dpy, "_NET_WM_STATE", False);
     _NET_WM_STATE_MODAL = XInternAtom(dpy, "_NET_WM_STATE_MODAL", False);
-    _NET_WM_STATE_STICKY = XInternAtom(dpy, "_NET_WM_STATE_STICKY", False);
+    _NET_WM_STATE_STICKY = XInternAtom(dpy, "FIXME_NET_WM_STATE_STICKY", False);
     _NET_WM_STATE_MAXIMIZED_VERT =
         XInternAtom(dpy, "_NET_WM_STATE_MAXIMIZED_VERT", False);
     _NET_WM_STATE_MAXIMIZED_HORZ =
@@ -182,7 +183,7 @@ Bool ewmh_handle_clientmessage(XClientMessageEvent *xevent)
     
     if (xevent->message_type == _NET_CURRENT_DESKTOP) {
         data = xevent->data.l[0] + 1;
-        workspace_goto((int)data);
+        workspace_goto((unsigned int)data);
         return True;
     } else if (xevent->message_type == _NET_ACTIVE_WINDOW) {
         client = client_find(xevent->window);
@@ -191,12 +192,12 @@ Bool ewmh_handle_clientmessage(XClientMessageEvent *xevent)
         }
         return True;
     } else if (xevent->message_type == _NET_CLOSE_WINDOW) {
-        kill_nicely((XEvent *)xevent); /* ugly but works ok */
+        kill_nicely((XEvent *)xevent, NULL); /* ugly but works ok */
         return True;
     } else if (xevent->message_type == _NET_WM_DESKTOP) {
         client = client_find(xevent->window);
         data = xevent->data.l[0];
-        workspace_client_moveto(client, (int)data);
+        workspace_client_moveto(client, (unsigned int)data);
         return True;
     }
     return False;
@@ -245,7 +246,7 @@ void ewmh_client_list_add(client_t *client)
         }
     }
     ewmh_client_list[nclients++] = client->window;
-    debug(("\tAdding window 0x%08X to _NET_CLIENT_LIST, %d clients\n",
+    debug(("\tAdding window %#lx to _NET_CLIENT_LIST, %d clients\n",
            client->window, nclients));
     XChangeProperty(dpy, root_window, _NET_CLIENT_LIST,
                     XA_WINDOW, 32, PropModeReplace,
@@ -262,7 +263,7 @@ void ewmh_client_list_remove(client_t *client)
                 ewmh_client_list[i - 1] = ewmh_client_list[i];
             }
             nclients--;
-            debug(("\tRemoving window 0x%08X from _NET_CLIENT_LIST, %d clients\n",
+            debug(("\tRemoving window %#lx from _NET_CLIENT_LIST, %d clients\n",
                    client->window, nclients));
             XChangeProperty(dpy, root_window, _NET_CLIENT_LIST,
                             XA_WINDOW, 32, PropModeReplace,

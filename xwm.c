@@ -234,7 +234,6 @@ int main(int argc, char **argv)
     frame_context = XUniqueContext();
     title_context = XUniqueContext();
 
-    focus_init();
     cursor_init();
     icccm_init();
     ewmh_init();
@@ -303,6 +302,7 @@ int main(int argc, char **argv)
     mouse_bind("Button3", MOUSE_RELEASE, MOUSE_TITLEBAR,
                resize_maximize, NULL);
 
+    focus_init();
     scan_windows();
     
     xfd = ConnectionNumber(dpy);

@@ -32,15 +32,13 @@ XContext window_context;
 XContext frame_context;
 XContext title_context;
 
-static void client_create_frame(client_t *client, Bool has_titlebar,
-                                position_size *win_position);
+static void client_create_frame(client_t *client, position_size *win_position);
 static void remove_transient_from_leader(client_t *client);
 
 client_t *client_create(Window w)
 {
     client_t *client;
     XWindowAttributes xwa;
-    Bool has_titlebar = True;
     position_size requested_geometry;
     int shaped = 0;
 
@@ -67,9 +65,9 @@ client_t *client_create(Window w)
     client->prev_x = client->prev_y = -1;
     client->prev_height = client->prev_width = -1;
     client->orig_border_width = xwa.border_width;
-    client->flags.reparented = 0;
-    client->flags.ignore_unmapnotify = 0;
-    client->prefs.pass_focus_click = 1;
+    client->reparented = 0;
+    client->ignore_unmapnotify = 0;
+    client->pass_focus_click = 1;
     client->focus_policy = SloppyFocus;
     
     /* God, this sucks.  I want the border width to be zero on all
@@ -85,12 +83,26 @@ client_t *client_create(Window w)
 
 /*    XSetWindowBorderWidth(dpy, w, 0); */
 
+#ifdef SHAPE
+    /* if we have a shaped window, don't add a titlebar */
+    if (shape_supported) {
+        int tmp;
+        unsigned int tmp2;
+
+        XShapeSelectInput(dpy, client->window, ShapeNotifyMask);
+        XShapeQueryExtents(dpy, client->window, &shaped, &tmp, &tmp,
+                           &tmp2, &tmp2, &tmp, &tmp, &tmp, &tmp2, &tmp2);
+        client->has_titlebar = (shaped ? 0 : 1);
+        if (shaped) debug(("\tIs a shaped window\n"));
+        else debug(("\tnot shaped\n"));
+    }
+#endif /* SHAPE */
+
     client_set_name(client);
     client_set_instance_class(client);
     client_set_xwmh(client);
     client_set_xsh(client);
     client_set_protocols(client);
-    client_set_transient_for(client);
 
     /* see if in window group (ICCCM, 4.1.11) */
     if (client->xwmh != NULL
@@ -109,38 +121,25 @@ client_t *client_create(Window w)
         | PropertyChangeMask;
     XSelectInput(dpy, client->window, client->window_event_mask);
 
-#ifdef SHAPE
-    /* if we have a shaped window, don't add a titlebar */
-    if (shape_supported) {
-        int tmp;
-        unsigned int tmp2;
-
-        XShapeSelectInput(dpy, client->window, ShapeNotifyMask);
-        XShapeQueryExtents(dpy, client->window, &shaped, &tmp, &tmp,
-                           &tmp2, &tmp2, &tmp, &tmp, &tmp, &tmp2, &tmp2);
-        has_titlebar = !shaped;
-        if (shaped) debug(("\tIs a shaped window\n"));
-        else debug(("\tnot shaped\n"));
-    }
-#endif /* SHAPE */
-
     requested_geometry.x = xwa.x;
     requested_geometry.y = xwa.y;
     requested_geometry.width = xwa.width;
     requested_geometry.height = xwa.height;
-    client_create_frame(client, has_titlebar, &requested_geometry);
+    client_create_frame(client, &requested_geometry);
     if (client->frame == None) {
-        fprintf(stderr, "XWM: Could not reparent window\n");
+        fprintf(stderr, "XWM: Could not create frame\n");
         Free(client);
         return NULL;
     }
-    if (has_titlebar) client_add_titlebar(client);
+    if (client->has_titlebar) client_add_titlebar(client);
 
     if (XSaveContext(dpy, w, window_context, (void *)client) != 0) {
         fprintf(stderr, "XWM: XSaveContext failed, could not save window\n");
         Free(client);
         return NULL;
     }
+    
+    client_set_transient_for(client);
 
 #ifdef SHAPE
     if (shaped && shape_supported) {
@@ -159,7 +158,7 @@ client_t *client_create(Window w)
          * (like workspace, etc) to see if a previous windowmanager was
          * doing something interesting with the window */
         debug(("\tclient_create:  client is already mapped\n"));
-        client->flags.ignore_unmapnotify = 1;
+        client->ignore_unmapnotify = 1;
         client->state = NormalState;
         client_inform_state(client);
         client_reparent(client);
@@ -167,7 +166,7 @@ client_t *client_create(Window w)
         XMapWindow(dpy, client->frame);
         if (client->titlebar != None)
             XMapWindow(dpy, client->titlebar);
-        keyboard_grab_keys(client);
+        keyboard_grab_keys(client->frame);
         mouse_grab_buttons(client);
         focus_add(client, event_timestamp);
         ewmh_client_list_add(client);
@@ -176,8 +175,7 @@ client_t *client_create(Window w)
     return client;
 }
 
-static void client_create_frame(client_t *client, Bool has_titlebar,
-                                position_size *win_position)
+static void client_create_frame(client_t *client, position_size *win_position)
 {
     XSetWindowAttributes xswa;
     XWindowChanges xwc;
@@ -195,16 +193,8 @@ static void client_create_frame(client_t *client, Bool has_titlebar,
     xswa.override_redirect = True;
 
     client_get_position_size_hints(client, &ps);
-    /* client_frame_position checks for the titlebar which
-     * has not yet been created - I'd rather not change the api */
     memcpy(&ps, win_position, sizeof(position_size));
-    if (has_titlebar) {
-        client->titlebar = client->window;
-        client_frame_position(client, &ps);
-        client->titlebar = None;
-    } else {
-        client_frame_position(client, &ps);
-    }
+    client_frame_position(client, &ps);
     client->x = ps.x;
     client->y = ps.y;
     client->width = ps.width;
@@ -243,7 +233,7 @@ static void client_create_frame(client_t *client, Bool has_titlebar,
 void client_reparent(client_t *client)
 {
     /* reparent the window and map window and frame */
-    debug(("\tReparenting window 0x%08X ('%.10s')\n",
+    debug(("\tReparenting window %#lx ('%.10s')\n",
            client->window, client->name));
     XAddToSaveSet(dpy, client->window);
     XSetWindowBorderWidth(dpy, client->window, 0);
@@ -254,12 +244,12 @@ void client_reparent(client_t *client)
         XReparentWindow(dpy, client->window, client->frame, 0, 0);
     }
     XMapWindow(dpy, client->window);
-    client->flags.reparented = 1;
+    client->reparented = 1;
 }
 
 void client_unreparent(client_t *client)
 {
-    client->flags.reparented = 0;
+    client->reparented = 0;
     XRemoveFromSaveSet(dpy, client->window);
     XReparentWindow(dpy, client->window, root_window, client->x, client->y);
     XSetWindowBorderWidth(dpy, client->window, client->orig_border_width);
@@ -269,7 +259,8 @@ void client_add_titlebar(client_t *client)
 {
     XSetWindowAttributes xswa;
     int mask;
-    
+
+    debug(("\tAdding titlebar\n"));
     mask = CWBackPixmap | CWBackPixel | CWCursor | CWEventMask
            | CWOverrideRedirect | CWWinGravity;
     xswa.cursor = cursor_normal;
@@ -299,8 +290,11 @@ void client_remove_titlebar(client_t *client)
     Window junk1, *junk2;
     int n;
 
+    client->has_titlebar = 0;
     if (client->titlebar == None)
         return;
+    
+    debug(("\tRemoving titlebar\n"));
 
     if (XQueryTree(dpy, client->frame, &junk1, &junk1, &junk2, &n) == 0) {
         reparented = False;
@@ -324,7 +318,7 @@ void client_remove_titlebar(client_t *client)
     client->y = ps.y;
     client->width = ps.width;
     client->height = ps.height;
-    client_create_frame(client, False, &ps);
+    client_create_frame(client, &ps);
     if (reparented) client_reparent(client);
 }
 
@@ -415,8 +409,16 @@ void client_set_name(client_t *client)
     }
     if (xtp.value != NULL) XFree(xtp.value);
 
-    debug(("\tClient 0x%08X is %s\n", (unsigned int)client, client->name));
-    if (strcmp(client->name, "aumix") == 0) client->prefs.omnipresent = 1;
+    debug(("\tClient %#lx is %s\n", (unsigned int)client, client->name));
+    if (strcmp(client->name, "kicker") == 0
+        || strcmp(client->name, "lt-kicker") == 0) {
+        client->focus_policy = DontFocus;
+        client->skip_alt_tab = 1;
+        client->always_on_top = 1;
+        client->sticky = 1;
+        client->omnipresent = 1;
+        client_remove_titlebar(client);
+    }
 }
 
 void client_set_instance_class(client_t *client)
@@ -485,22 +487,45 @@ static void remove_transient_from_leader(client_t *client)
 }
 
 /*
- * FIXME:  not ICCCM- and EWMH-compliant
+ * transient for root or nothing means transient for group leader
  */
 
 void client_set_transient_for(client_t *client)
 {
     Window new_transient_for;
-    client_t *leader;
+    client_t *leader, *c;
 
     if (XGetTransientForHint(dpy, client->window, &new_transient_for) == 0)
         new_transient_for = None;
 
+    if (new_transient_for == None || new_transient_for == root_window) {
+        if (client->group_leader == NULL) {
+            remove_transient_from_leader(client);
+            client->transient_for = None;
+            return;
+        } else {
+            client->transient_for = client->group_leader->window;
+        }
+    }
+        
     if (client->transient_for == new_transient_for) return;
+
+    c = leader = client_find(new_transient_for);
+    while (c != NULL) {
+        if (c == client) {
+            fprintf(stderr, "XWM: The application '%s' has a "
+                    "TRANSIENT_FOR cycle.\n"
+                    "This is a serious bug, and you should contact "
+                    "the author of this program.\n", client->name);
+            client->transient_for = None;
+            return;
+        }
+        c = client_find(c->transient_for);
+    }
     
     /* remove client from old leader's 'transients' list if needed */
     remove_transient_from_leader(client);
-
+    
     /* add client to new leader's 'transients' list if possible; if
      * that's not possible, no big deal, just means client's
      * WM_TRANSIENT_FOR points to yet-uncreated window or the root
@@ -508,7 +533,7 @@ void client_set_transient_for(client_t *client)
      * transient) */
     
     client->transient_for = new_transient_for;
-    if ( (leader = client_find(client->transient_for)) != NULL) {
+    if (leader != NULL) {
         client->next_transient = leader->transients;
         leader->transients = client;
     }
@@ -536,13 +561,26 @@ void client_get_position_size_hints(client_t *client, position_size *ps)
 
 void client_frame_position(client_t *client, position_size *ps)
 {
+    static char *gravity_strings[] = {
+        "ForgetGravity",
+        "NorthWestGravity",
+        "NorthGravity",
+        "NorthEastGravity",
+        "WestGravity",
+        "CenterGravity",
+        "EastGravity",
+        "SouthWestGravity",
+        "SouthGravity",
+        "SouthEastGravity",
+        "StaticGravity"
+    };
     int gravity;
     int y_win_ref, y_frame_ref; /* "reference" points */
 
     debug(("\twindow wants to be positioned at %dx%d+%d+%d\n",
            ps->width, ps->height, ps->x, ps->y));
 
-    if (client->titlebar == None) return;
+    if (!client->has_titlebar) return;
     gravity = NorthWestGravity;
     
     if (client->xsh != NULL) {
@@ -550,6 +588,8 @@ void client_frame_position(client_t *client, position_size *ps)
             gravity = client->xsh->win_gravity;
     }
 
+    debug(("\tGravity is %s\n", gravity_strings[gravity]));
+    
     /* this is a bit simpler since we only add a titlebar at the top */
     ps->height += TITLE_HEIGHT;
     switch (gravity) {
@@ -557,7 +597,6 @@ void client_frame_position(client_t *client, position_size *ps)
         case SouthEastGravity:
         case SouthGravity:
         case SouthWestGravity:
-            debug(("\tGravity is like static\n"));
             ps->y -= TITLE_HEIGHT;
             break;
         case CenterGravity:
@@ -566,13 +605,11 @@ void client_frame_position(client_t *client, position_size *ps)
             y_win_ref = (ps->height - TITLE_HEIGHT) / 2;
             y_frame_ref = ps->height / 2;
             ps->y -= (y_frame_ref - y_win_ref);
-            debug(("\tGravity is like center\n"));
             break;
         case NorthGravity:
         case NorthEastGravity:
         case NorthWestGravity:
         default:                /* assume NorthWestGravity */
-            debug(("\tGravity is like NorthWest\n"));
             break;
     }
     debug(("\tframe positioned at %dx%d+%d+%d\n",
@@ -626,7 +663,7 @@ void _client_print(char *s, client_t *client)
         debug(("%-19s null client\n", s));
         return;
     }
-    debug(("%-19s client = 0x%08X, window = 0x%08X, frame = 0x%08X\n",
+    debug(("%-19s client = %#lx, window = %#lx, frame = %#lx\n",
            s, (unsigned int)client, (unsigned int)client->window,
            (unsigned int)client->frame));
     debug(("%-19s name = '%.10s', instance = '%.10s', class = '%.10s'\n",
@@ -641,7 +678,7 @@ void client_paint_titlebar(client_t *client)
 
     if (client == NULL || client->titlebar == None) return;
     
-    if (client == focus_current) {
+    if (client == focus_current && client->focus_policy != DontFocus) {
         /* using three different GCs instead of using one and
          * continually changing its values may or may not be faster
          * (depending on hardware) according to the Xlib docs, but

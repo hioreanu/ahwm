@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include "xwm.h"
 #include "icccm.h"
+#include "debug.h"
 
 static Window icccm_window = None;
 static Atom WM_Sn, MESSAGE, VERSION;
@@ -121,10 +122,8 @@ void icccm_selection_request(XSelectionRequestEvent *xevent)
     XSelectionEvent event;
     long data[2] = {2, 0};
 
-#ifdef DEBUG
-    printf("*** RECEIVED SELECTION REQUEST from window 0x%08X\n",
-           (unsigned int)xevent->requestor);
-#endif /* DEBUG */
+    debug(("*** RECEIVED SELECTION REQUEST from window %#lx\n",
+           xevent->requestor));
 
     event.type = SelectionNotify;
     event.selection = xevent->selection;

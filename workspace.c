@@ -51,7 +51,7 @@ static Bool unmap(client_t *client, void *v)
 {
     XSetWindowAttributes xswa;
     
-    if (client->prefs.omnipresent) {
+    if (client->omnipresent) {
         client->workspace = (unsigned int)v;
         if (client->titlebar != None) {
             xswa.background_pixel =
@@ -60,7 +60,7 @@ static Bool unmap(client_t *client, void *v)
         }
     } else {
         XUnmapWindow(dpy, client->frame);
-        debug(("\tUnmapping frame 0x%08X in workspace_goto\n",
+        debug(("\tUnmapping frame %#lx in workspace_goto\n",
                client->frame));
         ewmh_client_list_remove(client);
     }
@@ -69,7 +69,7 @@ static Bool unmap(client_t *client, void *v)
 
 static Bool map(client_t *client, void *v)
 {
-    debug(("\tRemapping 0x%08X ('%.10s')\n", client, client->name));
+    debug(("\tRemapping %#lx ('%.10s')\n", client, client->name));
     XMapWindow(dpy, client->frame);
     return True;
 }
@@ -138,14 +138,14 @@ void move_with_transients(client_t *client, unsigned int ws)
             move_with_transients(transient, ws);
         }
     }
-    debug(("\tMoving window 0x%08X ('%.10s') to workspace %d\n",
+    debug(("\tMoving window %#lx ('%.10s') to workspace %d\n",
            client->window, client->name, ws));
     xswa.background_pixel =
         workspace_darkest_highlight[ws - 1];
     XChangeWindowAttributes(dpy, client->titlebar, CWBackPixel, &xswa);
     focus_remove(client, event_timestamp);
     ewmh_client_list_remove(client);
-    debug(("\tUnmapping frame 0x%08X in workspace move\n", client->frame));
+    debug(("\tUnmapping frame %#lx in workspace move\n", client->frame));
     XUnmapWindow(dpy, client->frame);
     client->workspace = ws;
     focus_add(client, event_timestamp);

@@ -60,7 +60,6 @@ typedef struct _client_t {
     char *class;                /* window's class (ICCCM, 4.1.2.5) */
     /* both of the above may be NULL; use XFree() on them */
 
-    int state;
     /* The state is 'Withdrawn' when the window is created but is
      * not yet mapped and when the window has been unmapped but
      * not yet destroyed.
@@ -71,48 +70,40 @@ typedef struct _client_t {
      * confuse the client.  FIXME: not true
      * The state is 'NormalState' whenever the window is mapped.
      */
+    int state;
 
-    /* if some client has this client as the transient_for hint,
-     * then this client is a 'leader' (my nomenclature, nothing
-     * to do with window groups).  A leader has the 'transients'
-     * attribute set to one of its transient windows.  A transient
-     * window has the 'next_transient' attribute set the the next
-     * transient window.  Note that a transient window may also
-     * be a leader. */
+    /* If some client has this client as the transient_for hint, then
+     * this client is a 'leader' (my nomenclature, nothing to do with
+     * window groups).  A leader has the 'transients' attribute set to
+     * one of its transient windows.  A transient window has the
+     * 'next_transient' attribute set the the next transient window.
+     * Note that a transient window may also be a leader.  These two
+     * are used to represent the tree of transient windows as a binary
+     * tree. */
 
     struct _client_t *transients;
     struct _client_t *next_transient;
     
-    /* Mapped clients are managed as circular doubly linked lists in
-     * focus.c; these can be used to iterate over all mapped clients
-     * (if state == NormalState and workspace == workspace_current,
-     * the client is mapped). */
-    struct _client_t *next_focus;
-    struct _client_t *prev_focus;
-
     /* All clients are managed as regular doubly linked lists in
      * stacking.c; these can be used to iterate over all clients. */
     struct _client_t *next_stacking;
     struct _client_t *prev_stacking;
 
-    enum { ClickToFocus, SloppyFocus, DontFocus } focus_policy;
-    enum { Fixed, Smart, Cascade } map_policy;
-    
-    struct _flags {
-        unsigned int reparented:1;         /* is window reparented to frame */
-        unsigned int ignore_unmapnotify:1; /* hack, see client_create */
-    } flags;
-    
-    struct _prefs {
-        unsigned int skip_alt_tab:1;
-        unsigned int pass_focus_click:1;
-        unsigned int always_on_top:1;
-        unsigned int always_on_bottom:1;
-        unsigned int omnipresent:1;
-        unsigned int sticky:1;  /* FIXME */
-    } prefs;
-    char pad[1];
-} client_t;                     /* 140 bytes on ILP-32 machines */
+    /* hacks, see client.c and event.c */
+    unsigned int reparented : 1;
+    unsigned int ignore_unmapnotify : 1;
+
+    /* user preferences */
+    enum { ClickToFocus, SloppyFocus, DontFocus } focus_policy : 2;
+    enum { Fixed, Smart, Cascade } map_policy : 2;
+    unsigned int has_titlebar : 1;
+    unsigned int skip_alt_tab : 1;
+    unsigned int pass_focus_click : 1;
+    unsigned int always_on_top : 1;
+    unsigned int always_on_bottom : 1;
+    unsigned int omnipresent : 1;
+    unsigned int sticky : 1;
+} client_t;                     /* 116 bytes on ILP-32 machines */
 
 /* the values for client->protocols, can be ORed together */
 

@@ -345,7 +345,7 @@ static void event_create(XCreateWindowEvent *xevent)
     client_t *client;
 
     if (xevent->override_redirect) {
-        debug(("\tWindow 0x%08X has override_redirect, ignoring\n",
+        debug(("\tWindow %#lx has override_redirect, ignoring\n",
                (unsigned int)xevent->window));
         return;
     }
@@ -402,7 +402,7 @@ static void event_unmap(XUnmapEvent *xevent)
 
     client_print("Unmap:", client);
     if (client == NULL) {
-        debug(("Ignoring UnmapNotify for unknown client\n"));
+        debug(("\tIgnoring UnmapNotify for unknown client\n"));
         return;
     }
 
@@ -420,9 +420,9 @@ static void event_unmap(XUnmapEvent *xevent)
         return;
     }
 
-    if (client->flags.ignore_unmapnotify != 0) {
+    if (client->ignore_unmapnotify != 0) {
         debug(("\tClient has ignore_unmapnotify\n"));
-        client->flags.ignore_unmapnotify = 0;
+        client->ignore_unmapnotify = 0;
         return;
     }
     
@@ -496,7 +496,7 @@ static void event_maprequest(XMapRequestEvent *xevent)
 
     if (client->state == NormalState
         && client->workspace == workspace_current) {
-        if (client->flags.reparented == 0)
+        if (client->reparented == 0)
             client_reparent(client);
         if (client->xsh == NULL
             || !(client->xsh->flags & (USPosition | PPosition)))
@@ -506,7 +506,7 @@ static void event_maprequest(XMapRequestEvent *xevent)
         if (client->titlebar != None) {
             XMapWindow(xevent->display, client->titlebar);
         }
-        keyboard_grab_keys(client);
+        keyboard_grab_keys(client->frame);
         mouse_grab_buttons(client);
         if (addfocus) {
             focus_add(client, event_timestamp);
@@ -514,6 +514,8 @@ static void event_maprequest(XMapRequestEvent *xevent)
     }
 
     client_inform_state(client);
+    XFlush(dpy);                /* FIXME:  remove these two, kicker */
+    XSync(dpy, False);
 }
 
 /*
@@ -528,6 +530,8 @@ static void event_configurerequest(XConfigureRequestEvent *xevent)
     XWindowChanges xwc;
     position_size ps;
     unsigned long new_mask;
+    XEvent ev;
+    int title_height;
 
     client = client_find(xevent->window);
 
@@ -595,19 +599,31 @@ static void event_configurerequest(XConfigureRequestEvent *xevent)
     xwc.sibling      = xevent->above;
     xwc.stack_mode   = xevent->detail;
 
-    new_mask = xevent->value_mask & (~(CWSibling | CWStackMode));
+    new_mask = xevent->value_mask & (~(CWSibling | CWStackMode | CWBorderWidth));
     XConfigureWindow(dpy, client->frame, new_mask, &xwc);
     if (client->titlebar != None && (xevent->value_mask & CWWidth))
         XConfigureWindow(dpy, client->titlebar, CWWidth, &xwc);
 
-    if (client->titlebar != None) {
-        xwc.y = TITLE_HEIGHT;
-        xwc.height -= TITLE_HEIGHT;
-    } else {
-        xwc.y = 0;
-    }
+    title_height = client->titlebar == None ? 0 : TITLE_HEIGHT;
+    xwc.y = title_height;
+    xwc.height -= title_height;
     xwc.x = 0;
-    XConfigureWindow(xevent->display, client->window, new_mask, &xwc);
+    if (new_mask != 0) {
+        XConfigureWindow(xevent->display, client->window, new_mask, &xwc);
+    } else {
+        debug(("\tSending fake ConfigureNotify\n"));
+        ev.type = ConfigureNotify;
+        ev.xconfigure.display = dpy;
+        ev.xconfigure.event = client->window;
+        ev.xconfigure.window = client->window;
+        ev.xconfigure.x = client->x;
+        ev.xconfigure.y = client->y + title_height;
+        ev.xconfigure.width = client->width;
+        ev.xconfigure.height = client->height - title_height;
+        ev.xconfigure.border_width = client->orig_border_width;
+        ev.xconfigure.above = None;
+        XSendEvent(dpy, client->window, True, NoEventMask, &ev);
+    }
 
 #if 0                           /* FIXME */
     if (xevent->value_mask & CWStackMode) {
@@ -627,7 +643,7 @@ static void event_configurerequest(XConfigureRequestEvent *xevent)
             debug(("\tLowering window\n"));
             XLowerWindow(dpy, client->frame);
         } else {
-            debug(("\tIgnoring stacking request %d for client 0x%08X (%s)\n",
+            debug(("\tIgnoring stacking request %d for client %#lx (%s)\n",
                    xevent->detail, (unsigned int)client, client->name));
         }
     }
