@@ -21,6 +21,7 @@
 #include "keyboard.h"
 #include "cursor.h"
 #include "focus.h"
+#include "malloc.h"
 
 XContext window_context;
 XContext frame_context;
@@ -28,7 +29,7 @@ XContext title_context;
 
 client_t *client_create(Window w)
 {
-    client_t *client;
+    client_t *client, *group_leader;
     XWindowAttributes xwa;
     Bool has_titlebar = True;
     position_size requested_geometry;
@@ -42,7 +43,7 @@ client_t *client_create(Window w)
         return NULL;
     }
 
-    client = malloc(sizeof(client_t));
+    client = Malloc(sizeof(client_t));
     if (client == NULL) {
         fprintf(stderr, "XWM: Malloc failed, unable to allocate client\n");
         return NULL;
@@ -57,12 +58,24 @@ client_t *client_create(Window w)
     client->titlebar = None;
     client->prev_x = client->prev_y = -1;
     client->prev_height = client->prev_width = -1;
+    client->orig_border_width = xwa.border_width;
+    XSetWindowBorderWidth(dpy, w, 0);
 
     client_set_name(client);
     client_set_instance_class(client);
     client_set_xwmh(client);
     client_set_xsh(client);
     client_set_protocols(client);
+
+    /* see if in window group (ICCCM, 4.1.11) */
+    if (client->xwmh != NULL
+        && client->xwmh->flags & WindowGroupHint) {
+        group_leader = client_find((Window)client->xwmh->window_group);
+        if (group_leader != NULL && group_leader->xwmh != NULL) {
+            XFree(client->xwmh);
+            client->xwmh = group_leader->xwmh;
+        }
+    }
 
     client->frame_event_mask = SubstructureRedirectMask | EnterWindowMask
                               | FocusChangeMask;
@@ -93,14 +106,14 @@ client_t *client_create(Window w)
     client_reparent(client, has_titlebar, &requested_geometry);
     if (client->frame == None) {
         fprintf(stderr, "Could not reparent window\n");
-        free(client);
+        Free(client);
         return NULL;
     }
     if (has_titlebar) client_add_titlebar(client);
 
     if (XSaveContext(dpy, w, window_context, (void *)client) != 0) {
         fprintf(stderr, "XWM: XSaveContext failed, could not save window\n");
-        free(client);
+        Free(client);
         return NULL;
     }
     
@@ -267,10 +280,10 @@ void client_destroy(client_t *client)
         XDestroyWindow(dpy, client->titlebar);
     }
     if (client->xwmh != NULL) XFree(client->xwmh);
-    free(client->name);         /* should never be NULL */
+    Free(client->name);         /* should never be NULL */
     if (client->instance != NULL) XFree(client->instance);
     if (client->class != NULL) XFree(client->class);
-    free(client);
+    Free(client);
 }
 
 /* snarfed mostly from ctwm and WindowMaker */
@@ -282,26 +295,26 @@ void client_set_name(client_t *client)
     int n;
 
     if (XGetWMName(dpy, client->window, &xtp) == 0) {
-        client->name = strdup("");      /* client did not set a window name */
+        client->name = Strdup("");      /* client did not set a window name */
         return;
     }
     if (xtp.value == NULL || xtp.nitems <= 0) {
         /* client set window name to NULL */
-        client->name = strdup("");
+        client->name = Strdup("");
     } else {
         if (xtp.encoding == XA_STRING) {
             /* usual case */
-            client->name = strdup(xtp.value);
+            client->name = Strdup(xtp.value);
         } else {
             /* client is using UTF-16 or something equally stupid */
             /* haven't seen this block actually run yet */
             xtp.nitems = strlen((char *)xtp.value);
             if (XmbTextPropertyToTextList(dpy, &xtp, &list, &n) == Success
                 && n > 0 && *list != NULL) {
-                client->name = strdup(*list);
+                client->name = Strdup(*list);
                 XFreeStringList(list);
             } else {
-                client->name = strdup("");
+                client->name = Strdup("");
             }
         }
     }

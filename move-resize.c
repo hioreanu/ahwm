@@ -10,14 +10,16 @@
  * seen.
  */
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <X11/keysym.h>
+
 #include "move-resize.h"
 #include "client.h"
 #include "cursor.h"
 #include "event.h"
 #include "xwm.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include <X11/keysym.h>
+#include "malloc.h"
 
 #ifndef MIN
 #define MIN(x,y) ((x) < (y) ? (x) : (y))
@@ -58,6 +60,9 @@ static int keycode_Control_L, keycode_Control_R, keycode_space;
 
 static int moving = 0;
 static int sizing = 0;
+
+/* optimization, see display_geometry() */
+static char *titlebar_display = NULL;
 
 static XEvent *compress_motion(XEvent *xevent);
 static void process_resize(client_t *client, int new_x, int new_y,
@@ -324,7 +329,8 @@ void move_client(XEvent *xevent)
         
     if (client != NULL) {
         XMoveWindow(dpy, client->frame, client->x, client->y);
-        if (client->name != NULL) free(client->name);
+        if (client->name != NULL) Free(client->name);
+        titlebar_display = NULL;
         client_set_name(client);
         client_paint_titlebar(client);
         /* must send a synthetic ConfigureNotify to the client
@@ -716,7 +722,8 @@ void resize_client(XEvent *xevent)
         } else {
             XResizeWindow(dpy, client->window, client->width, client->height);
         }
-        if (client->name != NULL) free(client->name); /* FIXME */
+        if (client->name != NULL) Free(client->name);
+        titlebar_display = NULL;
         client_set_name(client);
         client_paint_titlebar(client);
     }
@@ -1331,22 +1338,22 @@ static void draw_arrowhead(int x, int y, resize_direction_t direction)
  * changes the client's titlebar display to the geometry prefixed by a
  * given string
  * 
- * We want to avoid a malloc/free on each tiny movement, so we keep
+ * We want to avoid a Malloc/free on each tiny movement, so we keep
  * around a buffer and some pointers....
  */
+
 
 static void display_geometry(char *s, client_t *client)
 {
     int width, height;
-    static char *titlebar_display = NULL;
 
     if (client->titlebar == None) return;
     width = client->width / get_width_resize_inc(client);
     height = (client->height - TITLE_HEIGHT) / get_height_resize_inc(client);
-    if (client->name != titlebar_display) {
-        titlebar_display = malloc(256); /* arbitrary, whatever */
+    if (titlebar_display == NULL || client->name != titlebar_display) {
+        titlebar_display = Malloc(256); /* arbitrary, whatever */
         if (titlebar_display == NULL) return;
-        if (client->name != NULL) free(client->name);
+        if (client->name != NULL) Free(client->name);
         client->name = titlebar_display;
     }
     snprintf(client->name, 256, "%dx%d+%d+%d [%s %s]",

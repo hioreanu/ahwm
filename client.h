@@ -29,7 +29,9 @@
  * reparent windows even if they don't have a titlebar since a lot of
  * X apps ASSUME that they will be reparented by a windowmanager upon
  * creation and it's a bit easier to listen for some events on our
- * frame rather than their app window.
+ * frame rather than their app window.  We also reset the client's
+ * border width to zero since I hate borders on windows.  The old
+ * border width must be saved, however.
  */
 
 typedef struct _client_t {
@@ -49,6 +51,7 @@ typedef struct _client_t {
     int prev_y;                 /* previous position/size for maximization */
     int prev_width;             /* previous position/size for maximization */
     int prev_height;            /* previous position/size for maximization */
+    int orig_border_width;      /* client's requested border width  */
     int workspace;              /* client's workspace  */
     int window_event_mask;      /* event mask of client->window */
     int frame_event_mask;       /* event mask of client->frame */

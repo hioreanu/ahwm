@@ -44,6 +44,8 @@ from the X Consortium.
 #include <X11/Xproto.h>
 #include <ctype.h>
 
+#include "malloc.h"
+
 #define INNER_WINDOW_WIDTH 50
 #define INNER_WINDOW_HEIGHT 50
 #define INNER_WINDOW_BORDER 4

@@ -11,6 +11,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <stdlib.h>
+
 #include "xwm.h"
 #include "event.h"
 #include "client.h"
@@ -20,6 +21,7 @@
 #include "mouse.h"
 #include "xev.h"
 #include "error.h"
+#include "malloc.h"
 
 #ifdef SHAPE
 #include <X11/extensions/shape.h>
@@ -441,6 +443,10 @@ static void event_configurerequest(XConfigureRequestEvent *xevent)
            client->width, client->height);
 #endif /* DEBUG */
 
+    if (xevent->value_mask & CWBorderWidth) {
+        client->orig_border_width = xevent->border_width;
+    }
+    
     ps.x = client->x;
     ps.y = client->y;
     ps.width = client->width;
@@ -510,7 +516,7 @@ static void event_property(XPropertyEvent *xevent)
 #ifdef DEBUG
         printf("\tWM_NAME, changing client->name\n");
 #endif /* DEBUG */
-        free(client->name);
+        Free(client->name);
         client_set_name(client);
         client_paint_titlebar(client);
     } else if (xevent->atom == XA_WM_CLASS) {

@@ -25,6 +25,7 @@
 
 #include "cursor.h"
 #include "xwm.h"
+#include "malloc.h"
 
 #include "ew_cursor_black.xbm"
 #include "ne_cursor_black.xbm"

@@ -12,6 +12,7 @@
 #include <ctype.h>
 #include "keyboard.h"
 #include "client.h"
+#include "malloc.h"
 
 #ifndef MIN
 #define MIN(x,y) ((x) < (y) ? (x) : (y))
@@ -37,7 +38,7 @@ void keyboard_set_function_ex(unsigned int keycode, unsigned int modifiers,
 {
     keybinding *newbinding;
 
-    newbinding = malloc(sizeof(keybinding));
+    newbinding = Malloc(sizeof(keybinding));
     if (newbinding == NULL) {
         fprintf(stderr, "XWM: Cannot bind key, out of memory\n");
         return;

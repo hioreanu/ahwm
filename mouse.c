@@ -8,10 +8,12 @@
 #include <string.h>
 #include <stdlib.h>
 #include <ctype.h>
+
 #include "mouse.h"
 #include "move-resize.h"
 #include "xwm.h"
 #include "cursor.h"
+#include "malloc.h"
 
 #ifndef MIN
 #define MIN(x,y) ((x) < (y) ? (x) : (y))
@@ -93,7 +95,7 @@ void mouse_set_function_ex(unsigned int button, unsigned int modifiers,
 {
     mousebinding *newbinding;
 
-    newbinding = malloc(sizeof(mousebinding));
+    newbinding = Malloc(sizeof(mousebinding));
     if (newbinding == NULL) {
         fprintf(stderr, "XWM: Cannot bind mouse button, out of memory\n");
         return;
