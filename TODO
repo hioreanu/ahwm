@@ -1,6 +1,5 @@
 TODO before release:
 - option WorkspaceSendTransients (boolean)
-- clean up the AltTab() crap, see .xwmrc for ideas
 - on alt tab, delay between titlebar color change and raise, mebbe stacking_raise()
 - transient for self means something?  Directory property window in konq
 - colormaps
@@ -128,6 +127,7 @@ Finished, no longer TODO:
 - differentiate between hint-based, user-based, and overridden options
 - on resize to move, don't allow mouse to be outside window
 - maximize vertical, horizontal
+- clean up the AltTab() crap, see .xwmrc for ideas
 
 Abandoned, no longer TODO:
 - "stop" focus, detect when pointer stops in a window (no timeout) -

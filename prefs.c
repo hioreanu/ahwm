@@ -466,7 +466,8 @@ static Bool type_check_mouseunbinding(mouseunbinding *mub)
 static Bool type_check_function(function *fn)
 {
     switch (fn->function_type) {
-        case ALTTAB:
+        case CYCLENEXT:
+        case CYCLEPREV:
         case KILLNICELY:
         case KILLWITHEXTREMEPREJUDICE:
         case FOCUS:
@@ -913,24 +914,25 @@ static void mouseunbinding_apply(client_t *client, mouseunbinding *kb)
 key_fn fn_table[] = {
 /* 0  */    workspace_client_moveto_bindable,
 /* 1  */    workspace_goto_bindable,
-/* 2  */    focus_alt_tab,
-/* 3  */    kill_nicely,
-/* 4  */    kill_with_extreme_prejudice,
-/* 5  */    run_program,
-/* 6  */    NULL, /* focus function, only for mouse binding */
-/* 7  */    resize_maximize,
-/* 8  */    keyboard_ignore,
-/* 9  */    keyboard_quote,
-/* 10 */    move_client,
-/* 11 */    resize_client,
-/* 12 */    NULL, /* non-interactive move/resize, must implement */
-/* 13 */    xwm_quit,
-/* 14 */    NULL, /* beep */
-/* 15 */    NULL, /* invoke composed function */
-/* 16 */    NULL, /* expansion for menu system */
-/* 17 */    NULL, /* refresh/reset */
-/* 18 */    resize_maximize_vertically,
-/* 19 */    resize_maximize_horizontally
+/* 2  */    focus_cycle_next,
+/* 3  */    focus_cycle_prev,
+/* 4  */    kill_nicely,
+/* 5  */    kill_with_extreme_prejudice,
+/* 6  */    run_program,
+/* 7  */    NULL, /* focus function, only for mouse binding */
+/* 8  */    resize_maximize,
+/* 9  */    resize_maximize_vertically,
+/* 10 */    resize_maximize_horizontally,
+/* 11 */    keyboard_ignore,
+/* 12 */    keyboard_quote,
+/* 13 */    move_client,
+/* 14 */    resize_client,
+/* 15 */    NULL, /* non-interactive move/resize, must implement */
+/* 16 */    xwm_quit,
+/* 17 */    NULL, /* beep */
+/* 18 */    NULL, /* invoke composed function */
+/* 19 */    NULL, /* expansion for menu system */
+/* 20 */    NULL, /* refresh/reset */
 };
 
 static void globally_bind(line *lp)

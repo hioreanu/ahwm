@@ -214,6 +214,23 @@ void keyboard_init()
     }
 }
 
+int keyboard_get_modifier_mask(int keycode)
+{
+    XModifierKeymap *xmkm;
+    int i, j, mods;
+
+    mods = 0;
+    xmkm = XGetModifierMapping(dpy);
+    for (i = 0; i < 8; i++) {
+        for (j = 0; j < xmkm->max_keypermod; j++) {
+            if (keycode == xmkm->modifiermap[i * xmkm->max_keypermod + j]) {
+                mods |= (1 << i);
+            }
+        }
+    }
+    return mods;
+}
+
 void keyboard_ignore(XEvent *e, arglist *ignored)
 {
     return;

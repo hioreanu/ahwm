@@ -143,7 +143,8 @@ Titlebar { return TOK_TITLEBAR; }
 
 SendToWorkspace { return TOK_SENDTOWORKSPACE; }
 GoToWorkspace { return TOK_GOTOWORKSPACE; }
-AltTab { return TOK_ALTTAB; }
+CycleNext { return TOK_CYCLENEXT; }
+CyclePrevious { return TOK_CYCLEPREV; }
 KillNicely { return TOK_KILLNICELY; }
 KillWithExtremePrejudice { return TOK_KILLWITHEXTREMEPREJUDICE; }
 Launch { return TOK_LAUNCH; }

@@ -104,7 +104,8 @@
 
 %token TOK_SENDTOWORKSPACE
 %token TOK_GOTOWORKSPACE
-%token TOK_ALTTAB
+%token TOK_CYCLENEXT
+%token TOK_CYCLEPREV
 %token TOK_KILLNICELY
 %token TOK_KILLWITHEXTREMEPREJUDICE
 %token TOK_LAUNCH
@@ -449,7 +450,8 @@ function: function_name TOK_LPAREN TOK_RPAREN
 
 function_name: TOK_SENDTOWORKSPACE { $$ = SENDTOWORKSPACE; }
              | TOK_GOTOWORKSPACE { $$ = GOTOWORKSPACE; }
-             | TOK_ALTTAB { $$ = ALTTAB; }
+             | TOK_CYCLENEXT { $$ = CYCLENEXT; }
+             | TOK_CYCLEPREV { $$ = CYCLEPREV; }
              | TOK_KILLNICELY { $$ = KILLNICELY; }
              | TOK_KILLWITHEXTREMEPREJUDICE { $$ = KILLWITHEXTREMEPREJUDICE; }
              | TOK_LAUNCH { $$ = LAUNCH; }

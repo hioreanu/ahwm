@@ -165,8 +165,6 @@ int main(int argc, char **argv)
     fontstruct = XLoadQueryFont(dpy,
                                 "-*-helvetica-bold-r-*-*-12-*-*-*-*-*-*-*");
 
-    printf("ascent = %d, descent = %d\n", fontstruct->max_bounds.ascent,
-           fontstruct->max_bounds.descent);
     if (XAllocNamedColor(dpy, DefaultColormap(dpy, scr), "#E0E0E0",
                          &xcolor, &junk2) == 0) {
         xgcv.foreground = white;

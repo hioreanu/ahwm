@@ -119,7 +119,8 @@ void focus_workspace_changed(Time);
  * to a client window by sending a synthetic event.
  */
 
-void focus_alt_tab(XEvent *e, arglist *ignored);
+void focus_cycle_next(XEvent *e, arglist *ignored);
+void focus_cycle_prev(XEvent *e, arglist *ignored);
 
 /*
  * This module needs to know when a client changes its focus policy to

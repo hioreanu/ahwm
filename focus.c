@@ -90,6 +90,7 @@ static focus_node *get_prev(focus_node *);
 static focus_node *get_next(focus_node *);
 static void focus_add_internal(focus_node *, int ws, Time timestamp);
 static void focus_remove_internal(focus_node *, int ws, Time timestamp);
+static void cycle_helper(focus_node *node);
 
 void focus_init()
 {
@@ -494,12 +495,17 @@ void focus_policy_from_click(client_t *client)
  * behaviour).
  */
 
-void focus_alt_tab(XEvent *xevent, arglist *ignored)
+void focus_cycle_prev(XEvent *xevent, arglist *ignored)
+{
+    focus_cycle_next(xevent, ignored);
+}
+
+void focus_cycle_next(XEvent *xevent, arglist *ignored)
 {
     focus_node *orig_focus;
     focus_node *node;
-    unsigned int action_keycode;
-    KeyCode keycode_Alt_L, keycode_Alt_R;
+    key_fn fn;
+    int mod;
     enum { CONTINUE, DONE, REPLAY_KEYBOARD, QUIT } state;
 
     if (focus_current == NULL) {
@@ -511,9 +517,6 @@ void focus_alt_tab(XEvent *xevent, arglist *ignored)
     orig_focus = focus_stacks[workspace_current - 1];
     debug(("\torig_focus = '%s'\n",
            orig_focus ? orig_focus->client->name : "NULL"));
-    action_keycode = xevent->xkey.keycode;
-    keycode_Alt_L = XKeysymToKeycode(dpy, XK_Alt_L);
-    keycode_Alt_R = XKeysymToKeycode(dpy, XK_Alt_R);
 
     XGrabKeyboard(dpy, root_window, True, GrabModeAsync,
                   GrabModeAsync, CurrentTime);
@@ -521,28 +524,22 @@ void focus_alt_tab(XEvent *xevent, arglist *ignored)
     while (state == CONTINUE) {
         switch (xevent->type) {
             case KeyPress:
-                if (xevent->xkey.keycode == action_keycode) {
+                fn = keyboard_find_function(&xevent->xkey, NULL);
+                if (fn == focus_cycle_next) {
                     node = focus_stacks[workspace_current - 1];
-                    if (xevent->xkey.state & ShiftMask) {
-                        node = get_prev(node);
-                    } else {
-                        node = get_next(node);
-                    }
-                    /* FIXME:  aren't we checking this twice? */
-                    if (!(node->client->cycle_behaviour == SkipCycle
-                          || node->client->focus_policy == DontFocus)) {
-                        focus_set_internal(node, event_timestamp, False);
-                        if (node->client->cycle_behaviour == RaiseImmediately) {
-                            focus_ensure(CurrentTime);
-                        }
-                    }
+                    node = get_next(node);
+                    cycle_helper(node);
+                } else if (fn == focus_cycle_prev) {
+                    node = focus_stacks[workspace_current - 1];
+                    node = get_prev(node);
+                    cycle_helper(node);
                 } else {
                     state = REPLAY_KEYBOARD;
                 }
                 break;
             case KeyRelease:
-                if (xevent->xkey.keycode == keycode_Alt_L
-                    || xevent->xkey.keycode == keycode_Alt_R) {
+                mod = keyboard_get_modifier_mask(xevent->xkey.keycode);
+                if ((xevent->xkey.state & (~(mod | AllLocksMask))) == 0) {
                     /* user let go of all modifiers */
                     state = DONE;
                 }
@@ -578,6 +575,17 @@ void focus_alt_tab(XEvent *xevent, arglist *ignored)
     debug(("\tfocus_current = '%.10s'\n",
            focus_current ? focus_current->name : "NULL"));
     debug(("\tLeaving alt-tab\n"));
+}
+
+static void cycle_helper(focus_node *node)
+{
+    if (!(node->client->cycle_behaviour == SkipCycle
+          || node->client->focus_policy == DontFocus)) {
+        focus_set_internal(node, event_timestamp, False);
+        if (node->client->cycle_behaviour == RaiseImmediately) {
+            focus_ensure(CurrentTime);
+        }
+    }
 }
 
 static focus_node *get_prev(focus_node *node)

@@ -58,7 +58,6 @@ extern unsigned int AllLocksMask;
 
 void keyboard_init();
 
-
 /*
  * Functions which are called in response to mouse and keyboard events
  * all take this form.  See prefs.h for the definition of the arglist
@@ -304,5 +303,12 @@ Bool mouse_handle_event(XEvent *e);
  */
 
 key_fn keyboard_find_function(XKeyEvent *xevent, arglist **args);
+
+/*
+ * Returns a mask from a keycode, representing all the modifiers the
+ * keycode generates.  Returns zero if keycode does not generate any
+ * modifiers
+ */
+int keyboard_get_modifier_mask(int keycode);
 
 #endif /* KEYBOARD_H */
