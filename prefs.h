@@ -131,7 +131,9 @@ struct _option {
            STICKY,
            TITLEPOSITION,
            KEEPTRANSIENTSONTOP,
-           RAISEDELAY } option_name;
+           RAISEDELAY,
+           USENETWMPID
+    } option_name;
     option_setting option_setting;
     type *option_value;
 };

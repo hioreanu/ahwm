@@ -65,26 +65,27 @@ because it has been disconnected from the X server.  In most cases,
 this will cause the application to exit ungracefully.  In some
 poorly-written applications, this may cause you to lose your work.
 
-If the application is truly completely lq()hung+rq(), it will not
-process X events, so it will not receive X errors.  This means that
-although the application's window is gone, the application is still
-alive and taking up resources such as memory and CPU time.  Netscape
-Navigator 4.x has a tendency to do exactly this.  The best recourse in
-such a situation is to open a terminal window and use
-manlink(kill)(1)(1).  Since X is a network-transparent system, the
-application may be running on a different machine than AHWM; therefore,
-AHWM cannot kill the application for you.
+If the application is truly completely lq()hung+rq(), it will not process
+X events, so it will not receive X errors.  This means that although the
+application's window is gone, the application is still alive and taking
+up resources such as memory and CPU time.  Netscape Navigator 4.x has
+a tendency to do exactly this.  The best recourse in such a situation
+is to open a terminal window and use manlink(kill)(1)(1).  Since X is a
+network-transparent system, the application may be running on a different
+machine than AHWM; therefore, AHWM cannot kill the application for you.
 
 In order to ameliorate this situation, the url(Extended Window Manager
 Hints)(http://www.freedesktop.org/standards/wm-spec/) document defines
-a protocol for (1) determining if an application might be
-lq()hung+rq(), (2) determining an application's PID, if the application
-is running on a unix-like system, and (3) determining the host the
-application is running on if the application's X session is running
-over TCP/IP or on the local host.  AHWM does not yet implement this
-protocol, as it is still extremely experimental.  In addition, client
-applications must implement this protocol, so this will not solve the
-Netscape Navigator problem.
+protocols for (1) determining if an application might be lq()hung+rq(),
+(2) determining an application's PID, if the application is running
+on a unix-like system, and (3) determining the host the application is
+running on if the application's X session is running over TCP/IP or on
+the local host.  Unfortunately, client applications must implement this
+protocol, so this will not solve the Netscape Navigator problem.  Since
+these protocols are experimental and can be very dangerous in certain
+cases, they are disabled in AHWM by default.  See the documentation for
+docs(UseNetWmPid) to enable AHWM to attempt to use manlink(kill)(2)(2)
+with docs(KillWithExtremePrejudice).
 function(Launch)(string)
 This will take the string argument and pass it to a Bourne shell.  You
 can use this function to launch programs and do useful work.

@@ -229,6 +229,7 @@ int main(int argc, char **argv)
     ewmh_init();
     mwm_init();
     focus_init();
+    kill_init();
 
     /* we need to set ahwm_fontname (in prefs_init())
      * before we load the font and create the GCs */

@@ -124,6 +124,8 @@ client_t *client_create(Window w)
     client->dont_bind_keys = 0;
     client->dont_bind_mouse = 0;
     client->keep_transients_on_top = 1;
+    client->raise_delay = 0;
+    client->use_net_wm_pid = 0;
 
     client->workspace_set = UnSet;
     client->focus_policy_set = UnSet;
@@ -139,8 +141,8 @@ client_t *client_create(Window w)
     client->dont_bind_keys_set = UnSet;
     client->dont_bind_mouse_set = UnSet;
     client->keep_transients_on_top_set = UnSet;
-    client->raise_delay = 0;
     client->raise_delay_set = UnSet;
+    client->use_net_wm_pid_set = UnSet;
     
     /* God, this sucks.  I want the border width to be zero on all
      * clients, so I need to change the client's border width at some
@@ -254,6 +256,7 @@ client_t *client_create(Window w)
         stacking_raise(client);
         if (client->workspace == 0)
             client->workspace = workspace_current;
+        ewmh_desktop_update(client);
         if (client->workspace == workspace_current)
             XMapWindow(dpy, client->frame);
         if (client->titlebar != None)
@@ -263,6 +266,7 @@ client_t *client_create(Window w)
         mouse_grab_buttons(client);
         focus_add(client, event_timestamp);
         ewmh_client_list_add(client);
+        client_inform_state(client);
     }
     
     return client;

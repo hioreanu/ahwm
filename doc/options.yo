@@ -207,4 +207,54 @@ title will not be displayed.
 
 The default value of docs(TitlePosition) is em(DisplayLeft).  Not
 application-settable.
+option(UseNetWmPid)(boolean)
+This option determines whether or not to kill an application by sending
+a q(SIGTERM) and using the q(_NET_WM_PID) property upon execution
+of docs(KillWithExtremePrejudice).
+
+AHWM will send a q(SIGTERM) signal to an application upon
+docs(KillWithExtremePrejudice) if three conditions are met:  (1)
+the client has set the q(_NET_WM_PID) window property, (2) the client
+has set the q(WM_MACHINE_NAME) property and it matches the output of
+manlink(uname)(2)(2), and (3) the value of docs(UseNetWmPid) is em(True).
+docs(KillWithExtremePrejudice) will also use manlink(XKillClient)(3)(3x)
+regardless of the setting of docs(UseNetWmPid); the manlink(kill)(2)(2)
+will be performed before the manlink(XKillClient)(3)(3x).  Note that
+docs(KillWithExtremePrejudice) may be used in certain circumstances when
+a docs(KillNicely) action is triggered.
+
+See the documentation of docs(KillWithExtremePrejudice) for a description
+of the problem of killing lq()hung+rq() processes in X.  The recent EWMH
+document attempts to ameliorate this problem by defining a property each
+application window must set; this property is called q(_NET_WM_PID) and
+it contains the application's PID (process ID, see manlink(kill)(1)(1)).
+If an application supports this property, AHWM can then find out the
+application's PID.  X11 does not natively support a method for finding
+a client's PID because X11 is platform-neutral and clients may not be
+running on unix-like hosts.
+
+Since X11 is network-transparent, client applications may not be running
+on the same host as AHWM.  If this is the case, AHWM cannot use the
+manlink(kill)(2)(2) system call, even if AHWM has the client's PID.
+AHWM determines whether a client is running on the same host as AHWM by
+examining the ICCCM-defined q(WM_CLIENT_MACHINE) window property and
+comparing this to the output of the manlink(uname)(2)(2) system call
+(see also the similarly-named command manlink(uname)(1)(1)).
+
+Even if the information from q(WM_CLIENT_MACHINE) matches that from
+manlink(uname)(2)(2), there is no guarantee that the client application
+is running on the same host as AHWM.  For example, suppose AHWM
+is running on orpheus.rh.uchicago.edu; an ssh session is opened to
+orpheus.cs.uchicago.edu; netscape is started from orpheus.cs and has
+PID 1000; netscape sets both q(WM_CLIENT_MACHINE) and q(_NET_WM_PID);
+netscape hangs and a docs(KillWithExtremePrejudice) action is initiated;
+AHWM compares netscape's q(WM_CLIENT_MACHINE) property (which is set
+to q(orpheus)) and the output of manlink(uname)(2)(2) (which returns
+q(orpheus) and finds that these match; AHWM then sends a q(SIGTERM) to
+PID 1000 on q(orpheus.rh) (not q(orpheus.cs)) and ends up em(killing the
+wrong process on the wrong machine).  Because of this dangerous ambiguity,
+docs(UseNetWmPid) is em(False) by default.
+
+The default value of docs(UseNetWmPid) is em(False).  Not
+application-settable.
 enditem()

@@ -1,16 +1,14 @@
 TODO before release:
-- implement MoveResize()
-- move-resize.c, current window is focus window or clicked window
 - resize and restart bound to same key
 - placement, use corner with least overlap first
 - _NET_WORKAREA and STRUT
 - keep _WM_STATE, _WIN_LAYER updated
 - implement "ping" protocol
+- use WM_MACHINE_NAME, _NET_WM_PID for killing windows
+- option to turn off _NET_WM_PID stuff, protocol not used by default
 - transient for self means something?  Directory property window in konq
 - figure out what the hell 'sticky' means to EWMH
-- start xwm from an xterm, that xterm doesn't get _NET_DESKTOP prop
 - test with a modern version of Sun's X implementation
-- test final build with various options at least two weeks before initial release
 
 Wishlist:
 - 'is!' overrides '=', even if '=' comes later
@@ -155,6 +153,8 @@ Finished, no longer TODO:
 - documentation to cvs
 - default-message.h to cvs
 - window placement wrt. old titlebars on restart, use X property
+- implement MoveResize()
+- start xwm from an xterm, that xterm doesn't get _NET_DESKTOP prop
 
 Abandoned, no longer TODO:
 - "stop" focus, detect when pointer stops in a window (no timeout) -

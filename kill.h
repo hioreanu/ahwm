@@ -31,6 +31,12 @@
 #include "prefs.h"
 
 /*
+ * initialize module, no dependencies
+ */
+
+void kill_init();
+
+/*
  * Send a DELETE client message if the client supports it, otherwise
  * use XKillClient().  Meant to be bound to a key or pointer event.
  */

@@ -491,7 +491,7 @@ static void event_maprequest(XMapRequestEvent *xevent)
             debug(("\tCould not create client, ignoring event\n"));
             return;
         }
-        /* "kpager" wants _NET_WM_DESKTOP set before window
+        /* FIXME: "kpager" wants _NET_WM_DESKTOP set before window
          * is added to _NET_CLIENT_LIST */
         if (client->workspace == 0) {
             client->workspace = workspace_current;
@@ -1038,5 +1038,5 @@ static struct timeval *get_raise_timer()
     tv.tv_usec = timer_val * 1000;
     tv.tv_sec = 0;
 
-    return &tv;                 /* tv is static */
+    return &tv;                 /* tv is static */ /* (except maybe PBS :) */
 }

@@ -108,6 +108,8 @@ typedef struct _prefs {
     option_setting keep_transients_on_top_set;
     int raise_delay;
     option_setting raise_delay_set;
+    Bool use_net_wm_pid;
+    option_setting use_net_wm_pid_set;
 } prefs;
 
 /* ADDOPT 6: set default value */
@@ -130,6 +132,7 @@ static prefs defaults = {
     DisplayLeft, UserSet,         /* title_position */
     True, UserSet,                /* keep_transients_on_top */
     0, UserSet,                   /* raise_delay */
+    False, UserSet,               /* use_net_wm_pid */
 };
 
 /* names of the types
@@ -559,6 +562,10 @@ static Bool type_check_option(option *opt)
             retval = type_check_helper(opt->option_value, INTEGER,
                                        "RaiseDelay", "option");
             break;
+        case USENETWMPID:
+            retval = type_check_helper(opt->option_value, BOOLEAN,
+                                       "UseNetWmPid", "option");
+            break;
         default:
             fprintf(stderr, "AHWM: unknown option type found...\n");
             retval = False;
@@ -937,6 +944,10 @@ static void option_apply(client_t *client, option *opt, prefs *p)
             get_int(opt->option_value, &p->raise_delay);
             p->raise_delay_set = opt->option_setting;
             break;
+        case USENETWMPID:
+            get_bool(opt->option_value, &p->use_net_wm_pid);
+            p->use_net_wm_pid_set = opt->option_setting;
+            break;
         default:
             /* nothing */
     }
@@ -1157,8 +1168,14 @@ void prefs_apply(client_t *client)
         client->raise_delay = p.raise_delay;
         client->raise_delay_set = p.raise_delay_set;
     }
+    if (client->use_net_wm_pid_set <= p.use_net_wm_pid_set) {
+        client->use_net_wm_pid = p.use_net_wm_pid;
+        client->use_net_wm_pid_set = p.use_net_wm_pid_set;
+    }
     
     /* ADDOPT 9: apply the option to the client */
+    
+    /* ADDOPT 10: document in doc/options.yo */
 }
 
 static void globally_bind(line *lp)
