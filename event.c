@@ -358,6 +358,9 @@ static void event_unmap(XUnmapEvent *xevent)
      * to make succeed or fail, we just ignore the errors they can
      * cause. */
     /* FIXME:  this will break with synchronous behaviour turned off */
+
+    focus_remove(client, event_timestamp);
+    
     if (client->state == NormalState) {
         XUnmapWindow(dpy, client->frame);
 
@@ -370,8 +373,6 @@ static void event_unmap(XUnmapEvent *xevent)
     error_ignore(BadWindow, X_ChangeProperty);
     client_inform_state(client);
     error_unignore(BadWindow, X_ChangeProperty);
-
-    focus_remove(client, event_timestamp);
 }
 
 /*
