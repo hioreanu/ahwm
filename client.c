@@ -844,6 +844,7 @@ static void raise_tree(client_t *node, client_t *ignore,
                 return;
             }
             wb->nallocated *= 2;
+            wb->w = tmp;
         }
         XMapWindow(dpy, node->frame);
         wb->w[wb->nused++] = node->frame;
