@@ -22,6 +22,10 @@ int scr_width;
 unsigned long black;
 unsigned long white;
 Window root_window;
+GC root_white_fg_gc;
+GC root_black_fg_gc;
+GC root_invert_gc;
+Font font;
 
 int alt_tab(Window win, Window subwindow, Time t,
             int x, int y, int root_x, int root_y);
@@ -67,8 +71,9 @@ static int error_handler(Display *dpy, XErrorEvent *error)
 
 int main(int argc, char **argv)
 {
-    XEvent event;
-    int    xfd;
+    XEvent    event;
+    int       xfd;
+    XGCValues xgcv;
 
     dpy = XOpenDisplay(NULL);
     if (dpy == NULL) {
@@ -108,6 +113,45 @@ int main(int argc, char **argv)
 //    keyboard_grab_keys(root_window);
     cursor_init();
     XDefineCursor(dpy, root_window, cursor_normal);
+
+    font = XLoadFont(dpy, "-*-helvetica-medium-r-normal-*-12-*-*-*-*-*-*-*");
+
+    xgcv.function = GXcopy;
+    xgcv.plane_mask = AllPlanes;
+    xgcv.foreground = white;
+    xgcv.background = black;
+    xgcv.line_width = 0;
+    xgcv.line_style = LineSolid;
+    xgcv.cap_style = CapButt;
+    xgcv.join_style = JoinMiter;
+    xgcv.font = font;
+    xgcv.subwindow_mode = IncludeInferiors;
+    
+    root_white_fg_gc = XCreateGC(dpy, root_window,
+                                 GCForeground | GCBackground
+                                 | GCLineWidth | GCLineStyle
+                                 | GCCapStyle | GCJoinStyle
+                                 | GCFont | GCFunction
+                                 | GCPlaneMask | GCSubwindowMode,
+                                 &xgcv);
+    xgcv.function = GXxor;
+    root_invert_gc = XCreateGC(dpy, root_window,
+                                 GCForeground | GCBackground
+                                 | GCLineWidth | GCLineStyle
+                                 | GCCapStyle | GCJoinStyle
+                                 | GCFont | GCFunction
+                                 | GCPlaneMask | GCSubwindowMode,
+                                 &xgcv);
+    xgcv.function = GXcopy;
+    xgcv.background = white;
+    xgcv.foreground = black;
+    root_black_fg_gc = XCreateGC(dpy, root_window,
+                                 GCForeground | GCBackground
+                                 | GCLineWidth | GCLineStyle
+                                 | GCCapStyle | GCJoinStyle
+                                 | GCFont | GCFunction
+                                 | GCPlaneMask | GCSubwindowMode,
+                                 &xgcv);
 
     window_context = XUniqueContext(); /* client.c */
     frame_context = XUniqueContext();

@@ -9,10 +9,15 @@
 #include "cursor.h"
 #include "event.h"
 #include <stdio.h>
+#include <stdlib.h>
 
 #ifndef MIN
 #define MIN(x,y) ((x) < (y) ? (x) : (y))
-#endif
+#endif /* MIN */
+
+#ifndef MAX
+#define MAX(x,y) ((x) > (y) ? (x) : (y))
+#endif /* MAX */
 
 /*
  * These are the possible directions in which one can resize a window,
@@ -45,6 +50,8 @@ static void process_resize(client_t *client, int new_x, int new_y,
                            quadrant_t quadrant,
                            int *old_x, int *old_y);
 static quadrant_t get_quadrant(client_t *client, int x, int y);
+static void display_geometry(char *s, client_t *client);
+static void constrain_geometry(client_t *);
 
 /*
  * WindowMaker grabs the server while processing the motion events for
@@ -118,6 +125,7 @@ void mouse_move_client(XEvent *xevent)
                                      ButtonReleaseMask,
                                      GrabModeAsync, GrabModeAsync, None,
                                      cursor_moving, CurrentTime);
+                        display_geometry("Moving", client);
                     } else {
                         /* error - we were called from somewhere else
                          * to deal with a button press that's not ours */
@@ -155,6 +163,7 @@ void mouse_move_client(XEvent *xevent)
                 x_start = xevent->xbutton.x_root;
                 y_start = xevent->xbutton.y_root;
                 XMoveWindow(dpy, client->frame, client->x, client->y);
+                display_geometry("Moving", client);
 
                 break;
             case ButtonRelease:
@@ -191,6 +200,9 @@ void mouse_move_client(XEvent *xevent)
 
     if (client != NULL) {
         XMoveWindow(dpy, client->frame, client->x, client->y);
+        if (client->name != NULL) free(client->name);
+        client_set_name(client);
+        client_paint_titlebar(client);
         /* must send a synthetic ConfigureNotify to the client
          * according to ICCCM 4.1.5 */
         /* FIXME:  make this a function in client.c */
@@ -312,38 +324,9 @@ void mouse_resize_client(XEvent *xevent)
                 }
 
 #ifdef DEBUG
-                printf("Sizing from (%d,%d) to (%d,%d), direction ",
+                printf("Sizing from (%d,%d) to (%d,%d)\n",
                        x_start, y_start, xevent->xbutton.x_root,
                        xevent->xbutton.y_root);
-                switch (resize_direction) {
-                    case UNKNOWN:
-                        printf("UNKNOWN\n");
-                        break;
-                    case NW:
-                        printf("NW\n");
-                        break;
-                    case NE:
-                        printf("NE\n");
-                        break;
-                    case SE:
-                        printf("SE\n");
-                        break;
-                    case SW:
-                        printf("SW\n");
-                        break;
-                    case NORTH:
-                        printf("NORTH\n");
-                        break;
-                    case SOUTH:
-                        printf("SOUTH\n");
-                        break;
-                    case WEST:
-                        printf("WEST\n");
-                        break;
-                    case EAST:
-                        printf("EAST\n");
-                        break;
-                }
 #endif /* DEBUG */
                 process_resize(client, xevent->xbutton.x_root,
                                xevent->xbutton.y_root, resize_direction,
@@ -381,6 +364,9 @@ void mouse_resize_client(XEvent *xevent)
                           client->width, client->height);
         XResizeWindow(dpy, client->window, client->width,
                       client->height - TITLE_HEIGHT);
+        if (client->name != NULL) free(client->name);
+        client_set_name(client);
+        client_paint_titlebar(client);
     }
 
 #ifdef DEBUG
@@ -484,43 +470,102 @@ static void process_resize(client_t *client, int new_x, int new_y,
     }
 
     if (x_diff != 0) {
-        
         switch (direction) {
             case WEST:
             case SW:
             case NW:
-                client->x += x_diff;
-                client->width -= x_diff;
-                *old_x += x_diff;
+                if (client->width - x_diff > 1) {
+                    client->x += x_diff;
+                    client->width -= x_diff;
+                    *old_x += x_diff;
+                }
                 break;
             case EAST:
             case SE:
             case NE:
-                client->width += x_diff;
-                *old_x += x_diff;
+                if (client->width + x_diff > 1) {
+                    client->width += x_diff;
+                    *old_x += x_diff;
+                }
                 break;
             default:
         }
     }
+    
     if (y_diff != 0) {
-        
         switch (direction) {
             case NORTH:
             case NW:
             case NE:
-                client->y += y_diff;
-                client->height -= y_diff;
-                *old_y += y_diff;
+                if (client->height - y_diff > TITLE_HEIGHT + 1) {
+                    client->y += y_diff;
+                    client->height -= y_diff;
+                    *old_y += y_diff;
+                }
                 break;
             case SOUTH:
             case SE:
             case SW:
-                client->height += y_diff;
-                *old_y += y_diff;
+                if (client->height + y_diff > TITLE_HEIGHT + 1) {
+                    client->height += y_diff;
+                    *old_y += y_diff;
+                }
                 break;
             default:
         }
     }
+    
+    /* Now we draw the window rectangle
+     * 
+     * First, we erase the previous rectangle (the GC has an XOR function
+     * selected, so we simply draw on it to erase).  We don't want any
+     * flicker, so we only erase and redraw if we've made any changes
+     * to the line segment */
+    if (x != client->x || y != client->y
+        || w != client->width || h != client->height) {
+
+        constrain_geometry(client);
+
+        XDrawRectangle(dpy, root_window, root_invert_gc, x, y, w, h);
+        XDrawRectangle(dpy, root_window, root_invert_gc,
+                       client->x, client->y, client->width, client->height);
+        display_geometry("Resizing", client);
+    }
+}
+
+/* FIXME:  display in increments if available */
+static void display_geometry(char *s, client_t *client)
+{
+    static char *titlebar_display = NULL;
+    
+    if (client->name != titlebar_display) {
+        titlebar_display = malloc(256); /* arbitrary, whatever */
+        if (titlebar_display == NULL) return;
+        free(client->name);
+        client->name = titlebar_display;
+    }
+    snprintf(client->name, 256, "[%s %s] %dx%d+%d+%d",
+             s, client->instance, client->x, client->y,
+             client->width, client->height - TITLE_HEIGHT);
+    client_paint_titlebar(client);
+}
+
+static void constrain_geometry(client_t *client)
+{
+    if (client->width < 1) client->width = 1;
+    if (client->height < TITLE_HEIGHT + 1)
+        client->height = TITLE_HEIGHT + 1;
+    if (client->xsh != NULL) {
+        if (client->xsh->flags & PMinSize) {
+            client->width = MAX(client->width, client->xsh->min_width);
+            client->height = MAX(client->height, client->xsh->min_height + TITLE_HEIGHT);
+        }
+        if (client->xsh->flags & PMaxSize) {
+            client->width = MIN(client->width, client->xsh->max_width);
+            client->height = MIN(client->height, client->xsh->max_height + TITLE_HEIGHT);
+        }
+    }
+    /* we are allowing the client to move off-screen */
 }
 
 static quadrant_t get_quadrant(client_t *client, int x, int y)

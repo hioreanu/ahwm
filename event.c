@@ -29,6 +29,7 @@ static void event_property(XPropertyEvent *);
 static void event_colormap(XColormapEvent *);
 static void event_clientmessage(XClientMessageEvent *);
 static void event_circulaterequest(XCirculateRequestEvent *);
+static void event_expose(XExposeEvent *);
 
 /*
  * FIXME:  every window manager I've seen does this by sitting a
@@ -166,6 +167,9 @@ void event_dispatch(XEvent *event)
             break;
         case CirculateRequest:
             event_circulaterequest(&event->xcirculaterequest);
+            break;
+        case Expose:
+            event_expose(&event->xexpose);
             break;
         /* MappingNotify */
         default:
@@ -350,6 +354,7 @@ static void event_property(XPropertyEvent *xevent)
 #endif /* DEBUG */
             free(client->name);
             client_set_name(client);
+            client_paint_titlebar(client);
             break;
         case XA_WM_CLASS:
 #ifdef DEBUG
@@ -389,3 +394,16 @@ static void event_circulaterequest(XCirculateRequestEvent *xevent)
 {
     /* nobody uses this */
 }
+
+static void event_expose(XExposeEvent *xevent)
+{
+    client_t *client;
+
+    /* simple, stupid */
+    if (xevent->count != 0) return;
+    
+    client = client_find(xevent->window);
+    if (client != NULL)
+        client_paint_titlebar(client);
+}
+

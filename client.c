@@ -373,3 +373,11 @@ void client_print(char *s, client_t *client)
     printf("%-19s name = %s, instance = %s, class = %s\n",
            s, client->name, client->instance, client->class);
 }
+
+void client_paint_titlebar(client_t *client)
+{
+    XClearWindow(dpy, client->frame);
+    XDrawString(dpy, client->frame, root_invert_gc, 2, TITLE_HEIGHT - 4,
+                client->name, strlen(client->name));
+}
+
