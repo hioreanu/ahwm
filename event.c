@@ -821,6 +821,7 @@ static void event_shape(XShapeEvent *xevent)
 static void update_ignore_enternotify_hack(XEvent *event)
 {
     ignore_enternotify_hack = event->xany.serial;
+    XSync(dpy, False);
 }
 
 /* 
