@@ -36,7 +36,13 @@ AC_TYPE_SIZE_T
 
 AC_FUNC_SETVBUF_REVERSED
 AC_FUNC_VPRINTF
-AC_CHECK_FUNCS(select poll strdup snprintf _snprintf)
+AC_CHECK_FUNCS(select poll strdup snprintf _snprintf strerror)
+
+AC_MSG_CHECKING([syserrlist])
+AC_TRY_LINK([#include <errno.h>], [void foo() {extern char *syserrlist[]; extern int sysnerr; char *c; c = syserrlist[sysnerr - 1]; }],
+            AC_DEFINE(HAVE_SYSERRLIST)
+            AC_MSG_RESULT([yes]),
+            AC_MSG_RESULT([no]))
 
 AC_CONFIG_HEADER(config.h)
 

@@ -56,6 +56,12 @@
 /* Define if you have the <limits.h> header file.  */
 #undef HAVE_LIMITS_H
 
+/* Define if you have the strerror function. */
+#undef HAVE_STRERROR
+
+/* Define if you have the syserrlist global variable. */
+#undef HAVE_SYSERRLIST
+
 #ifndef HAVE_SYS_WAIT_H
 # error "XWM needs porting to your system (no sys/wait.h); please contact the author."
 #endif
@@ -86,14 +92,19 @@
 # endif
 #endif
 
-/* Windows uses '_snprintf' instead of 'snprintf' for some reason.  I
- * have a portable implementation of snprintf ready to go if you need
- * to use XWM on SunOS 4.x or some other system that doesn't have
- * snprintf. */
+/* Windows uses '_snprintf' instead of 'snprintf' for some reason. */
 #ifndef HAVE_SNPRINTF
 # ifdef HAVE__SNPRINTF
 #  define snprintf _snprintf
 # else
-#  error "XWM needs porting to your system (no snprintf); please contact the author."
+#  define HOMEGROWN_SNPRINTF
+# endif
+#endif
+
+#ifndef HAVE_STRERROR
+# ifdef HAVE_SYSERRLIST
+#  define HOMEGROWN_STRERROR
+# else
+#  error "XWM needs porting to your system (no strerror); please contact the author."
 # endif
 #endif
