@@ -404,7 +404,6 @@ static void event_destroy(XDestroyWindowEvent *xevent)
      * spec says that's how it has to be) and most of the work is done
      * when the window is unmapped. */
 
-    ewmh_client_list_remove(client);
     client_destroy(client);
 }
 
@@ -476,7 +475,6 @@ static void event_unmap(XUnmapEvent *xevent)
     focus_remove(client, event_timestamp);
     
     if (client->state == NormalState) {
-/*         ewmh_client_list_remove(client); */ /* FIXME */
         debug(("\tUnmapping frame in event_unmap\n"));
         XUnmapWindow(dpy, client->frame);
     }
@@ -553,7 +551,6 @@ static void event_maprequest(XMapRequestEvent *xevent)
             client->workspace = workspace_current;
             ewmh_desktop_update(client);
         }
-        ewmh_client_list_add(client);
     }
     if (client->state == NormalState) {
         /* This should never happen as XMapWindow on an already-mapped
@@ -877,7 +874,6 @@ static void event_clientmessage(XClientMessageEvent *xevent)
             client->state = IconicState;
             client_inform_state(client);
             focus_remove(client, event_timestamp);
-/*             ewmh_client_list_remove(client); */ /* FIXME */
         }
     } else {
         if (ewmh_handle_clientmessage(xevent) == False) {
@@ -1026,7 +1022,8 @@ static void event_shape(XShapeEvent *xevent)
 static void update_ignore_enternotify_hack(XEvent *event)
 {
     ignore_enternotify_hack = event->xany.serial;
-    XSync(dpy, False);
+    /* FIXME: removing the XSync requires extensive testing */
+    /* XSync(dpy, False); */
 }
 
 /* 
