@@ -1,0 +1,480 @@
+.\"
+.\" $Id$
+.TH "xwmrc" 5 "last update date" "Alex Hioreanu" "XWM Configuration File Format"
+
+.SH NAME
+xwmrc \- configuration file for the XWM window manager
+
+.SH SYNOPSIS
+.B $HOME/.xwmrc
+xwmrc is the configuration file for the XWM window manager.
+This manual documents the file's syntax and the semantics of the file's
+directives.
+
+.SH SYNTAX
+What follows is an informal specification of the file's syntax,
+followed by a discussion of the syntax, and then some examples
+illustrating some more difficult points about the syntax.
+
+.SS SYNTAX EBNF
+.IP "config = line config"
+.br
+| \fBempty\fP
+.IP "line = option \(lq;\(rq"
+.br
+| context \(lq;\(rq
+.br
+| functiondef \(lq;\(rq
+.br
+| menu \(lq;\(rq
+.br
+| binding \(lq;\(rq
+.IP "option = option\-name \(lq=\(rq type"
+.IP "option\-name = \(lq\fBTitlebar\fP\(rq"
+.br
+| \(lq\fBMapPolicy\fP\(rq
+.br
+| ....
+.IP "type = boolean"
+.br
+| map\-policy\-enum 
+.br
+| string
+.br
+| ...
+.br
+| type \(lq,\(rq type
+.IP "boolean = \(lq\fBTrue\fP\(rq | \(lq\fBFalse\fP\(rq | \....
+.IP "map\-policy\-enum = \(lq\fBFixed\fP\(rq | \(lq\fBNoOverlap\fP\(rq | \(lq\fBContiguous\fP\(rq"
+.IP \...
+.IP "context = context\-name type \(lq\fB{\fP\(rq config \(lq\fB}\fP\(rq"
+| \(lq\fBTransientFor\fP\(rq context
+.IP "context\-name = \(lq\fBIsShaped\fP\(lq | \(lq\fBWindowName\fP\(rq | \...."
+.IP "functiondef = \(lq\fBFunction\fP\(rq string \(lq\fB{\fP\(rq function f\-list \(lq\fB}\fP\(rq"
+.IP "f\-list = \(lq\fB,\fP\(rq function f\-list"
+| \fBempty\fP
+.IP "function = function\-name \(lq\fB(\fP\(rq type \(lq\fB)\fP\(rq"
+.IP "function\-name = \(lq\fBLaunch\fP\(rq | \(lq\fBQuit\fP\(rq | \...."
+.IP "menu = \(lq\fBMenu\fP\(rq string \(lq\fB{\fP\(rq string function menu\-def \(lq\fB}\fP\(rq"
+.IP "menu\-def = \(lq\fB,\fP\(rq string function menu\-def"
+.br
+| empty
+.IP "binding = \(lq\fBBindKey\fP\(rq string function"
+.br
+| \(lq\fBBindButton\fP\(rq location string function
+.IP "unbinding = \(lq\fBUnBindKey\fP\(rq string"
+.br
+| \(lq\fBUnBindButton\fP\(rq location string
+.IP "location = \(lq\fBTitleBar\fP\(rq | \(lq\fBFrame\fP\(rq | \...."
+.SS SYNTAX DISCUSSION
+Each line is ended with a semicolon (\(lq;\(rq) and the syntax is not
+whitespace sensitive, except that whitespace is used to separate
+tokens.  The file's directives are \fInot\fP case\-sensitive (so
+\(lqTitleBar\(rq is equivalent to \(lqtitlebar\(rq), but some elements
+of strings are case\-sensitive (these elements will be noted as \fBCASE
+SENSITIVE\fP in this manual).  Comments are introduced in two ways: as
+Bourne shell\-like comments (anything after the hash (\(lq\fB#\fP\(rq)
+symbol to the end of the line) or as C-like comments (anything between
+slash-star (\(lq\fB/*\fP\(rq) and star-slash (\(lq\fB*/\fP\(rq)).
+C-style comments do not nest, as in C.
+.PP
+Each directive is specified within a \fBcontext\fP.  The file begins in
+the \fBdefault context\fP and the context may be changed using the
+\fBContext\fP directive.  One puts a number of directives in a context
+to make those directives apply only when the conditions specified in
+the context are true.
+The options in the \fBdefault context\fP are used as \(lqdefaults\(rq
+\(em a directive in the \fBdefault context\fP is applied to a window
+for which the same directive is not specified in another context which
+matches that window.  The order of options within any given context is
+not important except that if one option appears more than once, only
+the last one is applied.  The order of contexts, is, however
+significant \(em when a window matches more than one context, all
+directives from all contexts will be applied to the window, but if a
+directive appears more than once in any of the matching contexts, the
+last seen directive will be used.
+.SS SYTAX EXAMPLES
+To have titlebars on shaped windows, but to remove titlebars from
+windows whose TRANSIENT_FOR hint points to a shaped window (regardless
+of whether or not the transient window is shaped):
+.PP
+.ft C
+IsShaped True {
+.br
+	Titlebar = True;
+.br
+};
+.br
+TransientFor IsShaped True {
+.br
+	Titlebar = False;
+.br
+};
+.PP
+Note that order matters, and the following will put titlebars on all
+shaped windows (even those that are transient for another shaped
+window):
+.PP
+.ft C
+TransientFor IsShaped True { Titlebar = False; };
+.br
+IsShaped True { Titlebar = True; };
+.PP
+To have titlebars on all shaped windows except those named 'oclock':
+.PP
+.ft C
+IsShaped True {
+.br
+	Titlebar = True;
+.br
+	WindowName "oclock" {
+.br
+		Titlebar = False;
+.br
+	};
+.br
+};
+.PP
+Note that this can be done in more than one way, such as:
+.PP
+.ft C
+\fCIsShaped True { Titlebar = True; };
+.br
+WindowName "oclock" { Titlebar = False; };
+.PP
+Both of the above ways are equally efficient.  Note that the following
+is NOT equivalent to the above two:
+.PP
+.ft C
+\fCWindowName "oclock" { Titlebar = False; };
+.br
+IsShaped True { Titlebar = True; };
+.PP
+This will make "oclock" have a titlebar since it is a shaped window and
+the contexts are evaluated in order whenever a window is mapped.
+.PP
+To give another example of how order matters, consider the following:
+.PP
+.ft C
+\fCTitlebar = True;
+.br
+Workspace 7 {
+.br
+	Titlebar = False;
+.br
+	Class "XTerm" {
+.br
+		Titlebar = True;
+.br
+	};
+.br
+};
+.br
+Class "XTerm" {
+.br
+	Titlebar = False;
+.br
+};
+.PP
+Do xterms in workspace 7 have titlebars?  The answer is that all xterms
+(including those in workspace 7) will \fInot\fP have titlebars because the
+second 'Class' context overrides the previous options, even those nested
+deep within some other context.
+
+.SH TYPES
+Both options and functions have \fBtypes\fP, and this section describes
+the available types.
+.TP
+.B Boolean
+One of the symbols \fBTrue\fP or \fBFalse\fP.
+.TP
+.B String
+A string with C-like syntax.  ANSI C-like escapes are allowed; please
+refer to a C reference manual for the exact syntax.
+.br
+
+.B Examples:
+.ft C
+"foo \\012 \\\\ \\" ",
+"HTTP 200 OK\\r\\n"
+.TP
+.B Integer
+An integer, in decimal, octal or hexadecimal notation, as in C.
+.br
+
+.B Examples:
+.ft C
+5,
+0xDEADBEEF,
+014
+.TP
+.B Enumeration
+One of a small number of symbols.  All enumerations are described as
+follows in this manual:
+
+.br
+.I {Fixed, NoOverlap, Contiguous}
+.br
+
+which would indicate that one of the three symbols
+.B Fixed
+.B NoOverlap
+or
+.B Contiguous
+would be legal.
+.SH OPTIONS
+This section describes all the available \fBoptions\fP \(em an
+\fBoption\fP changes the way XWM behaves.  Each option has a
+\fBtype\fP, which is indicated after the option name.
+
+.TP
+.BI "TitleBar " (boolean)
+Specifies whether or not a window will have a titlebar.  Default: True for
+non-shaped windows, False for shaped windows.
+.TP
+.BI "DefaultWorkspace " (integer)
+Specifies the workspace for new windows.  Use zero to map to the current
+workspace.  Default: zero.
+.TP
+.BI "NumberOfWorkspaces " (integer)
+Specifies the number of workspaces.  This option only has an effect in the
+global context.  Default: seven.
+
+.SH FUNCTIONS
+This section describes all the available \fBfunctions\fP \(em a
+\fBfunction\fP is an action which one can bind to a mouse click or a
+keystroke.  A function may have zero or more \fBparameters\fP, each of
+which has a given type.  Some functions may be bound without specifying
+a parameter, in which case a default value will be used for the missing
+parameter.  Most functions operate on a window, called the \fBcurrent
+window\fP in this section.  If the function is bound to a key stroke,
+the current window is the window with the input focus; if the function
+is bound to a mouse click, the current window is the window which
+received the mouse click.
+.TP
+.BI "MoveToWorkspace " (integer)
+This functions moves the current window to the specified workspace.  NB
+that this does not change the current workspace.
+.TP
+.BI "GoToWorkspace " (integer)
+This changes the current workspace to the specified workspace.
+.TP
+.BI "AltTab " (string)
+This function cycles the input focus window to the next window when the
+\fBShift\fP key is not depressed and to the previous window when the
+\fBShift\fP key is depressed.
+.br
+
+When this function is invoked via a mouse click, the input focus is
+transferred immediately; when it is invoked via a keystroke, the focus
+is not transferred until the keyboard modifier which invoked the
+function is released.  The string argument is only needed when the
+function is bound to a keystroke which includes more than one keyboard
+modifier and in this case names the keyboard modifier which when
+released will end the action and transfer the input focus.  The input
+focus is not actually transferred until the function ends, but windows
+will be highlighted and raised as if they had the input focus during
+the course of this function.
+.br
+
+When this function is bound to a keystroke, it will grab the keyboard
+until the action completes.  The action will complete when the modifier
+which invoked the function is released or when a keystroke other than
+the keystroke which invoked the function is received; such a keystroke
+will be processed as usual if it is bound to a function, but if it is
+not bound to a function, it will be sent to the current window in the
+same manner as the \fBQuote\fP function.
+.br
+
+The function gains its name and behaviour from the corresponding
+function in Microsoft Windows \*(Tm.  The algorithm works as follows:
+all the windows which can receive the input focus are stored on a
+stack.  When a new window is created, it is pushed onto the top of the
+stack.  Whenever you switch from window A to window B using this
+function, window B will be removed from its position in the stack and
+moved to the top of stack, on top of window A.  The great advantage
+that this algorithm has is that the most frequently\-used windows will
+\(lqshift\(rq themselves up the stack to be available with fewer
+keystrokes.
+.TP
+.BI "KillNicely " (void)
+This function will attempt to close the current window using the
+WM_DELETE_WINDOW protocol, if the window supports this protocol (this
+\(lqasks\(rq the window to close itself).  If the window does not
+support this protocol, the window will be closed as with
+\fBKillWithExtremePrejudice\fP.
+.TP
+.BI "KillWithExtremePrejudice " (void)
+This will immediately close the current window by calling the function
+.BR XKillClient (3)
+upon it.
+.br
+
+This is gauranteed to close the window, but the application
+will not receive any notice that anything has happenned until its next
+X request fails because it has been disconnected from the X server.  In
+some poorly\-written applications, this may cause you to lose your work.
+.TP
+.BI "Launch " (string)
+This will pass the string argument to the
+.BR system (3)
+library function, which will run the argument under a Bourne shell.
+.TP
+.BI "Focus " (void)
+This function will focus the current window.
+.br
+
+NB that binding this to a keystroke is pointless as if this is invoked
+from a keystroke it will apply to the currently focused window \(em
+this is meant to be bound to a mouse click.
+.TP
+.BI "Maximize " (void)
+This will toggle the maximization state of the current window.
+.br
+
+When a window is maximized, it is positioned in the upper-left corner
+of the display and its horizontal and vertical size is a large as
+possible.  A maximized window becomes unmaximized whenever it is moved
+or resized.
+.TP
+.BI "Nop " (void)
+This function does nothing.  The purpose of this function is that one
+can still bind it to a keystroke or a mouse click \(em for instance,
+this is very useful for binding to a click on the titlebar when one has
+bound something to the frame and does not want that click to run a
+function on the titlebar (which is part of the frame).
+.TP
+.BI "Quote " (void)
+This function will turn on \fBquote\fP mode.  \fBQuote\fP mode allows
+one to send an application a keystroke or a mouse click which would
+normally be intercepted by XWM \(em specifically, the next key or
+pointer event which XWM receives which is bound to a function will
+\fInot\fP invoke the function.  Rather, the key or mouse event will be
+sent to an application using
+.BR XSendEvent (3).
+The application to receive this synthetic event is the application
+under the pointer for a pointer event and the application with the
+input focus for a key event.
+.br
+
+\fBNote\fP: the event which the application receives will be identical
+to a \fIreal\fP event except that it will have a flag which signals
+that the event was produced by another application rather than by the X
+server.  Some applications will then refuse to process this synthetic
+event.  For example, my version of xterm has an option allowSendEvents,
+which by default will make xterm ignore all synthetic events.
+.TP
+.BI "MoveInteractively " (void)
+This function allows you to position the current window using either
+the mouse or the keyboard.  The window is moved opaquely and the window
+will not be raised or focused.
+.br
+
+When moving with the keyboard, you can move the window one pixel left,
+right, up or down by using the arrow keys; you can also use
+.BR w ", " a ", " s ", " d ", " k ", " j ", " h " and " l
+which are equivalent to
+.BR Up ", " Down ", " Left " and " Right ,
+respectively.  If you hold down \fBShift\fP with one of the above
+keys, the window will be moved to the extreme edge of the display in
+the appropriate direction.  If you press \fBEscape\fP, the move will be
+terminated and the changes will be discarded; if you press \fBEnter\fP,
+the move will be terminated and the changes will be accepted.  If you
+press \fBControl\fP, the move will be terminated, accepting the changes
+and a \fBResizeInteractively\fP action will begin.  If you drag the
+window with the pointer while moving with the keyboard, you will be
+able to move with the pointer as if the action were initiated by a
+mouse click.
+.br
+
+When moving with the pointer, you have the same keys available as when
+moving with the keyboard, and additionally, you may move the window
+with the pointer.  When moving with the pointer, edge resistance takes
+efffect.
+.br
+
+.B Rationale:
+Few applications or toolkits have problems with an opaque move and
+opaque movement gives the most visual feedback as to the window's
+position.  Therefore, only opaque movement is supported.  Very often,
+when one resizes a window, the very next action will be a move;
+therefore, this is supported directly with the \fBControl\fP key.
+.TP
+.BI "ResizeInteractively " (void)
+This function allows you to resize the current window using either the
+mouse or the keyboard.  Resizing is \fInot\fP opaque, but rather some
+lines and arrows are drawn to give a visual indication of the window's
+position.  At most two adjacent edges of a window may be resized at the
+same time.
+.br
+
+When resizing with the keyboard, the bottom and right sides of the
+window may be resized initially.  The same directional keys as in
+\fBMoveInteractively\fP are available, and holding \fBShift\fP with a
+directional key will resize ten units instead of one.
+.BR Enter ", " Escape " and " Control
+work as in \fBMoveInteractively\fP.  The \fBSpacebar\fP cycles the
+direction of the resize, as follows:
+.BR "Down+Right" " \(-> " "Up+Right" " \(-> " "Up+Left" " \(-> " "Down+Left" " \(-> \...."
+Dragging with the pointer while resizing with the keyboard turns the
+resize into a mouse-based resize, as described below.
+.br
+
+When moving with the pointer, the same keys are available as in a
+keyboard-driven resize except that the \fBSpacebar\fP will cycle the
+direction of the resize as follows (assumming that the resize began as
+a \fBDown+Right\fP resize):
+.BR "Down+Right" " \(-> " Down " \(-> " Right " \(-> " "Down+Right" "\(-> \...."
+The initial resize direction is determined by the quadrant of the
+window which received the initial drag, and is never constrained to one
+direction.
+.br
+
+.B Rationale:
+Many applications have problems with opaque resizing \(em they must
+move and resize all of the internal widgets in order to accomodate the
+new size, and often this is very slow and window updates will lag
+behind the user resizing.  Therefore, opaque resizing is not supported.
+Keyboard-based resizes are never constrained to one direction as one
+always has complete control over which keys are pressed whereas it is
+more difficult to keep the mouse from moving one pixel in a stray
+direction.  Constraining an initial resize to one direction upon
+receipt of a mouse drag is extremely annoying, as one must then be very
+careful when positioning the initial drag.
+.TP
+.BI "MoveResize " (string)
+This function will move and/or resize the current window according to
+the standard geometry specification in the string argument.
+.br
+
+For the details of the syntax of the standard X geometry specification,
+refer to the
+.BR XParseGeometry (3)
+or the
+.BR X (1)
+manual entries.  In short, the string argument may look like this
+\(lq80x24+300+400\(rq for placing a standard-size terminal at \fIx\fP \(==
+300, \fIy\fP \(== 400.
+.TP
+.BI "Quit " (void)
+This function will close XWM's connection to the X display and then XWM
+will exit normally.  All windows managed by XWM will be returned to a
+state where they are ready for another window manager to start.
+.TP
+.BI "Beep " (void)
+This function rings your terminal's bell if possible.  If you don't like
+your computer making noises and would rather use a visual bell, you can
+invoke \fB"xrefresh -solid white"\fP using the \fBlaunch\fP function.
+.TP
+.BI "Invoke " (string)
+This function invokes the user-defined function denoted by the argument
+string.
+.TP
+.BI "ShowMenu " (string)
+FIXME
+.TP
+.BI "Refresh " (void)
+FIXME
+
+.SH AUTHOR
+XWM is Copyright (C) 2001, Alex Hioreanu, hioreanu@uchicago.edu.

@@ -22,7 +22,7 @@ lexer.c: lexer.l
 	flex -i -olexer.c lexer.l
 
 install: xwm
-	@echo Still need to figure out this part
+	@echo Simply copy the file 'xwm' in this directory somewhere into your PATH
 
 .SUFFIXES:
 .SUFFIXES: .c .@OBJEXT@
