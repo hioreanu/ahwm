@@ -1,5 +1,6 @@
 TODO before release:
 - transient for self means something?  Directory property window in konq
+- figure out what the hell 'sticky' means to EWMH
 - colormaps
 - user-settable font, global option
 - titlebar height depends on font height or user pref, experiment

@@ -79,6 +79,9 @@ void ewmh_stacking_list_update(Window *w, int nwindows);
 /* update _NET_CURRENT_DESKTOP according to 'desktop_current' */
 void ewmh_current_desktop_update();
 
+/* update client's _NET_DESKTOP according to 'client->desktop' */
+void ewmh_desktop_update(client_t *client);
+
 /* update _NET_ACTIVE_WINDOW according to 'focus_current' */
 void ewmh_active_window_update();
 

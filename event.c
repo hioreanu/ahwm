@@ -377,7 +377,8 @@ static void event_destroy(XDestroyWindowEvent *xevent)
     /* we will always receive an UnmapNotify before a DestroyNotify (X
      * spec says that's how it has to be) and most of the work is done
      * when the window is unmapped. */
-    
+
+    ewmh_client_list_remove(client);
     client_destroy(client);
 }
 
@@ -448,7 +449,7 @@ static void event_unmap(XUnmapEvent *xevent)
     focus_remove(client, event_timestamp);
     
     if (client->state == NormalState) {
-        ewmh_client_list_remove(client);
+/*         ewmh_client_list_remove(client); */ /* FIXME */
         debug(("\tUnmapping frame in event_unmap\n"));
         XUnmapWindow(dpy, client->frame);
     }
@@ -479,6 +480,7 @@ static void event_maprequest(XMapRequestEvent *xevent)
             debug(("\tCould not create client, ignoring event\n"));
             return;
         }
+        ewmh_client_list_add(client);
     }
     if (client->state == NormalState) {
         /* This should never happen as XMapWindow on an already-mapped
@@ -498,6 +500,7 @@ static void event_maprequest(XMapRequestEvent *xevent)
     }
     if (client->workspace == 0) {
         client->workspace = workspace_current;
+        ewmh_desktop_update(client);
         prefs_apply(client); /* not needed, see prefs.c:context_applies() */
     }
 
@@ -755,7 +758,7 @@ static void event_clientmessage(XClientMessageEvent *xevent)
             client->state = IconicState;
             client_inform_state(client);
             focus_remove(client, event_timestamp);
-            ewmh_client_list_remove(client);
+/*             ewmh_client_list_remove(client); */ /* FIXME */
         }
     } else {
         ewmh_handle_clientmessage(xevent);
@@ -832,11 +835,6 @@ static void event_map(XMapEvent *xevent)
     client_t *client;
 
     client = client_find(xevent->window);
-    if (client != NULL
-        && xevent->window == xevent->event
-        && client->frame == xevent->window) {
-        ewmh_client_list_add(client);
-    }
     if (client != NULL
         && client->window == xevent->window
         && client == focus_current) {

@@ -840,6 +840,7 @@ void prefs_apply(client_t *client)
         if (client->workspace_set <= p.workspace_set) {
             client->workspace = p.workspace;
             client->workspace_set = p.workspace_set;
+            ewmh_desktop_update(client);
         }
     }
 

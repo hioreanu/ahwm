@@ -526,6 +526,7 @@ void ewmh_win_workspace_apply(client_t *client)
     if (client->workspace_set <= HintSet) {
         client->workspace = (*hint) + 1;
         client->workspace_set = HintSet;
+        ewmh_desktop_update(client);
     }
 }
 
@@ -596,6 +597,7 @@ void ewmh_wm_desktop_apply(client_t *client)
     if (client->workspace_set <= HintSet) {
         client->workspace = *ws + 1;
         client->workspace_set = HintSet;
+        ewmh_desktop_update(client);
     }
 }
 
@@ -987,6 +989,23 @@ void ewmh_active_window_update()
                     XA_WINDOW, 32, PropModeReplace,
                     (unsigned char *)&(focus_current->window), 1);
 }
+
+void ewmh_desktop_update(client_t *client)
+{
+    int i;
+
+    if (client->workspace == 0) return;
+    i = client->workspace - 1;
+    
+    XChangeProperty(dpy, client->window, _NET_WM_DESKTOP,
+                    XA_CARDINAL, 32, PropModeReplace,
+                    (unsigned char *)&i, 1);
+}
+
+
+
+
+
 
 static Window *ewmh_client_list = NULL;
 static unsigned int nclients = 0;

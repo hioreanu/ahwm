@@ -135,10 +135,11 @@ void move_with_transients(client_t *client, unsigned int ws)
            client->window, client->name, ws));
     
     focus_remove(client, event_timestamp);
-    ewmh_client_list_remove(client);
+/*     ewmh_client_list_remove(client); */ /* FIXME */
     debug(("\tUnmapping frame %#lx in workspace move\n", client->frame));
     XUnmapWindow(dpy, client->frame);
     client->workspace = ws;
+    ewmh_desktop_update(client);
     focus_add(client, event_timestamp);
     
     prefs_apply(client);

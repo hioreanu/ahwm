@@ -8,8 +8,21 @@ xwmrc \- configuration file for the XWM window manager
 .SH SYNOPSIS
 .B $HOME/.xwmrc
 xwmrc is the configuration file for the XWM window manager.
-This manual documents the file's syntax and the semantics of the file's
-directives.
+This manual is an in-depth explanation of the file's syntax and the
+semantics of the file's directives.
+
+.SH NOTE
+The documentation for XWM's configuration file is available in three
+places:  this manual, the \fBxwmrc-quick(5)\fP manual, and the default
+XWM configuration file.  This manual is an in-depth explanation of the
+syntax and semantics of the file.  The \fBxwmrc-quick(5)\fP manual
+consists of brief explanations of all the elements of the file.  The
+default XWM configuration file is created when you launch XWM for the
+first time and contains extensive comments demonstrating the syntax and
+explaining the meanings of the directives.  If unsure of where to
+start, see the default configuration file first, then the
+\fBxwmrc-quick(5)\fP manual page, and finally this manual.
+
 
 .SH SYNTAX
 What follows is an informal specification of the file's syntax,
@@ -26,13 +39,11 @@ illustrating some more difficult points about the syntax.
 .br
 | functiondef \(lq;\(rq
 .br
-| menu \(lq;\(rq
-.br
 | binding \(lq;\(rq
 .IP "option = option\-name \(lq=\(rq type"
 .IP "option\-name = \(lq\fBDisplayTitlebar\fP\(rq"
 .br
-| \(lq\fBMapPolicy\fP\(rq
+| \(lq\fBFocusPolicy\fP\(rq
 .br
 | ....
 .IP "type = boolean"
@@ -42,29 +53,35 @@ illustrating some more difficult points about the syntax.
 | string
 .br
 | ...
-.br
-| type \(lq,\(rq type
 .IP "boolean = \(lq\fBTrue\fP\(rq | \(lq\fBFalse\fP\(rq | \....
 .IP "map\-policy\-enum = \(lq\fBFixed\fP\(rq | \(lq\fBNoOverlap\fP\(rq | \(lq\fBContiguous\fP\(rq"
 .IP \...
-.IP "context = context\-name type \(lq\fB{\fP\(rq config \(lq\fB}\fP\(rq"
-| \(lq\fBTransientFor\fP\(rq context
+.IP "context = context\-option context\-name type \(lq\fB{\fP\(rq config \(lq\fB}\fP\(rq"
+.IP "context-option = \(lq\fBNot\fP\(rq | \(lq\fBTransientFor\fP\(rq | \(lq\fBHasTransient\fP\(rq
 .IP "context\-name = \(lq\fBIsShaped\fP\(lq | \(lq\fBWindowName\fP\(rq | \...."
-.IP "functiondef = \(lq\fBFunction\fP\(rq string \(lq\fB{\fP\(rq function f\-list \(lq\fB}\fP\(rq"
-.IP "f\-list = \(lq\fB,\fP\(rq function f\-list"
-| \fBempty\fP
-.IP "function = function\-name \(lq\fB(\fP\(rq type \(lq\fB)\fP\(rq"
-.IP "function\-name = \(lq\fBLaunch\fP\(rq | \(lq\fBQuit\fP\(rq | \...."
-.IP "menu = \(lq\fBMenu\fP\(rq string \(lq\fB{\fP\(rq string function menu\-def \(lq\fB}\fP\(rq"
-.IP "menu\-def = \(lq\fB,\fP\(rq string function menu\-def"
+.IP "functiondef = \(lq\fBDefine\fP\(rq string \(lq\fB{\fP\(rq function\-list \(lq\fB}\fP\(rq"
+.IP "function\-list = function \(lq\fB;\fP\(rq function\-list"
 .br
-| empty
+| function \(lq\fB;\fP\(rq
+.IP "function = function\-name \(lq\fB(\fP\(rq arglist \(lq\fB)\fP\(rq"
+.IP "function\-name = \(lq\fBLaunch\fP\(rq | \(lq\fBQuit\fP\(rq | \...."
+.IP "arglist = arglist \(lq\fB,\fP\(rq type
+.br
+| type
 .IP "binding = \(lq\fBBindKey\fP\(rq string function"
 .br
+| \(lq\fBBindKeyRelease\fP\(rq string function
+.br
 | \(lq\fBBindButton\fP\(rq location string function
+.br
+| \(lq\fBBindDrag\fP\(rq location string function
 .IP "unbinding = \(lq\fBUnBindKey\fP\(rq string"
 .br
+| \(lq\fBUnBindKeyRelease\fP\(rq string
+.br
 | \(lq\fBUnBindButton\fP\(rq location string
+.br
+| \(lq\fBUnBindDrag\fP\(rq location string
 .IP "location = \(lq\fBTitleBar\fP\(rq | \(lq\fBFrame\fP\(rq | \...."
 .SS SYNTAX DISCUSSION
 Each line is ended with a semicolon (\(lq;\(rq) and the syntax is not
@@ -72,28 +89,170 @@ whitespace sensitive, except that whitespace is used to separate
 tokens.  The file's directives are \fInot\fP case\-sensitive (so
 \(lqTitleBar\(rq is equivalent to \(lqtitlebar\(rq), but some elements
 of strings are case\-sensitive (these elements will be noted as \fBCASE
-SENSITIVE\fP in this manual).  Comments are introduced in two ways: as
-Bourne shell\-like comments (anything after the hash (\(lq\fB#\fP\(rq)
+SENSITIVE\fP in this manual).  Comments are introduced in three ways: as
+Bourne shell\-like comments (anything after hash (\(lq\fB#\fP\(rq)
 symbol to the end of the line) or as C-like comments (anything between
-slash-star (\(lq\fB/*\fP\(rq) and star-slash (\(lq\fB*/\fP\(rq)).
+slash-star (\(lq\fB/*\fP\(rq) and star-slash (\(lq\fB*/\fP\(rq)) or as
+C++-style comments (anything after slash-slash (\(lq\fB//\fP\(rq).
 C-style comments do not nest, as in C.
 .PP
-Each directive is specified within a \fBcontext\fP.  The file begins in
-the \fBdefault context\fP and the context may be changed using the
-\fBContext\fP directive.  One puts a number of directives in a context
-to make those directives apply only when the conditions specified in
-the context are true.
-The options in the \fBdefault context\fP are used as \(lqdefaults\(rq
-\(em a directive in the \fBdefault context\fP is applied to a window
-for which the same directive is not specified in another context which
-matches that window.  The order of options within any given context is
+The file consists of a number of directives, including \fBoptions\fP.
+Options may be enclosed within a \fBcontext\fP, which makes those
+options apply only when the conditions specified in the context are
+true.  Contexts are used to define different options for different
+windows.  Some options (such as \fBNumberOfWorkspaces\fP) may only
+defined globally (they may not appear in a context).
+The order of options within any given context is
 not important except that if one option appears more than once, only
 the last one is applied.  The order of contexts, is, however
 significant \(em when a window matches more than one context, all
 directives from all contexts will be applied to the window, but if a
 directive appears more than once in any of the matching contexts, the
-last seen directive will be used.
+last seen directive will be used.  The names of function aggregations
+(user-defined functions) are \fBCASE-SENSITIVE\fP
+.PP
+Other directives are available for binding keystrokes and mouse clicks
+and for defining aggregations of actions for binding to keystrokes and
+mouse clicks.
+.SS BINDING SYNTAX
+In addition to the file's syntax, described above, binding actions to
+keystrokes or mouse clicks requires a string argument.  This string
+argument describes which keys and buttons along with which modifier
+keys are to be bound.
+.PP
+The binding grammar has tokens from three groups:
+.PP
+1. A \fBKeySym\fP, which is one of the symbols from <X11/keysym.h> with the
+\(lqXK_\(rq prefix removed EXCEPT for the following symbols which are NOT
+tokens:
+.br
+Shift_L
+.br
+Shift_R
+.br
+Control_L
+.br
+Control_R
+.br
+Meta_L
+.br
+Meta_R
+.br
+Alt_L
+.br
+Alt_R
+.br
+Super_L
+.br
+Super_R
+.br
+Hyper_L
+.br
+Hyper_R
+.br
+Caps_Lock
+.br
+Shift_Lock
+.br
+All of the symbols in this group are \fBCASE-SENSITIVE\fP.
+.PP
+2. A \fBModifier\fP, which is one of the following symbols:
+.br
+Shift, ShiftMask
+.br
+Control, ControlMask
+.br
+Mod1, Mod1Mask
+.br
+Mod2, Mod2Mask
+.br
+Mod3, Mod3Mask
+.br
+Mod4, Mod4Mask
+.br
+Mod5, Mod5Mask
+.br
+Alt, AltMask
+.br
+Meta, MetaMask
+.br
+Hyper, HyperMask
+.br
+Super, SuperMask
+.br
+All of the symbols in this group are case-insensitive.
+.PP
+3. A \fBButton\fP, which is one of the following symbols:
+.br
+Button1
+.br
+Button2
+.br
+Button3
+.br
+Button4
+.br
+Button5
+.br
+.PP
+You can see what keysyms your keys generate by launching the X program
+\fBxev(1)\fP and typing into the window.  See also \fBxmodmap(1)\fP for
+more information.  The \fBButtons\fP are usually interpreted as follows:
+.br
+Button1 is the left mouse button.
+.br
+Button2 is the middle mouse button.
+.br
+Button3 is the right mouse button.
+.br
+Button4 is mouse wheel down.
+.br
+Button5 is mouse wheel up.
+.PP
+The informal grammar for binding to keystrokes is:
+.IP "string = modlist* keysym"
+.IP "modlist = modifier \(lq|\(rq"
+.IP "modifier = <one of the above symbols from group 2>"
+.IP "keysym = <one of the above symbols from group 1>"
+.PP
+The grammar for binding to mouse events is equivalent to that for
+binding to keystrokes except that \fBButtons\fP are used instead of
+\fBKeySyms\fP.
 .SS SYTAX EXAMPLES
+Bindings look like this:
+.PP
+.ft C
+BindKey "Control | Shift | Meta | t" Launch("xterm");
+.br
+BindButton Titlebar "Mod1 | Button3" Maximize();
+.br
+BindDrag Titlebar "Button1" MoveInteractively();
+.PP
+Options can be set as follows:
+.PP
+.ft C
+NumberOfWorkspace = 13;
+.br
+FocusPolicy = ClickToFocus;
+.PP
+Function aggregations (user-defined functions) may be defined
+and bound as follows:
+.PP
+.ft C
+.br
+Define "My Goto Workspace 2 Function" {
+.br
+    Launch("xsetroot -solid \\"#2F4F4F\\"");
+.br
+    GotoWorkspace(2);
+.br
+}
+.br
+BindKey "Alt | 2" Invoke("My Goto Workspace 2 Function");
+.PP
+The rest of this section describes how to use contexts to set different
+options on different windows.
+.PP
 To have titlebars on shaped windows, but to remove titlebars from
 windows whose TRANSIENT_FOR hint points to a shaped window (regardless
 of whether or not the transient window is shaped):
@@ -138,7 +297,7 @@ IsShaped True {
 Note that this can be done in more than one way, such as:
 .PP
 .ft C
-\fCIsShaped True { DisplayTitlebar = True; };
+IsShaped True { DisplayTitlebar = True; };
 .br
 WindowName "oclock" { DisplayTitlebar = False; };
 .PP
@@ -195,18 +354,11 @@ refer to a C reference manual for the exact syntax.
 
 .B Examples:
 .ft C
-"foo \\012 \\\\ \\" ",
+"foo \\\\ \\" ",
 "HTTP 200 OK\\r\\n"
 .TP
 .B Integer
-An integer, in decimal, octal or hexadecimal notation, as in C.
-.br
-
-.B Examples:
-.ft C
-5,
-0xDEADBEEF,
-014
+An integer in decimal notation.
 .TP
 .B Enumeration
 One of a small number of symbols.  All enumerations are described as
