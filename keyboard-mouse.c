@@ -699,9 +699,9 @@ static Bool mouse_invoke(XEvent *xevent, click_type type)
 static Bool mouse_down(XButtonEvent *xevent)
 {
     int button_ndx;
-    
     static Time last_mousedown[5]; /* for determining double-clicks */
     static Bool last_mousedown_set[5] = { False, False, False, False, False };
+    static Window last_mousedown_window[5];
 
     button_ndx = button_to_index(xevent->button);
 
@@ -719,7 +719,8 @@ static Bool mouse_down(XButtonEvent *xevent)
     click_to_focus_clicked(xevent);
     
     if (last_mousedown_set[button_ndx] &&
-        ABS(xevent->time - last_mousedown[button_ndx]) <= DBLCLICK_THRESH) {
+        ABS(xevent->time - last_mousedown[button_ndx]) <= DBLCLICK_THRESH &&
+        xevent->window == last_mousedown_window[button_ndx]) {
         /* we have a double click; invalidate timestamp, invoke function */
         last_mousedown_set[button_ndx] = False;
         return mouse_invoke((XEvent *)xevent, MOUSE_DOUBLECLICK);
@@ -727,7 +728,11 @@ static Bool mouse_down(XButtonEvent *xevent)
         /* listen and wait; mouse-up = click, movement = drag */
         last_mousedown_set[button_ndx] = True;
         last_mousedown[button_ndx] = xevent->time;
+        last_mousedown_window[button_ndx] = xevent->window;
 
+        if (xevent->window == root_window) {
+            ewmh_proxy_buttonevent((XEvent *)xevent);
+        }
         return False;
     }
 }
@@ -753,7 +758,7 @@ static Bool mouse_moved(XMotionEvent *xevent)
                          xevent->y_root) >= DRAG_THRESH * DRAG_THRESH) {
         time = xevent->time;
         retval = mouse_invoke((XEvent *)xevent, MOUSE_DRAG);
-        XUngrabPointer(dpy, time);
+        if (retval) XUngrabPointer(dpy, time);
         /* FIXME: invalidate timestamp? */
     }
     return retval;
@@ -764,12 +769,12 @@ static Bool mouse_moved(XMotionEvent *xevent)
 static void click_to_focus_clicked(XButtonEvent *xevent)
 {
     client_t *client;
-    
+
     if (xevent->button == Button1
-        && xevent->state & ~(AllLocksMask | ANYBUTTONMASK) == 0) {
+        && (xevent->state & ~(AllLocksMask | ANYBUTTONMASK)) == 0) {
+        
         client = client_find(xevent->window);
-        if (client != NULL
-            && client->focus_policy == ClickToFocus) {
+        if (client != NULL && client->focus_policy == ClickToFocus) {
             focus_set(client, xevent->time);
             stacking_raise(client);
             if (client->pass_focus_click) {

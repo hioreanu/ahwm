@@ -60,6 +60,7 @@
 #include "ewmh.h"
 #include "paint.h"
 #include "stacking.h"
+#include "shade.h"
 
 #include "default-ahwmrc.h"
 #include "default-message.h"
@@ -206,6 +207,7 @@ static key_fn fn_table[] = {
 /* 20 */    NULL, /* refresh/reset */
 /* 21 */    ahwm_restart,
 /* 22 */    crash,
+/* 23 */    shade,
 };
 
 static char *fn_names[] = {
@@ -232,6 +234,7 @@ static char *fn_names[] = {
 /* 20 */    "Refresh",
 /* 21 */    "Restart",
 /* 22 */    "Crash",
+/* 23 */    "Shade",
 };
 
 void prefs_init()
@@ -631,6 +634,7 @@ static Bool type_check_function(function *fn)
         case REFRESH:
         case RESTART:
         case CRASH:
+        case SHADE:
             if (fn->function_args == NULL) {
                 retval = True;
             } else {
@@ -1228,7 +1232,7 @@ static void globally_unbind(line *lp)
                         lp->line_value.keyunbinding->keyunbinding_depress);
     } else if (lp->line_type == MOUSEUNBINDING) {
         mouse_unbind(lp->line_value.mouseunbinding->mouseunbinding_string,
-                     lp->line_value.mouseunbinding->mouseunbinding_depress,
+                     lp->line_value.mouseunbinding->mouseunbinding_type,
                      lp->line_value.mouseunbinding->mouseunbinding_location);
     }
 }

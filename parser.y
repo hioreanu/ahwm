@@ -105,11 +105,13 @@
 
 %token TOK_BINDKEY
 %token TOK_BINDBUTTON
+%token TOK_BINDDOUBLECLICK
 %token TOK_BINDDRAG
 %token TOK_BINDKEYRELEASE
 %token TOK_UNBINDKEY
 %token TOK_UNBINDBUTTON
 %token TOK_UNBINDDRAG
+%token TOK_UNBINDDOUBLECLICK
 %token TOK_UNBINDKEYRELEASE
 
 %token TOK_ROOT
@@ -139,6 +141,7 @@
 %token TOK_REFRESH
 %token TOK_RESTART
 %token TOK_CRASH
+%token TOK_SHADE
 
 %token TOK_SEMI
 %token TOK_EQUALS
@@ -415,6 +418,18 @@ mousebinding: TOK_BINDBUTTON location TOK_STRING function
                   }
                   $$ = mb;
               }
+              | TOK_BINDDOUBLECLICK location TOK_STRING function
+              {
+                  mousebinding *mb;
+                  mb = malloc(sizeof(mousebinding));
+                  if (mb != NULL) {
+                      mb->mousebinding_string = make_string($3);
+                      mb->mousebinding_location = $2;
+                      mb->mousebinding_function = $4;
+                      mb->mousebinding_type = MOUSE_DOUBLECLICK;
+                  }
+                  $$ = mb;
+              }
               | TOK_BINDDRAG location TOK_STRING function
               {
                   mousebinding *mb;
@@ -456,7 +471,18 @@ mouseunbinding: TOK_UNBINDBUTTON location TOK_STRING
                     if (mub != NULL) {
                         mub->mouseunbinding_string = make_string($3);
                         mub->mouseunbinding_location = $2;
-                        mub->mouseunbinding_depress = 0;
+                        mub->mouseunbinding_type = MOUSE_CLICK;
+                    }
+                    $$ = mub;
+                }
+                | TOK_UNBINDDOUBLECLICK location TOK_STRING
+                {
+                    mouseunbinding *mub;
+                    mub = malloc(sizeof(mouseunbinding));
+                    if (mub != NULL) {
+                        mub->mouseunbinding_string = make_string($3);
+                        mub->mouseunbinding_location = $2;
+                        mub->mouseunbinding_type = MOUSE_DOUBLECLICK;
                     }
                     $$ = mub;
                 }
@@ -467,7 +493,7 @@ mouseunbinding: TOK_UNBINDBUTTON location TOK_STRING
                     if (mub != NULL) {
                         mub->mouseunbinding_string = make_string($3);
                         mub->mouseunbinding_location = $2;
-                        mub->mouseunbinding_depress = 1;
+                        mub->mouseunbinding_type = MOUSE_DRAG;
                     }
                     $$ = mub;
                 }
@@ -518,6 +544,7 @@ function_name: TOK_SENDTOWORKSPACE { $$ = SENDTOWORKSPACE; }
              | TOK_REFRESH { $$ = REFRESH; }
              | TOK_RESTART { $$ = RESTART; }
              | TOK_CRASH { $$ = CRASH; }
+             | TOK_SHADE { $$ = SHADE; }
 
 arglist: arglist TOK_COMMA type
          {

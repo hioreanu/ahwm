@@ -126,6 +126,7 @@ client_t *client_create(Window w)
     client->keep_transients_on_top = 1;
     client->raise_delay = 0;
     client->use_net_wm_pid = 0;
+    client->shaded = 0;
 
     client->workspace_set = UnSet;
     client->focus_policy_set = UnSet;

@@ -161,7 +161,7 @@ struct _keyunbinding {
 struct _mouseunbinding {
     char *mouseunbinding_string;
     int mouseunbinding_location;
-    int mouseunbinding_depress;
+    click_type mouseunbinding_type;
 };
 
 struct _function {
@@ -188,6 +188,7 @@ struct _function {
            REFRESH = 20,
            RESTART = 21,
            CRASH = 22,
+           SHADE = 23,
     } function_type;
     arglist *function_args;
 };

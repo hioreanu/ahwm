@@ -144,10 +144,14 @@ Menu { return TOK_MENU; }
 
 BindKey { return TOK_BINDKEY; }
 BindButton { return TOK_BINDBUTTON; }
+BindClick { return TOK_BINDBUTTON; }
+BindDoubleClick { return TOK_BINDDOUBLECLICK; }
 BindDrag { return TOK_BINDDRAG; }
 BindKeyRelease { return TOK_BINDKEYRELEASE; }
 UnBindKey { return TOK_UNBINDKEY; }
 UnBindButton { return TOK_UNBINDBUTTON; }
+UnBindClick { return TOK_UNBINDBUTTON; }
+UnBindDoubleClick { return TOK_UNBINDDOUBLECLICK; }
 UnBindDrag { return TOK_UNBINDDRAG; }
 UnBindKeyRelease { return TOK_UNBINDKEYRELEASE; }
 
@@ -178,6 +182,7 @@ ShowMenu { return TOK_SHOWMENU; }
 Refresh { return TOK_REFRESH; }
 Restart { return TOK_RESTART; }
 Crash { return TOK_CRASH; }
+Shade { return TOK_SHADE; }
 
 Define { return TOK_DEFINE; }
 

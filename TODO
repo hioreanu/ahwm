@@ -1,8 +1,8 @@
 TODO before release:
-- BindButton -> BindClick
-- new section about binding clicks, drags, double clicks
+- new section in manual about binding clicks, drags, double clicks
 - new section in manual about killing windows, document heuristics, etc.
-- make moving resistance threshhold user-definable
+- make moving resistance threshhold user-definable, global option
+- listening on root window for GNOME click proxying
 - resize and restart bound to same key
 - placement, use corner with least overlap first
 - _NET_WORKAREA and STRUT
@@ -13,7 +13,6 @@ TODO before release:
 - function ToggleOmnipresent
 
 Wishlist:
-- real timers: needed for ping, shading animation
 - implement "ping" protocol
 - 'is!' overrides '=', even if '=' comes later
 - GotoNextWorkspace(integer)
@@ -38,7 +37,6 @@ Wishlist:
 - we assume that focused window is somehow raised (eg, on window cycling)
 - window edge resistance
 - screen edge resistance on resize
-- double-click action
 - send MB4 and MB5 "clicks" to focus window when received on root
 - remove any R6isms
 - compress ConfigureRequest events, and others if possible
@@ -161,6 +159,9 @@ Finished, no longer TODO:
 - start xwm from an xterm, that xterm doesn't get _NET_DESKTOP prop
 - use WM_MACHINE_NAME, _NET_WM_PID for killing windows
 - option to turn off _NET_WM_PID stuff, protocol not used by default
+- BindButton -> BindClick
+- real timers: needed for ping, shading animation
+- double-click action
 
 Abandoned, no longer TODO:
 - "stop" focus, detect when pointer stops in a window (no timeout) -
