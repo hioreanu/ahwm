@@ -69,7 +69,7 @@ void keyboard_grab_keys(client_t *client)
     keybinding *kb;
 
     for (kb = bindings; kb != NULL; kb = kb->next) {
-        XGrabKey(dpy, (int)kb->keycode, kb->modifiers, client->frame, True,
+        XGrabKey(dpy, kb->keycode, kb->modifiers, client->frame, True,
                  GrabModeAsync, GrabModeAsync);
     }
 }
@@ -93,7 +93,7 @@ void keyboard_process(XKeyEvent *xevent)
     for (kb = bindings; kb != NULL; kb = kb->next) {
         if (kb->keycode == code) {
             if (kb->modifiers == xevent->state
-                && (kb->depress | xevent->type) == xevent->type) {
+                && (kb->depress & xevent->type) == xevent->type) {
                 (*kb->function)((XEvent *)xevent);
                 return;
             }

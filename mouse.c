@@ -29,32 +29,58 @@ typedef struct _mousebinding {
 static mousebinding *bindings = NULL;
 
 static int figure_button(char *, unsigned int *);
+static int get_location(Window w);
 
 void mouse_grab_buttons(client_t *client)
 {
-    XGrabButton(dpy, Button1, Mod1Mask, client->frame, True, ButtonPressMask,
-                GrabModeSync, GrabModeAsync, None, cursor_moving);
-    XGrabButton(dpy, Button3, Mod1Mask, client->frame, True, ButtonPressMask,
-                GrabModeSync, GrabModeAsync, None, cursor_normal);
+    mousebinding *mb;
+
+    for (mb = bindings; mb != NULL; mb = mb->next) {
+        if (mb->location & MOUSE_FRAME)
+            XGrabButton(dpy, mb->button, mb->modifiers, client->frame,
+                        True, mb->depress, GrabModeSync, GrabModeAsync,
+                        None, cursor_normal);
+        if (mb->location & MOUSE_TITLEBAR)
+            XGrabButton(dpy, mb->button, mb->modifiers, client->titlebar,
+                        True, mb->depress, GrabModeSync, GrabModeAsync,
+                        None, cursor_normal);
+    }
 }
+
+#define ANYBUTTONMASK (Button1Mask | Button2Mask | Button3Mask \
+                       | Button4Mask | Button5Mask)
 
 void mouse_handle_event(XEvent *xevent)
 {
-    if (xevent->type != ButtonPress) {
-        fprintf(stderr, "XWM: error, mouse_handle_event called incorrectly\n");
-        return;
+    mousebinding *mb;
+    unsigned int button, state;
+
+    button = xevent->xbutton.button;
+    state = xevent->xbutton.state & (~ANYBUTTONMASK);
+
+    for (mb = bindings; mb != NULL; mb = mb->next) {
+        if (button == mb->button) {
+            if (state == mb->modifiers &&
+                (mb->location & get_location(xevent->xbutton.window)) &&
+                ((xevent->type & mb->depress) == xevent->type)) {
+                (*mb->function)(xevent);
+                XUngrabPointer(dpy, CurrentTime);
+                return;
+            }
+        }
     }
-    if (xevent->xbutton.button == Button1
-        && (xevent->xbutton.state & Mod1Mask)) {
-        move_client(xevent);
-    } else if (xevent->xbutton.button == Button3
-               && (xevent->xbutton.state & Mod1Mask)) {
-        resize_client(xevent);
-    } else {
-#ifdef DEBUG
-        printf("\tIgnoring unknown mouse event\n");
-#endif /* DEBUG */
-    }
+}
+
+static int get_location(Window w)
+{
+    client_t *client;
+    
+    if (w == root_window) return MOUSE_ROOT;
+    client = client_find(w);
+    if (client == NULL) return MOUSE_NOWHERE;
+    if (w == client->frame) return MOUSE_FRAME;
+    if (w == client->titlebar) return MOUSE_TITLEBAR;
+    return MOUSE_NOWHERE;
 }
 
 /*
@@ -72,12 +98,12 @@ void mouse_set_function_ex(unsigned int button, unsigned int modifiers,
         fprintf(stderr, "XWM: Cannot bind mouse button, out of memory\n");
         return;
     }
-    newbinding->next = bindings;
     newbinding->button = button;
     newbinding->modifiers = modifiers;
     newbinding->depress = depress;
     newbinding->location = location;
     newbinding->function = fn;
+    newbinding->next = bindings;
     bindings = newbinding;
 }
 

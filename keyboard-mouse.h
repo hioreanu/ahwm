@@ -31,8 +31,8 @@ void keyboard_ignore(XEvent *);
 void keyboard_set_function_ex(unsigned int keycode, unsigned int modifiers,
                               int depress, key_fn fn);
 
-#define KEYBOARD_DEPRESS KeyPressMask
-#define KEYBOARD_RELEASE KeyReleaseMask
+#define KEYBOARD_DEPRESS KeyPress
+#define KEYBOARD_RELEASE KeyRelease
 
 /*
  * Function to convert a string which describes a keyboard binding to

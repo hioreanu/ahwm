@@ -362,6 +362,8 @@ static void event_maprequest(XMapRequestEvent *xevent)
 
     if (client->xwmh != NULL && client->state == WithdrawnState) {
         client->state = client->xwmh->initial_state;
+        if (client->state != IconicState)
+            client->state = NormalState;
     } else {
         client->state = NormalState;
     }
@@ -371,11 +373,18 @@ static void event_maprequest(XMapRequestEvent *xevent)
         XMapWindow(xevent->display, client->window);
         if (client->frame != None) {
             XMapWindow(xevent->display, client->frame);
+            if (client->titlebar != None) {
+                XMapWindow(xevent->display, client->titlebar);
+            }
         }
         keyboard_grab_keys(client);
         mouse_grab_buttons(client);
         focus_set(client);
         focus_ensure();
+    } else {
+#ifdef DEBUG
+        printf("\tsigh...client->state = %d\n", client->state);
+#endif /* DEBUG */
     }
     client_inform_state(client);
 }
@@ -413,6 +422,7 @@ static void event_configurerequest(XConfigureRequestEvent *xevent)
     XConfigureWindow(dpy, client->frame,
                      xevent->value_mask | CWX | CWY | CWWidth | CWHeight,
                      &xwc);
+    XConfigureWindow(dpy, client->titlebar, CWWidth, &xwc);
 
     xwc.y       = TITLE_HEIGHT;
     xwc.x       = 0;
@@ -433,36 +443,37 @@ static void event_property(XPropertyEvent *xevent)
 
     client = client_find(xevent->window);
     if (client == NULL) return;
-    switch (xevent->atom) {
-        case XA_WM_NAME:
+    if (xevent->atom == XA_WM_NAME) {
 #ifdef DEBUG
-            printf("\tWM_NAME, changing client->name\n");
+        printf("\tWM_NAME, changing client->name\n");
 #endif /* DEBUG */
-            free(client->name);
-            client_set_name(client);
-            client_paint_titlebar(client);
-            break;
-        case XA_WM_CLASS:
+        free(client->name);
+        client_set_name(client);
+        client_paint_titlebar(client);
+    } else if (xevent->atom == XA_WM_CLASS) {
 #ifdef DEBUG
-            printf("\tWM_CLASS, changing client->[class, instance]\n");
+        printf("\tWM_CLASS, changing client->[class, instance]\n");
 #endif /* DEBUG */
-            if (client->class != None) XFree(client->class);
-            if (client->instance != None) XFree(client->instance);
-            client_set_instance_class(client);
-            break;
-        case XA_WM_HINTS:
+        if (client->class != None) XFree(client->class);
+        if (client->instance != None) XFree(client->instance);
+        client_set_instance_class(client);
+    } else if (xevent->atom == XA_WM_HINTS) {
 #ifdef DEBUG
-            printf("\tWM_HINTS, changing client->xwmh\n");
+        printf("\tWM_HINTS, changing client->xwmh\n");
 #endif /* DEBUG */
-            if (client->xwmh != None) XFree(client->xwmh);
-            client_set_xwmh(client);
-            break;
-        case XA_WM_NORMAL_HINTS:
+        if (client->xwmh != None) XFree(client->xwmh);
+        client_set_xwmh(client);
+    } else if (xevent->atom == XA_WM_NORMAL_HINTS) {
 #ifdef DEBUG
-            printf("\tWM_NORMAL_HINTS, changing client->xsh\n");
+        printf("\tWM_NORMAL_HINTS, changing client->xsh\n");
 #endif /* DEBUG */
-            if (client->xsh != None) XFree(client->xsh);
-            client_set_xsh(client);
+        if (client->xsh != None) XFree(client->xsh);
+        client_set_xsh(client);
+    } else if (xevent->atom == WM_PROTOCOLS) {
+#ifdef DEBUG
+        printf("\tWM_PROTOCOLS, changing client->protocols\n");
+#endif /* DEBUG */
+        client_set_protocols(client);
     }
 }
 
@@ -507,3 +518,39 @@ static void event_expose(XExposeEvent *xevent)
         client_paint_titlebar(client);
 }
 
+/* all events defined by Xlib have common first few members,
+ * so just use an arbitrary event to get the window if this
+ * is an event defined by Xlib */
+Window event_window(XEvent *event)
+{
+    if (event->type > 1 && event->type < LASTEvent) {
+        return event->xbutton.window;
+    } else {
+        return None;
+    }
+}
+
+/* not all events have a timestamp, some have it in the same place */
+/* FIXME: verify, read all the fucking manual pages */
+Time event_timestamp(XEvent *event)
+{
+    switch (event->type) {
+        case ButtonPress:
+        case ButtonRelease:
+        case KeyPress:
+        case KeyRelease:
+        case MotionNotify:
+        case EnterNotify:
+        case LeaveNotify:
+            return event->xbutton.time;
+        case PropertyNotify:
+        case SelectionClear:
+            return event->xproperty.time;
+        case SelectionRequest:
+            return event->xselectionrequest.time;
+        case SelectionNotify:
+            return event->xselection.time;
+        default:
+            return CurrentTime;
+    }
+}

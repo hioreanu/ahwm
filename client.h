@@ -35,6 +35,7 @@
 typedef struct _client_t {
     Window window;              /* their application window */
     Window frame;               /* contains titlebar, parent of above */
+    Window titlebar;            /* titlebar, subwindow of frame */
     Window transient_for;       /* FIXME */
     Window next_transient;      /* FIXME */
     Window group_leader;        /* FIXME */
@@ -47,6 +48,7 @@ typedef struct _client_t {
     int workspace;              /* client's workspace  */
     int window_event_mask;      /* event mask of client->window */
     int frame_event_mask;       /* event mask of client->frame */
+    unsigned int protocols;     /* WM_PROTOCOLS, see below (ICCCM, 4.1.2.7) */
     char *name;                 /* window's name (ICCCM, 4.1.2.1) */
     /* will not be NULL; use free() */
     char *instance;             /* window's instance (ICCCM, 4.1.2.5) */
@@ -71,6 +73,13 @@ typedef struct _client_t {
 } client_t;
 /* FIXME:  prolly need to keep a list of client's transient clients */
 
+/* the values for client->protocols, can be ORed together */
+
+#define PROTO_NONE          00
+#define PROTO_TAKE_FOCUS    01
+#define PROTO_SAVE_YOURSELF 02
+#define PROTO_DELETE_WINDOW 04
+
 /*
  * we store the data associated with each window using Xlib's XContext
  * mechanism (which has nothing to do with X itself, it's just a hash
@@ -82,6 +91,7 @@ typedef struct _client_t {
 
 extern XContext window_context;
 extern XContext frame_context;
+extern XContext title_context;
 
 /*
  * Create and store a newly-allocated client_t structure for a given
@@ -153,6 +163,13 @@ void client_set_xwmh(client_t *);
 void client_set_xsh(client_t *);
 
 /*
+ * Examine the client's WM_PROTOCOLS property and set the appropriate
+ * members of client->protocols
+ */
+
+void client_set_protocols(client_t *);
+
+/*
  * Ensure that a client's WM_STATE property reflects what we think it
  * should be (the 'state' member, either NormalState, Iconic,
  * Withdrawn, etc.).  We set this attribute on the client's
@@ -198,5 +215,15 @@ void client_get_position_size_hints(client_t *client, position_size *ps);
  */
 
 void client_print(char *, client_t *);
+
+/*
+ * Send a ClientMessage to a client window, according the conventions
+ * described in ICCCM, 4.2.8.  The DATA[234] members are stuffed into
+ * the XClientMessageEvent structure, the timestamp is put in data[1]
+ * and the atom is put into data[0].
+ */
+
+void client_sendmessage(client_t *client, Atom data0, Time timestamp,
+                        long data2, long data3, long data4);
 
 #endif /* CLIENT_H */

@@ -20,6 +20,9 @@
 
 XContext window_context;
 XContext frame_context;
+XContext title_context;
+
+static void client_add_titlebar(client_t *client);
 
 client_t *client_create(Window w)
 {
@@ -47,18 +50,20 @@ client_t *client_create(Window w)
     client->workspace = workspace_current;
     client->state = WithdrawnState;
     client->frame = None;
+    client->titlebar = None;
 
     client_set_name(client);
     client_set_instance_class(client);
     client_set_xwmh(client);
     client_set_xsh(client);
+    client_set_protocols(client);
 
-    client->frame_event_mask = SubstructureRedirectMask | ExposureMask
-                               | EnterWindowMask;
+    client->frame_event_mask = SubstructureRedirectMask | EnterWindowMask;
     client->window_event_mask = xwa.your_event_mask | StructureNotifyMask
                                 | PropertyChangeMask;
     XSelectInput(dpy, client->window, client->window_event_mask);
     client_reparent(client);
+    client_add_titlebar(client);
     
     if (focus_canfocus(client)) focus_add(client);
 
@@ -89,7 +94,18 @@ client_t *client_create(Window w)
         client->window_event_mask |= EnterWindowMask;
         XSelectInput(dpy, w, client->window_event_mask);
     }
-        
+    if (client->titlebar != None) {
+        if (XSaveContext(dpy, client->titlebar,
+                         title_context, (void *)client) != 0) {
+            XDeleteContext(dpy, client->window, window_context);
+            XDeleteContext(dpy, client->frame, frame_context);
+            free(client);
+            fprintf(stderr,
+                    "XWM: XSaveContext failed, could not save titlebar\n");
+            return NULL;
+        }
+    }
+    
     return client;
 }
 
@@ -113,8 +129,8 @@ void client_reparent(client_t *client)
                 "XWM: XGetWindowAttributes failed in a very inconvenient place\n");
         return;
     }
-    mask = CWBackPixmap | CWBackPixel | CWBorderPixel
-           | CWCursor | CWEventMask | CWOverrideRedirect;
+    mask = CWBackPixmap | CWBackPixel | CWCursor
+           | CWEventMask | CWOverrideRedirect;
     xswa.cursor = cursor_normal;
     xswa.background_pixmap = None;
     xswa.background_pixel = black;
@@ -169,19 +185,42 @@ void client_reparent(client_t *client)
     XSelectInput(dpy, w, client->window_event_mask);
 }
 
+static void client_add_titlebar(client_t *client)
+{
+    XSetWindowAttributes xswa;
+    int mask;
+    
+    mask = CWBackPixmap | CWBackPixel | CWCursor
+           | CWEventMask | CWOverrideRedirect | CWWinGravity;
+    xswa.cursor = cursor_normal;
+    xswa.background_pixmap = None;
+    xswa.background_pixel = black;
+    xswa.event_mask = ExposureMask;
+    xswa.override_redirect = True;
+    xswa.win_gravity = NorthWestGravity;
+
+    client->titlebar = XCreateWindow(dpy, client->frame, 0, 0, client->width,
+                                     TITLE_HEIGHT, 0, DefaultDepth(dpy, scr),
+                                     CopyFromParent, DefaultVisual(dpy, scr),
+                                     mask, &xswa);
+}
+
 client_t *client_find(Window w)
 {
     client_t *client;
 
     if (XFindContext(dpy, w, window_context, (void *)&client) != 0)
         if (XFindContext(dpy, w, frame_context, (void *)&client) != 0)
-            client = NULL;
+            if (XFindContext(dpy, w, title_context, (void *)&client) != 0)
+                client = NULL;
 
 #ifdef DEBUG
     if (client == NULL)
         printf("\tCould not find client\n");
     else if (client->window == w)
         printf("\tFound client from window\n");
+    else if (client->titlebar == w)
+        printf("\tFound client from titlebar\n");
     else
         printf("\tFound client from frame\n");
 #endif /* DEBUG */
@@ -372,9 +411,10 @@ void client_print(char *s, client_t *client)
 
 void client_paint_titlebar(client_t *client)
 {
-    XClearWindow(dpy, client->frame);
-    XDrawString(dpy, client->frame, root_invert_gc, 2, TITLE_HEIGHT - 4,
+    XClearWindow(dpy, client->titlebar);
+    XDrawString(dpy, client->titlebar, root_invert_gc, 2, TITLE_HEIGHT - 4,
                 client->name, strlen(client->name));
+    printf("Painting titlebar 0x%08X\n", (unsigned int)client->titlebar);
 }
 
 /* ICCCM, 4.1.3.1 */
@@ -386,4 +426,43 @@ void client_inform_state(client_t *client)
     data[1] = (CARD32)None;
     XChangeProperty(dpy, client->window, WM_STATE, WM_STATE, 32,
                     PropModeReplace, (unsigned char *)data, 2);
+}
+
+void client_set_protocols(client_t *client)
+{
+    Atom *atoms;
+    int n, i;
+
+    client->protocols = PROTO_NONE;
+    if (XGetWMProtocols(dpy, client->window, &atoms, &n) == 0) {
+        return;
+    } else {
+        for (i = 0; i < n; i++) {
+            if (atoms[i] == WM_TAKE_FOCUS) {
+                client->protocols |= PROTO_TAKE_FOCUS;
+            } else if (atoms[i] == WM_SAVE_YOURSELF) {
+                client->protocols |= PROTO_SAVE_YOURSELF;
+            } else if (atoms[i] == WM_DELETE_WINDOW) {
+                client->protocols |= PROTO_DELETE_WINDOW;
+            }
+        }
+    }
+    XFree(atoms);
+}
+
+void client_sendmessage(client_t *client, Atom data0, Time timestamp,
+                        long data2, long data3, long data4)
+{
+    XClientMessageEvent xcme;
+    
+    xcme.type = ClientMessage;
+    xcme.window = client->window;
+    xcme.message_type = WM_PROTOCOLS;
+    xcme.format = 32;
+    xcme.data.l[0] = (long)data0;
+    xcme.data.l[1] = (long)timestamp;
+    xcme.data.l[2] = data2;
+    xcme.data.l[3] = data3;
+    xcme.data.l[4] = data4;
+    XSendEvent(dpy, client->window, False, 0, &xcme);
 }

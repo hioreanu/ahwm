@@ -4,8 +4,8 @@ SHELL=/bin/sh
 CFLAGS=-Wall -DDEBUG=1 -I/usr/X11R6/include -L/usr/X11R6/lib -g
 LIBS=-lX11
 
-xwm: xwm.o client.o event.o focus.o workspace.o keyboard.o xev.o mouse.o cursor.o move-resize.o error.o
-	$(CC) $(CFLAGS) xev.o xwm.o client.o event.o focus.o workspace.o keyboard.o mouse.o cursor.o move-resize.o error.o -o xwm $(LIBS)
+xwm: xwm.o client.o event.o focus.o workspace.o keyboard.o xev.o mouse.o cursor.o move-resize.o error.o kill.o
+	$(CC) $(CFLAGS) xev.o xwm.o client.o event.o focus.o workspace.o keyboard.o mouse.o cursor.o move-resize.o error.o kill.o -o xwm $(LIBS)
 
 .SUFFIXES: .c .o
 .c.o: $*.h $*.c

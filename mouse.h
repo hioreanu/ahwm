@@ -32,8 +32,8 @@ void mouse_ignore(XEvent *);
 void mouse_set_function_ex(unsigned int button, unsigned int modifiers,
                            int depress, int location, mouse_fn fn);
 
-#define MOUSE_DEPRESS ButtonPressMask
-#define MOUSE_RELEASE ButtonReleaseMask
+#define MOUSE_DEPRESS ButtonPress
+#define MOUSE_RELEASE ButtonRelease
 
 #define MOUSE_NOWHERE    00
 #define MOUSE_TITLEBAR   01
@@ -61,7 +61,8 @@ void mouse_grab_buttons(client_t *client);
 
 /*
  * Whenever a mouse event is received it should be passed to this
- * function; this include XButtonEvent and XMotionNotify, etc.
+ * function; this includes XButtonEvent and XMotionNotify, etc.  The
+ * pointer will NOT be grabbed when this function returns.
  */
 
 void mouse_handle_event(XEvent *);

@@ -26,5 +26,9 @@ extern GC root_invert_gc;
 extern XFontStruct *fontstruct;
 extern Atom WM_STATE;
 extern Atom WM_CHANGE_STATE;
+extern Atom WM_TAKE_FOCUS;
+extern Atom WM_SAVE_YOURSELF;
+extern Atom WM_DELETE_WINDOW;
+extern Atom WM_PROTOCOLS;
 
 #endif /* XWM_H */

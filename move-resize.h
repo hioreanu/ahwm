@@ -18,7 +18,7 @@
  * 
  * Enter - End the move/resize, applying the changes
  * Escape - End the move/resize, discarding the changes
- * Up, Down, Left, Right, j, k, h, l - move or resize
+ * Up, Down, Left, Right, j, k, h, l, w, a, s, d - move or resize
  * Control - change from resizing to moving and vice versa
  * 
  * When invoked from a mouse button down event, the mouse can also be

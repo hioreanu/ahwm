@@ -16,6 +16,7 @@
 #include "mouse.h"
 #include "move-resize.h"
 #include "error.h"
+#include "kill.h"
 
 Display *dpy;
 int scr;
@@ -30,6 +31,10 @@ GC root_invert_gc;
 XFontStruct *fontstruct;
 Atom WM_STATE;
 Atom WM_CHANGE_STATE;
+Atom WM_TAKE_FOCUS;
+Atom WM_SAVE_YOURSELF;
+Atom WM_DELETE_WINDOW;
+Atom WM_PROTOCOLS;
 
 void alt_tab(XEvent *);
 void alt_shift_tab(XEvent *);
@@ -66,6 +71,9 @@ int main(int argc, char **argv)
     int       xfd;
     XGCValues xgcv;
 
+#ifdef DEBUG
+    setvbuf(stdout, NULL, _IONBF, 0);
+#endif /* DEBUG */
     dpy = XOpenDisplay(NULL);
     if (dpy == NULL) {
         fprintf(stderr, "XWM: Could not open display '%s'\n", XDisplayName(NULL));
@@ -91,7 +99,7 @@ int main(int argc, char **argv)
     }
 
     printf("--------------------------------");
-    printf(" Welcome to xwm ");
+    printf(" Welcome to XWM ");
     printf("--------------------------------\n");
 
     /* get the default error handler and set the error handler */
@@ -146,6 +154,7 @@ int main(int argc, char **argv)
 
     window_context = XUniqueContext(); /* client.c */
     frame_context = XUniqueContext();
+    title_context = XUniqueContext();
 
     keyboard_set_function("Alt | Tab", KEYBOARD_DEPRESS, alt_tab);
     keyboard_set_function("Alt | Shift | Tab", KEYBOARD_DEPRESS,
@@ -156,9 +165,23 @@ int main(int argc, char **argv)
                           move_client);
     keyboard_set_function("Control | Alt | Shift | r", KEYBOARD_DEPRESS,
                           resize_client);
+    mouse_set_function("Alt | Button1", MOUSE_DEPRESS, MOUSE_FRAME,
+                       move_client);
+    mouse_set_function("Alt | Button3", MOUSE_DEPRESS, MOUSE_FRAME,
+                       resize_client);
+    mouse_set_function("Button1", MOUSE_DEPRESS, MOUSE_TITLEBAR,
+                       move_client);
+    mouse_set_function("Button2", MOUSE_DEPRESS, MOUSE_TITLEBAR,
+                       kill_nicely);
+    mouse_set_function("Control | Button2", MOUSE_DEPRESS, MOUSE_TITLEBAR,
+                       kill_with_extreme_prejudice);
 
     WM_STATE = XInternAtom(dpy, "WM_STATE", False);
     WM_CHANGE_STATE = XInternAtom(dpy, "WM_CHANGE_STATE", False);
+    WM_TAKE_FOCUS = XInternAtom(dpy, "WM_TAKE_FOCUS", False);
+    WM_SAVE_YOURSELF = XInternAtom(dpy, "WM_SAVE_YOURSELF", False);
+    WM_DELETE_WINDOW = XInternAtom(dpy, "WM_DELETE_WINDOW", False);
+    WM_PROTOCOLS = XInternAtom(dpy, "WM_PROTOCOLS", False);
     
     scan_windows();
 
