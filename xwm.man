@@ -309,7 +309,7 @@ program "xprop" and looking for the "WM_NAME" property.
 This will match based on a window's "class."  This does exact
 string matching.  Windows with the same X window "class" are somehow
 related, perhaps by belonging to the same application.  You can find a
-window's class by using "xprop" and looking for the first value of the
+window's class by using "xprop" and looking for the second value of the
 "WM_CLASS" property.
 
 .TP
@@ -317,7 +317,7 @@ window's class by using "xprop" and looking for the first value of the
 This will match based on a window's "instance."  This does exact
 string matching.  Windows with the same X window "instance" are different
 invocations of the same window.  You can find a window's instance by using
-"xprop" and looking for the second value of the "WM_CLASS" property.
+"xprop" and looking for the first value of the "WM_CLASS" property.
 
 .TP
 .BI "HasTransient " (context)
