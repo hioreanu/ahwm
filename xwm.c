@@ -301,9 +301,9 @@ int main(int argc, char **argv)
                resize_client, NULL);
     mouse_bind("Button1", MOUSE_DEPRESS, MOUSE_TITLEBAR,
                move_client, NULL);
-    mouse_bind("Button2", MOUSE_DEPRESS, MOUSE_TITLEBAR,
+    mouse_bind("Button2", MOUSE_RELEASE, MOUSE_TITLEBAR,
                kill_nicely, NULL);
-    mouse_bind("Control | Button2", MOUSE_DEPRESS, MOUSE_TITLEBAR,
+    mouse_bind("Control | Button2", MOUSE_RELEASE, MOUSE_TITLEBAR,
                kill_with_extreme_prejudice, NULL);
     mouse_bind("Button3", MOUSE_RELEASE, MOUSE_TITLEBAR,
                resize_maximize, NULL);
