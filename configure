@@ -2313,7 +2313,7 @@ cat > conftest.$ac_ext <<EOF
 #include "confdefs.h"
 #include <errno.h>
 int main() {
-void foo() {extern char *syserrlist[]; extern int sysnerr; char *c; extern char *foo; foo = "blah"; c = syserrlist[sysnerr - 1]; }
+void foo() {extern char *syserrlist[]; extern int sysnerr; char *c; c = syserrlist[sysnerr - 1]; }
 ; return 0; }
 EOF
 if { (eval echo configure:2320: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then

@@ -44,6 +44,7 @@
 #include "malloc.h"
 #include "debug.h"
 #include "focus.h"
+#include "paint.h"
 
 #ifndef MIN
 #define MIN(x,y) ((x) < (y) ? (x) : (y))
@@ -377,7 +378,7 @@ void move_client(XEvent *xevent, arglist *ignored)
         if (client->name != NULL) Free(client->name);
         titlebar_display = NULL;
         client_set_name(client);
-        client_paint_titlebar(client);
+        paint_titlebar(client);
         /* must send a synthetic ConfigureNotify to the client
          * according to ICCCM 4.1.5 */
         if (action != RESET) {
@@ -571,7 +572,7 @@ void resize_client(XEvent *xevent, arglist *ignored)
     if (client->titlebar != None) {
         free(client->name);
         client->name = Strdup("");
-        client_paint_titlebar(client);
+        paint_titlebar(client);
     }
     /* just draws the initial drafting lines with FIRST argument */
     process_resize(client, x_start, y_start,
@@ -806,7 +807,7 @@ void resize_client(XEvent *xevent, arglist *ignored)
         if (client->name != NULL) Free(client->name);
         titlebar_display = NULL;
         client_set_name(client);
-        client_paint_titlebar(client);
+        paint_titlebar(client);
     }
 
     debug(("Ungrabbing pointer 7\n"));
@@ -1478,7 +1479,7 @@ static void move_display_geometry(client_t *client)
     }
     geometry_string("Moving", client->name, 256, client,
                     client->x, client->y, client->width, client->height);
-    client_paint_titlebar(client);
+    paint_titlebar(client);
 }
 
 static void resize_display_geometry(client_t *client, int x, int y,

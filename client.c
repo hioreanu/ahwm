@@ -49,6 +49,7 @@
 #include "move-resize.h"
 #include "stacking.h"
 #include "prefs.h"
+#include "mwm.h"
 
 #include "paint.h" /* FIXME: remove */
 
@@ -159,6 +160,7 @@ client_t *client_create(Window w)
     }
 
     prefs_apply(client);
+    mwm_apply(client);
     
     XSelectInput(dpy, client->window,
                  xwa.your_event_mask
@@ -321,7 +323,7 @@ static void client_add_titlebar_internal(client_t *client)
            | CWOverrideRedirect | CWWinGravity;
     xswa.cursor = cursor_normal;
     xswa.background_pixmap = None;
-    xswa.background_pixel = workspace_darkest_highlight[client->workspace - 1];
+    xswa.background_pixel = black;
     xswa.event_mask = ExposureMask;
     xswa.override_redirect = True;
     xswa.win_gravity = NorthWestGravity;
@@ -727,58 +729,6 @@ void _client_print(char *s, client_t *client)
            s, client->name,
            client->instance == NULL ? "NULL" : client->instance,
            client->class == NULL ? "NULL" : client->class));
-}
-
-void client_paint_titlebar(client_t *client)
-{
-    XGCValues xgcv;
-
-    paint_titlebar(client);
-    return;
-
-    if (client == NULL || client->titlebar == None) return;
-    
-    if (client == focus_current && client->focus_policy != DontFocus) {
-        /* using three different GCs instead of using one and
-         * continually changing its values may or may not be faster
-         * (depending on hardware) according to the Xlib docs, but
-         * this seems to reduce flicker when moving windows on my
-         * hardware */
-        xgcv.foreground = workspace_pixels[client->workspace - 1];
-        XChangeGC(dpy, extra_gc1, GCForeground, &xgcv);
-        xgcv.foreground = workspace_highlight[client->workspace - 1];
-        XChangeGC(dpy, extra_gc2, GCForeground, &xgcv);
-        xgcv.foreground = workspace_dark_highlight[client->workspace - 1];
-        XChangeGC(dpy, extra_gc3, GCForeground, &xgcv);
-        
-        XFillRectangle(dpy, client->titlebar, extra_gc1,
-                       0, 0, client->width, TITLE_HEIGHT);
-        
-        XDrawLine(dpy, client->titlebar, extra_gc2, 0, 0,
-                  client->width, 0);
-        XDrawLine(dpy, client->titlebar, extra_gc2, 1, 1,
-                  client->width - 2, 1);
-        XDrawLine(dpy, client->titlebar, extra_gc2,
-                  0, 0, 0, TITLE_HEIGHT);
-        XDrawLine(dpy, client->titlebar, extra_gc2,
-                  1, 1, 1, TITLE_HEIGHT - 2);
-
-        XDrawLine(dpy, client->titlebar, extra_gc3,
-                  1, TITLE_HEIGHT - 1, client->width - 1, TITLE_HEIGHT - 1);
-        XDrawLine(dpy, client->titlebar, extra_gc3,
-                  2, TITLE_HEIGHT - 2, client->width - 3, TITLE_HEIGHT - 2);
-        XDrawLine(dpy, client->titlebar, extra_gc3,
-                  client->width - 1, 1, client->width - 1, TITLE_HEIGHT - 2);
-        XDrawLine(dpy, client->titlebar, extra_gc3,
-                  client->width - 2, 2, client->width - 2, TITLE_HEIGHT - 2);
-    } else {
-        /* we don't draw a border for non-focused windows as that would
-         * require two additional colors (which is bloat) */
-        XClearWindow(dpy, client->titlebar);
-    }
-    
-    XDrawString(dpy, client->titlebar, root_white_fg_gc, 2, TITLE_HEIGHT - 4,
-                client->name, strlen(client->name));
 }
 
 /* ICCCM, 4.1.3.1 */

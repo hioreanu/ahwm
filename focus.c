@@ -64,6 +64,7 @@
 #include "keyboard-mouse.h"
 #include "stacking.h"
 #include "malloc.h"
+#include "paint.h"
 
 typedef struct _focus_node {
     struct _focus_node *next;
@@ -367,7 +368,7 @@ void focus_ensure(Time timestamp)
            (unsigned int)focus_current->window, focus_current->name));
 
     ewmh_active_window_update();
-
+    
     if (in_alt_tab) {
         stacking_raise(focus_current);
         return;
@@ -410,9 +411,10 @@ static void focus_change_current(client_t *new, Time timestamp,
 
     old = focus_current;
     focus_current = new;
-    client_paint_titlebar(old);
-    client_paint_titlebar(new);
+    paint_titlebar(old);
+    paint_titlebar(new);
     if (new != NULL && new->focus_policy == DontFocus) return;
+    if (call_focus_ensure) focus_ensure(timestamp);
     if (old != new) {
         if (old != NULL && old->focus_policy == ClickToFocus) {
             debug(("\tGrabbing Button 1 of 0x%08x\n", old));
@@ -427,7 +429,6 @@ static void focus_change_current(client_t *new, Time timestamp,
             mouse_grab_buttons(new);
         }
     }
-    if (call_focus_ensure) focus_ensure(timestamp);
     XFlush(dpy);
 }
 
@@ -436,7 +437,7 @@ static void focus_change_current(client_t *new, Time timestamp,
 void focus_policy_to_click(client_t *client)
 {
     if (client != focus_current) {
-        debug(("\tGrabbing Button 1 of 0x%08x\n", old));
+        debug(("\tGrabbing Button 1 of 0x%08x\n", client));
         XGrabButton(dpy, Button1, 0, client->frame,
                     True, ButtonPressMask, GrabModeSync,
                     GrabModeAsync, None, None);

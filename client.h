@@ -183,12 +183,6 @@ void client_destroy(client_t *);
 void client_set_name(client_t *);
 
 /*
- * paint the client's titlebar
- */
-
-void client_paint_titlebar(client_t *);
-
-/*
  * Get the client's 'class' and 'instance' using the WM_CLASS
  * property and set the corresponding members in the client
  * structure to newly-allocated strings which contain this

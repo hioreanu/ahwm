@@ -42,24 +42,7 @@
 #define MAX(x,y) ((x) > (y) ? (x) : (y))
 #endif
 
-unsigned long workspace_pixels[NO_WORKSPACES] = { 0 };
-unsigned long workspace_dark_highlight[NO_WORKSPACES];
-unsigned long workspace_darkest_highlight[NO_WORKSPACES];
-unsigned long workspace_highlight[NO_WORKSPACES];
-
 unsigned int workspace_current = 1;
-
-static char *workspace_colors[NO_WORKSPACES] = {
-    "#404040",                  /* dark gray */
-    "#2F4F4F",                  /* blue-greenish */
-    "#000050",                  /* blue */
-    "#500000",                  /* red */
-    "#500050",                  /* violet */
-    "#005000",                  /* green */
-    "#101010"                   /* black */
-};
-
-static void alloc_workspace_colors();
 
 void workspace_goto_bindable(XEvent *e, arglist *args)
 {
@@ -76,11 +59,6 @@ static Bool unmap(client_t *client, void *v)
     
     if (client->omnipresent) {
         client->workspace = (unsigned int)v;
-        if (client->titlebar != None) {
-            xswa.background_pixel =
-                workspace_darkest_highlight[client->workspace - 1];
-            XChangeWindowAttributes(dpy, client->titlebar, CWBackPixel, &xswa);
-        }
     } else {
         XUnmapWindow(dpy, client->frame);
         debug(("\tUnmapping frame %#lx in workspace_goto\n",
@@ -120,7 +98,7 @@ void workspace_goto(unsigned int new_workspace)
      * the windows have contrasting colors; therefore we map a
      * temporary window to cover up our actions.
      * Little things like this make a big difference. */
-    xswa.background_pixel = workspace_pixels[workspace_current - 1];
+    xswa.background_pixel = black; /* FIXME */
     xswa.override_redirect = True;
     stacking_hiding_window = XCreateWindow(dpy, root_window, 0, 0,
                                            scr_width, scr_height,
@@ -136,7 +114,6 @@ void workspace_goto(unsigned int new_workspace)
     focus_forall(unmap, (void *)new_workspace);
     
     workspace_current = new_workspace;
-    workspace_update_color();
 
     /* map windows in new workspace */
     focus_forall(map, NULL);
@@ -152,7 +129,6 @@ void workspace_goto(unsigned int new_workspace)
 void move_with_transients(client_t *client, unsigned int ws)
 {
     client_t *transient;
-    XSetWindowAttributes xswa;
     
     for (transient = client->transients;
          transient != NULL;
@@ -163,10 +139,6 @@ void move_with_transients(client_t *client, unsigned int ws)
     }
     debug(("\tMoving window %#lx ('%.10s') to workspace %d\n",
            client->window, client->name, ws));
-    
-    xswa.background_pixel =
-        workspace_darkest_highlight[ws - 1];
-    XChangeWindowAttributes(dpy, client->titlebar, CWBackPixel, &xswa);
     
     focus_remove(client, event_timestamp);
     ewmh_client_list_remove(client);
@@ -214,66 +186,4 @@ void workspace_client_moveto(client_t *client, unsigned int ws)
      * intact as we move the transients */
 
     move_with_transients(client, ws);
-}
-
-/* addition and subtraction without overflow */
-#define SUB(x,y) ((x) < (y) ? 0 : ((x) - (y)))
-#define ADD(x,y) (((((x) + (y)) > 0xFFFF) || ((x) + (y) < (x))) ? \
-                  0xFFFF : ((x) + (y)))
-
-static void alloc_workspace_colors()
-{
-    int i;
-    XColor usable, exact;
-
-    for (i = 0; i < NO_WORKSPACES; i++) {
-        if (XAllocNamedColor(dpy, DefaultColormap(dpy, scr), workspace_colors[i],
-                             &usable, &exact) == 0) {
-            fprintf(stderr, "XWM: Could not get color \"%s\"\n",
-                    workspace_colors[i]);
-        }
-        workspace_pixels[i] = usable.pixel;
-        usable.flags = DoRed | DoGreen | DoBlue;
-        usable.red = SUB(exact.red, 4096);
-        usable.green = SUB(exact.green, 4096);
-        usable.blue = SUB(exact.blue, 4096);
-        if (XAllocColor(dpy, DefaultColormap(dpy, scr), &usable) == 0) {
-            fprintf(stderr,
-                    "XWM: Could not allocate dark highlight of color \"%s\"\n",
-                    workspace_colors[i]);
-        }
-        workspace_dark_highlight[i] = usable.pixel;
-        usable.red = SUB(exact.red, 8192);
-        usable.green = SUB(exact.green, 8192);
-        usable.blue = SUB(exact.blue, 8192);
-        if (XAllocColor(dpy, DefaultColormap(dpy, scr), &usable) == 0) {
-            fprintf(stderr,
-                    "XWM: Could not allocate dark highlight of color \"%s\"\n",
-                    workspace_colors[i]);
-        }
-        workspace_darkest_highlight[i] = usable.pixel;
-        usable.red = ADD(exact.red, 4096);
-        usable.green = ADD(exact.green, 4096);
-        usable.blue = ADD(exact.blue, 4096);
-        if (XAllocColor(dpy, DefaultColormap(dpy, scr), &usable) == 0) {
-            fprintf(stderr,
-                    "XWM: Could not allocate highlight of color \"%s\"\n",
-                    workspace_colors[i]);
-        }
-        workspace_highlight[i] = usable.pixel;
-    }
-}
-
-void workspace_update_color()
-{
-    static Bool initialized = False;
-    XSetWindowAttributes xswa;
-
-    if (!initialized) {
-        alloc_workspace_colors();
-        initialized = True;
-    }
-    xswa.background_pixel = workspace_pixels[workspace_current - 1];
-    XChangeWindowAttributes(dpy, root_window, CWBackPixel, &xswa);
-    XClearWindow(dpy, root_window);
 }

@@ -33,6 +33,10 @@
  * (xwm.c:scan_windows)).
  */
 
+/*
+ * FIXME:  list crap is slow, use parallel arrays
+ */
+
 #include "config.h"
 
 #include <X11/Xlib.h>

@@ -46,6 +46,8 @@
 #include "ewmh.h"
 #include "place.h"
 #include "stacking.h"
+#include "paint.h"
+#include "mwm.h"
 
 #ifdef SHAPE
 #include <X11/extensions/shape.h>
@@ -101,7 +103,8 @@ static void event_shape(XShapeEvent *);
  * The first observation is actually specified as a standard by the X
  * protocol document, but the second is not.  Therefore, it is
  * conceivable that this won't work on some X servers, but I haven't
- * seen that happen yet.
+ * seen that happen yet.  I have mixed feelings about this:  it's
+ * either an elegant solution or an ugly hack.
  */
 
 static unsigned int ignore_enternotify_hack = 0;
@@ -374,7 +377,6 @@ static void event_create(XCreateWindowEvent *xevent)
 
     client = client_create(xevent->window);
     client_print("Create:", client);
-    if (client == NULL) return;
 }
 
 /*
@@ -511,12 +513,6 @@ static void event_maprequest(XMapRequestEvent *xevent)
     if (client->workspace == 0) {
         client->workspace = workspace_current;
         prefs_apply(client); /* not needed, see prefs.c:context_applies() */
-        if (client->titlebar != None) {
-            XSetWindowAttributes xswa;
-            xswa.background_pixel =
-                workspace_darkest_highlight[workspace_current - 1];
-            XChangeWindowAttributes(dpy, client->titlebar, CWBackPixel, &xswa);
-        }
     }
 
     if (client->state == NormalState
@@ -693,7 +689,7 @@ static void event_property(XPropertyEvent *xevent)
         debug(("\tWM_NAME, changing client->name\n"));
         Free(client->name);
         client_set_name(client);
-        client_paint_titlebar(client);
+        paint_titlebar(client);
     } else if (xevent->atom == XA_WM_CLASS) {
         debug(("\tWM_CLASS, changing client->[class, instance]\n"));
         if (client->class != None) XFree(client->class);
@@ -713,6 +709,8 @@ static void event_property(XPropertyEvent *xevent)
         client_set_protocols(client);
     } else if (xevent->atom == XA_WM_TRANSIENT_FOR) {
         client_set_transient_for(client);
+    } else if (xevent->atom == _MOTIF_WM_HINTS) {
+        mwm_apply(client);
     }
 }
 
@@ -769,7 +767,7 @@ static void event_expose(XExposeEvent *xevent)
     
     client = client_find(xevent->window);
     if (client != NULL)
-        client_paint_titlebar(client);
+        paint_titlebar(client);
 }
 
 /*

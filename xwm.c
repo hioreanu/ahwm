@@ -59,6 +59,7 @@
 #include "icccm.h"
 #include "ewmh.h"
 #include "paint.h"
+#include "mwm.h"
 
 Display *dpy;
 int scr;
@@ -88,7 +89,7 @@ int shape_event_base;
 #endif
 
 #ifdef DEBUG
-void mark(XEvent *e, void *arg);
+void mark(XEvent *e, struct _arglist *ignored);
 #endif
 
 static int already_running_windowmanager;
@@ -251,8 +252,8 @@ int main(int argc, char **argv)
     paint_init();
     icccm_init();
     ewmh_init();
+    mwm_init();
     keyboard_init();
-    workspace_update_color();
 
 #ifdef DEBUG
     keyboard_bind("Control | Alt | Shift | l", KEYBOARD_DEPRESS,
