@@ -52,6 +52,7 @@
 #include "focus.h"
 #include "kill.h"
 #include "move-resize.h"
+#include "malloc.h"
 
 #include "default-xwmrc.h"
 
@@ -104,8 +105,12 @@ static prefs defaults = {
 };
 
 static line *contexts;
+static definition **definitions = NULL;
+static int ndefinitions = 0;
 
 static void set_default(option *opt);
+static void make_definition(definition *def);
+static void invocation_string_to_int(arglist *arg);
 static void get_int(type *typ, int *val);
 static void get_string(type *typ, char **val);
 static void get_bool(type *typ, Bool *val);
@@ -127,12 +132,14 @@ static void prefs_apply_internal(client_t *client, line *block, prefs *p);
 static void globally_bind(line *lp);
 static void globally_unbind(line *lp);
 static int no_config(char *xwmrc_path);
+static void invoke(XEvent *e, arglist *args);
 
 void prefs_init()
 {
     char buf[PATH_MAX];
     char *home;
     line *lp, *prev, *first_context, *last_context, *last_line, *first_line;
+    int def_number = 0;
     extern FILE *yyin;
 
     home = getenv("HOME");
@@ -180,6 +187,8 @@ void prefs_init()
                 break;
             case OPTION:
                 set_default(lp->line_value.option);
+                break;
+            case DEFINITION:
                 break;
             default:
                 if (first_line == NULL) {
@@ -263,6 +272,34 @@ static void set_default(option *opt)
     }
 }
 
+static void make_definition(definition *def)
+{
+    definition **tmp;
+    
+    if (definitions == NULL) {
+        definitions = Malloc(sizeof(definition));
+        if (definitions == NULL) {
+            fprintf(stderr,
+                    "XWM: parsing definition of %s: malloc: %s\n",
+                    def->identifier, strerror(errno));
+            return;
+        }
+        ndefinitions = 1;
+    } else {
+        ndefinitions++;
+        tmp = Realloc(definitions, sizeof(definition) * ndefinitions);
+        if (tmp == NULL) {
+            ndefinitions--;
+            fprintf(stderr,
+                    "XWM: parsing definitions of %s: realloc: %s\n",
+                    def->identifier, strerror(errno));
+            return;
+        }
+        definitions = tmp;
+    }
+    definitions[ndefinitions - 1] = def;
+}
+
 static line *type_check(line *block)
 {
     line *lp, *prev, *first_ok;
@@ -296,6 +333,10 @@ static line *type_check(line *block)
             case MOUSEUNBINDING:
                 line_ok =
                     type_check_mouseunbinding(lp->line_value.mouseunbinding);
+                break;
+            case DEFINITION:
+                /* we fill the "definitions" table on type checking */
+                make_definition(lp->line_value.definition);
                 break;
         }
         if (line_ok == True) {
@@ -465,6 +506,8 @@ static Bool type_check_mouseunbinding(mouseunbinding *mub)
 
 static Bool type_check_function(function *fn)
 {
+    arglist *al;
+    
     switch (fn->function_type) {
         case CYCLENEXT:
         case CYCLEPREV:
@@ -518,9 +561,12 @@ static Bool type_check_function(function *fn)
             if (fn->function_args == NULL) {
                 return False;
             }
-            if (CHECK_STRING(fn->function_args->arglist_arg) == True) {
-                return True;
+            for (al = fn->function_args; al != NULL; al = al->arglist_next) {
+                if (CHECK_STRING(al->arglist_arg) == False) {
+                    return False;
+                }
             }
+            return True;
             break;
         default:
             return False;
@@ -528,160 +574,24 @@ static Bool type_check_function(function *fn)
 }
 
 /*
- * this function has two stages:
- * first, we get the preferences for the client; eg, we see if the
- * client needs a titlebar.
- * second, we apply those preferences; eg, we add or remove the
- * titlebar.
- * This function may be called at any time during the client's
- * lifetime, so we can't assume anything about the client's state
- * (ie, whether the client has been reparented, mapped, etc.).
- * We break it up into two stages so we don't, for example, add
- * and remove a titlebar multiple times on each call.
+ * We don't want to do list walking and string comparisons whenever
+ * we apply an invocation, so we do them on startup.  This changes
+ * the invocation's argument from a string representing the name
+ * of the definition to invoke into an integer index into the
+ * "definitions" table.  Works kind of like a symbol table.
  */
-
-void prefs_apply(client_t *client)
+static void invocation_string_to_int(arglist *arglist)
 {
-    prefs p;
+    int i;
 
-    memcpy(&p, &defaults, sizeof(prefs));
-
-    prefs_apply_internal(client, contexts, &p);
-
-    if (client->state == WithdrawnState) {
-        if (client->workspace_set <= p.workspace_set) {
-            client->workspace = p.workspace;
-            client->workspace_set = p.workspace_set;
+    for (i = 0; i < ndefinitions; i++) {
+        if (strcmp(definitions[i]->identifier,
+                   arglist->arglist_arg->type_value.stringval) == 0) {
+            arglist->arglist_arg->type_type = INTEGER;
+            arglist->arglist_arg->type_value.intval = i;
+            return;
         }
     }
-
-    if (client->has_titlebar_set <= p.titlebar_set) {
-        if (p.titlebar == True) {
-            if (!client->has_titlebar) {
-                client->has_titlebar = 1;
-                if (client->frame != None) {
-                    client_add_titlebar(client);
-                    client->has_titlebar_set = p.titlebar_set;
-                }
-            }
-        } else {
-            if (client->has_titlebar) {
-                client->has_titlebar = 0;
-                if (client->frame != None) {
-                    client_remove_titlebar(client);
-                    client->has_titlebar_set = p.titlebar_set;
-                }
-            }
-        }
-    }
-    if (client->cycle_behaviour_set <= p.cycle_behaviour_set) {
-        switch (p.cycle_behaviour) {
-            case TYPE_SKIP_CYCLE:
-                client->cycle_behaviour = SkipCycle;
-                client->cycle_behaviour_set = p.cycle_behaviour_set;
-                break;
-            case TYPE_RAISE_IMMEDIATELY:
-                client->cycle_behaviour = RaiseImmediately;
-                client->cycle_behaviour_set = p.cycle_behaviour_set;
-                break;
-            case TYPE_RAISE_ON_CYCLE_FINISH:
-                client->cycle_behaviour = RaiseOnCycleFinish;
-                client->cycle_behaviour_set = p.cycle_behaviour_set;
-                break;
-            case TYPE_DONT_RAISE:
-                client->cycle_behaviour = DontRaise;
-                client->cycle_behaviour_set = p.cycle_behaviour_set;
-                break;
-        }
-    }
-    if (client->omnipresent_set <= p.omnipresent_set) {
-        if (p.omnipresent) {
-            client->omnipresent = 1;
-            client->omnipresent_set = p.omnipresent_set;
-        } else {
-            client->omnipresent = 0;
-            client->omnipresent_set = p.omnipresent_set;
-        }
-    }
-    if (client->focus_policy_set <= p.focus_policy_set) {
-        switch (p.focus_policy) {
-            case TYPE_SLOPPY_FOCUS:
-                if (client->focus_policy == ClickToFocus) {
-                    focus_policy_from_click(client);
-                }
-                client->focus_policy = SloppyFocus;
-                client->focus_policy_set = p.focus_policy_set;
-                break;
-            case TYPE_CLICK_TO_FOCUS:
-                if (client->focus_policy != ClickToFocus) {
-                    focus_policy_to_click(client);
-                }
-                client->focus_policy = ClickToFocus;
-                client->focus_policy_set = p.focus_policy_set;
-                break;
-            case TYPE_DONT_FOCUS:
-                if (client->focus_policy == ClickToFocus) {
-                    focus_policy_from_click(client);
-                }
-                client->focus_policy = DontFocus;
-                client->focus_policy_set = p.focus_policy_set;
-                break;
-        }
-    }
-    if (client->always_on_top_set <= p.always_on_top_set) {
-        if (p.always_on_top) {
-            if (client->always_on_top == 0) {
-                client->always_on_top = 1;
-                client->always_on_top_set = p.always_on_top_set;
-                /* moves to top of always-on-top windows: */
-                stacking_remove(client);
-                stacking_add(client);
-            }
-        } else {
-            if (client->always_on_top == 1) {
-                client->always_on_top = 0;
-                client->always_on_top_set = p.always_on_top_set;
-                /* moves to top of not always-on-top windows: */
-                stacking_remove(client);
-                stacking_add(client);
-            }
-        }
-    }
-    if (client->always_on_bottom_set <= p.always_on_bottom_set) {
-        if (p.always_on_bottom) {
-            if (client->always_on_bottom == 0) {
-                client->always_on_bottom = 1;
-                client->always_on_bottom_set = p.always_on_bottom_set;
-                /* moves to top of always-on-bottom windows: */
-                stacking_remove(client);
-                stacking_add(client);
-            }
-        } else {
-            if (client->always_on_bottom == 1) {
-                client->always_on_bottom = 0;
-                client->always_on_bottom_set = p.always_on_bottom_set;
-                /* moves to top of not always-on-bottom windows: */
-                stacking_remove(client);
-                stacking_add(client);
-            }
-        }
-    }
-    if (client->pass_focus_click <= p.pass_focus_click_set) {
-        if (p.pass_focus_click) {
-            client->pass_focus_click = 1;
-            client->pass_focus_click_set = p.pass_focus_click_set;
-        } else {
-            client->pass_focus_click = 0;
-            client->pass_focus_click_set = p.pass_focus_click_set;
-        }
-    }
-
-    paint_calculate_colors(client, p.titlebar_color,
-                           p.titlebar_focused_color,
-                           p.titlebar_text_color,
-                           p.titlebar_text_focused_color);
-
-    /* ADDOPT 10: apply the option to the client */
 }
 
 static void prefs_apply_internal(client_t *client, line *block, prefs *p)
@@ -908,6 +818,163 @@ static void mouseunbinding_apply(client_t *client, mouseunbinding *kb)
     /* FIXME */
 }
 
+/*
+ * this function has two stages:
+ * first, we get the preferences for the client; eg, we see if the
+ * client needs a titlebar.
+ * second, we apply those preferences; eg, we add or remove the
+ * titlebar.
+ * This function may be called at any time during the client's
+ * lifetime, so we can't assume anything about the client's state
+ * (ie, whether the client has been reparented, mapped, etc.).
+ * We break it up into two stages so we don't, for example, add
+ * and remove a titlebar multiple times on each call.
+ */
+
+void prefs_apply(client_t *client)
+{
+    prefs p;
+
+    memcpy(&p, &defaults, sizeof(prefs));
+
+    prefs_apply_internal(client, contexts, &p);
+
+    if (client->state == WithdrawnState) {
+        if (client->workspace_set <= p.workspace_set) {
+            client->workspace = p.workspace;
+            client->workspace_set = p.workspace_set;
+        }
+    }
+
+    if (client->has_titlebar_set <= p.titlebar_set) {
+        if (p.titlebar == True) {
+            if (!client->has_titlebar) {
+                client->has_titlebar = 1;
+                if (client->frame != None) {
+                    client_add_titlebar(client);
+                    client->has_titlebar_set = p.titlebar_set;
+                }
+            }
+        } else {
+            if (client->has_titlebar) {
+                client->has_titlebar = 0;
+                if (client->frame != None) {
+                    client_remove_titlebar(client);
+                    client->has_titlebar_set = p.titlebar_set;
+                }
+            }
+        }
+    }
+    if (client->cycle_behaviour_set <= p.cycle_behaviour_set) {
+        switch (p.cycle_behaviour) {
+            case TYPE_SKIP_CYCLE:
+                client->cycle_behaviour = SkipCycle;
+                client->cycle_behaviour_set = p.cycle_behaviour_set;
+                break;
+            case TYPE_RAISE_IMMEDIATELY:
+                client->cycle_behaviour = RaiseImmediately;
+                client->cycle_behaviour_set = p.cycle_behaviour_set;
+                break;
+            case TYPE_RAISE_ON_CYCLE_FINISH:
+                client->cycle_behaviour = RaiseOnCycleFinish;
+                client->cycle_behaviour_set = p.cycle_behaviour_set;
+                break;
+            case TYPE_DONT_RAISE:
+                client->cycle_behaviour = DontRaise;
+                client->cycle_behaviour_set = p.cycle_behaviour_set;
+                break;
+        }
+    }
+    if (client->omnipresent_set <= p.omnipresent_set) {
+        if (p.omnipresent) {
+            client->omnipresent = 1;
+            client->omnipresent_set = p.omnipresent_set;
+        } else {
+            client->omnipresent = 0;
+            client->omnipresent_set = p.omnipresent_set;
+        }
+    }
+    if (client->focus_policy_set <= p.focus_policy_set) {
+        switch (p.focus_policy) {
+            case TYPE_SLOPPY_FOCUS:
+                if (client->focus_policy == ClickToFocus) {
+                    focus_policy_from_click(client);
+                }
+                client->focus_policy = SloppyFocus;
+                client->focus_policy_set = p.focus_policy_set;
+                break;
+            case TYPE_CLICK_TO_FOCUS:
+                if (client->focus_policy != ClickToFocus) {
+                    focus_policy_to_click(client);
+                }
+                client->focus_policy = ClickToFocus;
+                client->focus_policy_set = p.focus_policy_set;
+                break;
+            case TYPE_DONT_FOCUS:
+                if (client->focus_policy == ClickToFocus) {
+                    focus_policy_from_click(client);
+                }
+                client->focus_policy = DontFocus;
+                client->focus_policy_set = p.focus_policy_set;
+                break;
+        }
+    }
+    if (client->always_on_top_set <= p.always_on_top_set) {
+        if (p.always_on_top) {
+            if (client->always_on_top == 0) {
+                client->always_on_top = 1;
+                client->always_on_top_set = p.always_on_top_set;
+                /* moves to top of always-on-top windows: */
+                stacking_remove(client);
+                stacking_add(client);
+            }
+        } else {
+            if (client->always_on_top == 1) {
+                client->always_on_top = 0;
+                client->always_on_top_set = p.always_on_top_set;
+                /* moves to top of not always-on-top windows: */
+                stacking_remove(client);
+                stacking_add(client);
+            }
+        }
+    }
+    if (client->always_on_bottom_set <= p.always_on_bottom_set) {
+        if (p.always_on_bottom) {
+            if (client->always_on_bottom == 0) {
+                client->always_on_bottom = 1;
+                client->always_on_bottom_set = p.always_on_bottom_set;
+                /* moves to top of always-on-bottom windows: */
+                stacking_remove(client);
+                stacking_add(client);
+            }
+        } else {
+            if (client->always_on_bottom == 1) {
+                client->always_on_bottom = 0;
+                client->always_on_bottom_set = p.always_on_bottom_set;
+                /* moves to top of not always-on-bottom windows: */
+                stacking_remove(client);
+                stacking_add(client);
+            }
+        }
+    }
+    if (client->pass_focus_click <= p.pass_focus_click_set) {
+        if (p.pass_focus_click) {
+            client->pass_focus_click = 1;
+            client->pass_focus_click_set = p.pass_focus_click_set;
+        } else {
+            client->pass_focus_click = 0;
+            client->pass_focus_click_set = p.pass_focus_click_set;
+        }
+    }
+
+    paint_calculate_colors(client, p.titlebar_color,
+                           p.titlebar_focused_color,
+                           p.titlebar_text_color,
+                           p.titlebar_text_focused_color);
+
+    /* ADDOPT 10: apply the option to the client */
+}
+
 /* FIXME:  this should probably get its own module */
 /* in addition, this is pretty ugly */
 /* could prolly just move all this into the parser */
@@ -930,7 +997,7 @@ key_fn fn_table[] = {
 /* 15 */    NULL, /* non-interactive move/resize, must implement */
 /* 16 */    xwm_quit,
 /* 17 */    NULL, /* beep */
-/* 18 */    NULL, /* invoke composed function */
+/* 18 */    invoke,
 /* 19 */    NULL, /* expansion for menu system */
 /* 20 */    NULL, /* refresh/reset */
 };
@@ -998,4 +1065,40 @@ static int no_config(char *xwmrc_path)
     }
     fseek(yyin, 0, SEEK_SET);
     return 1;
+}
+
+/*
+ * The first time a definition is invoked, the arguments to the
+ * invocation (and all subsequent invocation) are changed from strings
+ * to integers.  The integer arguments denote indices into the
+ * "definitions" table.  This does not break type checking as type
+ * checking has already happenned by the time the user can invoke any
+ * bindable functions.  We do this so we don't have to do any
+ * searching or string comparisons whenever the user invokes a
+ * function composition.
+ */
+
+static void invoke(XEvent *e, arglist *args)
+{
+    arglist *al;
+    funclist *fl;
+    int i, j;
+    key_fn fn;
+    
+    for (al = args; al != NULL; al = al->arglist_next) {
+        if (al->arglist_arg->type_type != INTEGER) {
+            invocation_string_to_int(args);
+        }
+        i = al->arglist_arg->type_value.intval;
+        if (al->arglist_arg->type_type != INTEGER ||
+            i < 0 || i >= ndefinitions) {
+            continue;
+        }
+        for (fl = definitions[i]->funclist; fl != NULL; fl = fl->next) {
+            fn = fn_table[fl->func->function_type];
+            if (fn != NULL) {
+                (*fn)(e, fl->func->function_args);
+            }
+        }
+    }
 }

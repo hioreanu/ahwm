@@ -163,6 +163,8 @@ Invoke { return TOK_INVOKE; }
 ShowMenu { return TOK_SHOWMENU; }
 Refresh { return TOK_REFRESH; }
 
+Define { return TOK_DEFINE; }
+
 ";" { return TOK_SEMI; }
 "=" { return TOK_EQUALS; }
 "is!" { return TOK_SET_UNCONDITIONALLY; }

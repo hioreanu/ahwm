@@ -133,6 +133,8 @@
 %token TOK_LPAREN
 %token TOK_RPAREN
 
+%token TOK_DEFINE
+
 %{
 #include "prefs.h"
 line *make_line(int type, void *dollar_one);
@@ -153,6 +155,8 @@ char *make_string(char *s);
     mouseunbinding *value_mouseunbinding;
     function *value_function;
     arglist *value_arglist;
+    definition *value_definition;
+    funclist *value_funclist;
 }
 
 %token <value_string> TOK_STRING
@@ -172,6 +176,8 @@ char *make_string(char *s);
 %type <value_mouseunbinding> mouseunbinding
 %type <value_function> function;
 %type <value_arglist> arglist;
+%type <value_definition> definition;
+%type <value_funclist> function_list;
 
 %%
 
@@ -198,6 +204,7 @@ line: option TOK_SEMI { $$ = make_line(OPTION, $1); }
     | keyunbinding TOK_SEMI { $$ = make_line(KEYUNBINDING, $1); }
     | mousebinding TOK_SEMI { $$ = make_line(MOUSEBINDING, $1); }
     | mouseunbinding TOK_SEMI { $$ = make_line(MOUSEUNBINDING, $1); }
+    | definition { $$ = make_line(DEFINITION, $1); }
     | TOK_SEMI { $$ = make_line(INVALID_LINE, NULL); }
     | error TOK_SEMI
       {
@@ -496,6 +503,35 @@ arglist: arglist TOK_COMMA type
              }
              $$ = al;
          }
+
+definition: TOK_DEFINE TOK_STRING TOK_LBRACE function_list TOK_RBRACE
+            {
+                definition *def = malloc(sizeof(definition));
+                if (def != NULL) {
+                    def->funclist = $4;
+                    def->identifier = make_string($2);
+                }
+                $$ = def;
+            }
+
+function_list: function TOK_SEMI function_list
+               {
+                   funclist *fl = malloc(sizeof(funclist));
+                   if (fl != NULL) {
+                       fl->func = $1;
+                       fl->next = $3;
+                   }
+                   $$ = fl;
+               }
+             | function TOK_SEMI
+               {
+                   funclist *fl = malloc(sizeof(funclist));
+                   if (fl != NULL) {
+                       fl->func = $1;
+                       fl->next = NULL;
+                   }
+                   $$ = fl;
+               }
 
 %%
 

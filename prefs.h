@@ -50,14 +50,18 @@ struct _keybinding;
 typedef struct _keyunbinding keyunbinding;
 struct _mouseunbinding;
 typedef struct _mouseunbinding mouseunbinding;
+struct _definition;
+typedef struct _definition definition;
 struct _function;
 typedef struct _function function;
 struct _arglist;
 typedef struct _arglist arglist;
+struct _funclist;
+typedef struct _funclist funclist;
 
 struct _line {
     enum { INVALID_LINE, CONTEXT, OPTION, KEYBINDING, MOUSEBINDING,
-           KEYUNBINDING, MOUSEUNBINDING } line_type;
+           KEYUNBINDING, MOUSEUNBINDING, DEFINITION } line_type;
     union {
         context *context;
         option *option;
@@ -65,6 +69,7 @@ struct _line {
         keyunbinding *keyunbinding;
         mousebinding *mousebinding;
         mouseunbinding *mouseunbinding;
+        definition *definition;
     } line_value;
     line *line_next;
 };
@@ -165,6 +170,16 @@ struct _function {
            REFRESH = 20,
     } function_type;
     arglist *function_args;
+};
+
+struct _definition {
+    char *identifier;
+    funclist *funclist;
+};
+
+struct _funclist {
+    function *func;
+    funclist *next;
 };
 
 struct _arglist {

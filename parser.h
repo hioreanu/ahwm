@@ -12,6 +12,8 @@ typedef union {
     mouseunbinding *value_mouseunbinding;
     function *value_function;
     arglist *value_arglist;
+    definition *value_definition;
+    funclist *value_funclist;
 } YYSTYPE;
 #define	TOK_DISPLAYTITLEBAR	257
 #define	TOK_OMNIPRESENT	258
@@ -85,9 +87,10 @@ typedef union {
 #define	TOK_COMMA	326
 #define	TOK_LPAREN	327
 #define	TOK_RPAREN	328
-#define	TOK_STRING	329
-#define	TOK_INTEGER	330
-#define	TOK_FLOAT	331
+#define	TOK_DEFINE	329
+#define	TOK_STRING	330
+#define	TOK_INTEGER	331
+#define	TOK_FLOAT	332
 
 
 extern YYSTYPE yylval;

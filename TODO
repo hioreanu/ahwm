@@ -17,7 +17,6 @@ Wishlist:
 - root mouse event proxying for GNOME
 - no need to grab buttons for titlebar binds, just listen for events
 - unbindings don't work at all
-- function composition
 - shading, perhaps with an optional animation
 - may need fake client struct for revert_to window for dynamic bindings
 - allow binding to click and drag on same place
@@ -128,6 +127,7 @@ Finished, no longer TODO:
 - on resize to move, don't allow mouse to be outside window
 - maximize vertical, horizontal
 - clean up the AltTab() crap, see .xwmrc for ideas
+- function composition
 
 Abandoned, no longer TODO:
 - "stop" focus, detect when pointer stops in a window (no timeout) -
