@@ -47,6 +47,7 @@ typedef enum {
 static int keycode_Escape = 0, keycode_Shift_L, keycode_Shift_R;
 static int keycode_Return, keycode_Up, keycode_Down, keycode_Left;
 static int keycode_Right, keycode_j, keycode_k, keycode_l, keycode_h;
+static int keycode_w, keycode_a, keycode_s, keycode_d;
 static int keycode_Control_L, keycode_Control_R;
 
 static int moving = 0;
@@ -102,10 +103,12 @@ void move_client(XEvent *xevent)
         have_mouse = 0;
     } else {
         fprintf(stderr, "XWM: Error, move_client called incorrectly\n");
+        XUngrabPointer(dpy, CurrentTime);
         return;
     }
     if (client == NULL) {
         fprintf(stderr, "XWM: Not moving a non-client\n");
+        XUngrabPointer(dpy, CurrentTime);
         return;
     }
     moving = 1;
@@ -117,11 +120,12 @@ void move_client(XEvent *xevent)
      * cause any problems: */
     /* focus_set(client); */
     /* focus_ensure(); */
-    if (have_mouse)
+    if (have_mouse) {
         XGrabPointer(dpy, root_window, True,
                      PointerMotionMask | ButtonReleaseMask,
                      GrabModeAsync, GrabModeAsync, None,
                      cursor_moving, CurrentTime);
+    }
     XGrabKeyboard(dpy, root_window, True, GrabModeAsync, GrabModeAsync,
                   CurrentTime);
     display_geometry("Moving", client);
@@ -164,7 +168,8 @@ void move_client(XEvent *xevent)
                 
             case KeyPress:
                 if (xevent->xkey.keycode == keycode_Up ||
-                           xevent->xkey.keycode == keycode_k) {
+                    xevent->xkey.keycode == keycode_k ||
+                    xevent->xkey.keycode == keycode_w) {
                     if (have_mouse) {
                         XWarpPointer(dpy, None, None, 0, 0, 0, 0, 0, -1);
                     } else {
@@ -172,7 +177,8 @@ void move_client(XEvent *xevent)
                         move_constrain(client);
                     }
                 } else if (xevent->xkey.keycode == keycode_Down ||
-                           xevent->xkey.keycode == keycode_j) {
+                           xevent->xkey.keycode == keycode_j ||
+                           xevent->xkey.keycode == keycode_s) {
                     if (have_mouse) {
                         XWarpPointer(dpy, None, None, 0, 0, 0, 0, 0, 1);
                     } else {
@@ -180,7 +186,8 @@ void move_client(XEvent *xevent)
                         move_constrain(client);
                     }
                 } else if (xevent->xkey.keycode == keycode_Left ||
-                           xevent->xkey.keycode == keycode_h) {
+                           xevent->xkey.keycode == keycode_h ||
+                           xevent->xkey.keycode == keycode_a) {
                     if (have_mouse) {
                         XWarpPointer(dpy, None, None, 0, 0, 0, 0, -1, 0);
                     } else {
@@ -188,7 +195,8 @@ void move_client(XEvent *xevent)
                         move_constrain(client);
                     }
                 } else if (xevent->xkey.keycode == keycode_Right ||
-                           xevent->xkey.keycode == keycode_l) {
+                           xevent->xkey.keycode == keycode_l ||
+                           xevent->xkey.keycode == keycode_d) {
                     if (have_mouse) {
                         XWarpPointer(dpy, None, None, 0, 0, 0, 0, 1, 0);
                     } else {
@@ -264,7 +272,7 @@ void move_client(XEvent *xevent)
         }
     }
 
-    if (have_mouse) XUngrabPointer(dpy, CurrentTime);
+    XUngrabPointer(dpy, CurrentTime);
     XUngrabKeyboard(dpy, CurrentTime);
     moving = 0;
     if (action == RESIZE) {
@@ -337,6 +345,7 @@ void resize_client(XEvent *xevent)
 #ifdef DEBUG
         printf("\tNot resizing a non-client\n");
 #endif /* DEBUG */
+        if (have_mouse) XUngrabPointer(dpy, CurrentTime);
         return;
     }
     
@@ -424,7 +433,8 @@ void resize_client(XEvent *xevent)
                                    old_resize_direction, &x_start, &y_start,
                                    &orig, FIRST);
                 } else if (xevent->xkey.keycode == keycode_Up ||
-                           xevent->xkey.keycode == keycode_k) {
+                           xevent->xkey.keycode == keycode_k ||
+                           xevent->xkey.keycode == keycode_w) {
                     if (resize_direction != EAST && resize_direction != WEST) {
                         delta = get_height_resize_inc(client);
                         if (have_mouse) {
@@ -438,7 +448,8 @@ void resize_client(XEvent *xevent)
                         }
                     }
                 } else if (xevent->xkey.keycode == keycode_Down ||
-                           xevent->xkey.keycode == keycode_j) {
+                           xevent->xkey.keycode == keycode_j ||
+                           xevent->xkey.keycode == keycode_s) {
                     if (resize_direction != EAST && resize_direction != WEST) {
                         delta = get_height_resize_inc(client);
                         if (have_mouse) {
@@ -452,7 +463,8 @@ void resize_client(XEvent *xevent)
                         }
                     }
                 } else if (xevent->xkey.keycode == keycode_Left ||
-                           xevent->xkey.keycode == keycode_h) {
+                           xevent->xkey.keycode == keycode_h ||
+                           xevent->xkey.keycode == keycode_a) {
                     if (resize_direction != NORTH && resize_direction != SOUTH) {
                         delta = get_width_resize_inc(client);
                         if (have_mouse) {
@@ -466,7 +478,8 @@ void resize_client(XEvent *xevent)
                         }
                     }
                 } else if (xevent->xkey.keycode == keycode_Right ||
-                           xevent->xkey.keycode == keycode_l) {
+                           xevent->xkey.keycode == keycode_l ||
+                           xevent->xkey.keycode == keycode_d) {
                     if (resize_direction != NORTH && resize_direction != SOUTH) {
                         delta = get_width_resize_inc(client);
                         if (have_mouse) {
@@ -554,7 +567,7 @@ void resize_client(XEvent *xevent)
         client_paint_titlebar(client);
     }
 
-    if (have_mouse) XUngrabPointer(dpy, CurrentTime);
+    XUngrabPointer(dpy, CurrentTime);
     XUngrabKeyboard(dpy, CurrentTime);
     sizing = 0;
     if (action == MOVE) {
@@ -1192,6 +1205,10 @@ static void set_keys()
     keycode_k = XKeysymToKeycode(dpy, XK_k);
     keycode_l = XKeysymToKeycode(dpy, XK_l);
     keycode_h = XKeysymToKeycode(dpy, XK_h);
+    keycode_w = XKeysymToKeycode(dpy, XK_w);
+    keycode_a = XKeysymToKeycode(dpy, XK_a);
+    keycode_s = XKeysymToKeycode(dpy, XK_s);
+    keycode_d = XKeysymToKeycode(dpy, XK_d);
     keycode_Control_L = XKeysymToKeycode(dpy, XK_Control_L);
     keycode_Control_R = XKeysymToKeycode(dpy, XK_Control_R);
 }
