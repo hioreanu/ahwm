@@ -19,7 +19,6 @@
 #include "workspace.h"
 #include "keyboard-mouse.h"
 #include "xev.h"
-#include "error.h"
 #include "malloc.h"
 #include "move-resize.h"
 #include "debug.h"

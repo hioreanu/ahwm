@@ -10,6 +10,7 @@
  */
 
 #include <X11/Xlib.h>
+#include <X11/Xproto.h>
 #include <X11/Xresource.h>
 #include <X11/Xutil.h>
 #include <X11/Xatom.h>
@@ -28,7 +29,6 @@
 #include "focus.h"
 #include "cursor.h"
 #include "move-resize.h"
-#include "error.h"
 #include "kill.h"
 #include "workspace.h"
 #include "icccm.h"
@@ -70,6 +70,7 @@ void run_program(XEvent *e, void *arg);
 void mark(XEvent *e, void *arg);
 
 static int already_running_windowmanager;
+static int (*error_default_handler)(Display *, XErrorEvent *);
 
 static void scan_windows();
 
@@ -77,6 +78,15 @@ static int tmp_error_handler(Display *dpy, XErrorEvent *error)
 {
     already_running_windowmanager = 1;
     return -1;
+}
+
+static int error_handler(Display *dpy, XErrorEvent *error)
+{
+    if (error->error_code == BadWindow
+        || (error->request_code == X_SetInputFocus
+            && error->error_code == BadValue))
+        return 0;
+    return error_default_handler(dpy, error);
 }
 
 /*
