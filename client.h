@@ -150,6 +150,7 @@ typedef struct _client_t {
     unsigned int keep_transients_on_top : 1;
     unsigned int raise_delay;
     unsigned int use_net_wm_pid : 1;
+    unsigned int patience;
 
     option_setting workspace_set : 2;
     option_setting focus_policy_set : 2;
@@ -168,6 +169,7 @@ typedef struct _client_t {
     option_setting keep_transients_on_top_set : 2;
     option_setting raise_delay_set : 2;
     option_setting use_net_wm_pid_set : 2;
+    option_setting patience_set : 2;
 } client_t;                     /* 124 bytes on ILP-32 machines FIXME: check */
 
 /* the values for client->protocols, can be ORed together */

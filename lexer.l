@@ -109,6 +109,7 @@ TitlePosition { return TOK_TITLEPOSITION; }
 KeepTransientsOnTop { return TOK_KEEPTRANSIENTSONTOP; }
 RaiseDelay { return TOK_RAISEDELAY; }
 UseNetWmPid { return TOK_USENETWMPID; }
+WindowKillingPatience { return TOK_WINDOWKILLINGPATIENCE; }
 
 SloppyFocus { return TOK_SLOPPY_FOCUS; }
 ClickToFocus { return TOK_CLICK_TO_FOCUS; }

@@ -103,7 +103,9 @@ void kill_nicely(XEvent *xevent, arglist *ignored)
         debug(("\tPolitely requesting window to die\n"));
         client_sendmessage(client, WM_DELETE_WINDOW, event_timestamp,
                            0, 0, 0);
-        set_murder_timer(client);
+        if (client->patience != 0) {
+            set_murder_timer(client);
+        }
     } else {
         debug(("\tWindow isn't civilized, exterminating it\n"));
         kill_with_extreme_prejudice(xevent, ignored);
@@ -205,7 +207,7 @@ static void set_murder_timer(client_t *client)
     info->window = client->window;
     info->client = client;
     info->hash = compute_hash(client);
-    timer_new(1000, murder_on_timeout, info);
+    timer_new(client->patience, murder_on_timeout, info);
 }
 
 static void murder_on_timeout(timer_t *timer, void *v)

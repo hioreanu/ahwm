@@ -132,7 +132,8 @@ struct _option {
            TITLEPOSITION,
            KEEPTRANSIENTSONTOP,
            RAISEDELAY,
-           USENETWMPID
+           USENETWMPID,
+           KILLINGPATIENCE
     } option_name;
     option_setting option_setting;
     type *option_value;

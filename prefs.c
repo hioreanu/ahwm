@@ -110,6 +110,8 @@ typedef struct _prefs {
     option_setting raise_delay_set;
     Bool use_net_wm_pid;
     option_setting use_net_wm_pid_set;
+    int patience;
+    option_setting patience_set;
 } prefs;
 
 /* ADDOPT 6: set default value */
@@ -132,7 +134,8 @@ static prefs defaults = {
     DisplayLeft, UserSet,         /* title_position */
     True, UserSet,                /* keep_transients_on_top */
     0, UserSet,                   /* raise_delay */
-    True, UserSet,               /* use_net_wm_pid */
+    False, UserSet,               /* use_net_wm_pid */
+    0, UserSet,                   /* patience */
 };
 
 /* names of the types
@@ -566,6 +569,10 @@ static Bool type_check_option(option *opt)
             retval = type_check_helper(opt->option_value, BOOLEAN,
                                        "UseNetWmPid", "option");
             break;
+        case KILLINGPATIENCE:
+            retval = type_check_helper(opt->option_value, INTEGER,
+                                       "WindowKillingPatience", "option");
+            break;
         default:
             fprintf(stderr, "AHWM: unknown option type found...\n");
             retval = False;
@@ -948,6 +955,10 @@ static void option_apply(client_t *client, option *opt, prefs *p)
             get_bool(opt->option_value, &p->use_net_wm_pid);
             p->use_net_wm_pid_set = opt->option_setting;
             break;
+        case KILLINGPATIENCE:
+            get_int(opt->option_value, &p->patience);
+            p->patience_set = opt->option_setting;
+            break;
         default:
             /* nothing */
     }
@@ -1171,6 +1182,10 @@ void prefs_apply(client_t *client)
     if (client->use_net_wm_pid_set <= p.use_net_wm_pid_set) {
         client->use_net_wm_pid = p.use_net_wm_pid;
         client->use_net_wm_pid_set = p.use_net_wm_pid_set;
+    }
+    if (client->patience_set <= p.patience_set) {
+        client->patience = p.patience;
+        client->patience_set = p.patience_set;
     }
     
     /* ADDOPT 9: apply the option to the client */
