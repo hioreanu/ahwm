@@ -23,18 +23,19 @@ typedef struct _keybinding {
     unsigned int modifiers;
     int depress;
     key_fn function;
+    void *arg;
     struct _keybinding *next;
 } keybinding;
 
 static keybinding *bindings = NULL;
 
-void keyboard_ignore(XEvent *e)
+void keyboard_ignore(XEvent *e, void *v)
 {
     return;
 }
 
 void keyboard_set_function_ex(unsigned int keycode, unsigned int modifiers,
-                              int depress, key_fn fn)
+                              int depress, key_fn fn, void *arg)
 {
     keybinding *newbinding;
 
@@ -48,12 +49,14 @@ void keyboard_set_function_ex(unsigned int keycode, unsigned int modifiers,
     newbinding->modifiers = modifiers;
     newbinding->depress = depress;
     newbinding->function = fn;
+    newbinding->arg = arg;
     bindings = newbinding;
 }
 
 /* FIXME: should also apply the bindings to all active clients */
 
-void keyboard_set_function(char *keystring, int depress, key_fn fn)
+void keyboard_set_function(char *keystring, int depress,
+                           key_fn fn, void *arg)
 {
     unsigned int keycode;
     unsigned int modifiers;
@@ -62,7 +65,7 @@ void keyboard_set_function(char *keystring, int depress, key_fn fn)
         fprintf(stderr, "XWM: Cannot bind key, bad keystring '%s'\n", keystring);
         return;
     }
-    keyboard_set_function_ex(keycode, modifiers, depress, fn);
+    keyboard_set_function_ex(keycode, modifiers, depress, fn, arg);
 }
 
 void keyboard_grab_keys(client_t *client)
@@ -95,7 +98,7 @@ void keyboard_process(XKeyEvent *xevent)
         if (kb->keycode == code) {
             if (kb->modifiers == xevent->state
                 && (kb->depress & xevent->type) == xevent->type) {
-                (*kb->function)((XEvent *)xevent);
+                (*kb->function)((XEvent *)xevent, kb->arg);
                 return;
             }
         }

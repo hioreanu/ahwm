@@ -5,6 +5,7 @@
  */
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include "xwm.h"
@@ -45,9 +46,9 @@ int shape_supported;
 int shape_event_base;
 #endif
 
-void alt_tab(XEvent *);
-void alt_shift_tab(XEvent *);
-void control_alt_shift_t(XEvent *);
+void alt_tab(XEvent *, void *arg);
+void alt_shift_tab(XEvent *, void *arg);
+void run_program(XEvent *e, void *arg);
 
 static int already_running_windowmanager;
 
@@ -165,27 +166,33 @@ int main(int argc, char **argv)
     frame_context = XUniqueContext();
     title_context = XUniqueContext();
 
-    keyboard_set_function("Alt | Tab", KEYBOARD_DEPRESS, alt_tab);
-    keyboard_set_function("Alt | Shift | Tab", KEYBOARD_DEPRESS,
-                          alt_shift_tab);
     keyboard_set_function("Control | Alt | Shift | t", KEYBOARD_DEPRESS,
-                          control_alt_shift_t);
+                          run_program, "xterm");
+    keyboard_set_function("Control | Alt | Shift | n", KEYBOARD_DEPRESS,
+                          run_program, "netscape");
+    keyboard_set_function("Control | Alt | Shift | k", KEYBOARD_DEPRESS,
+                          run_program, "konqueror");
+    keyboard_set_function("Control | Alt | Shift | e", KEYBOARD_DEPRESS,
+                          run_program, "emacs");
+    keyboard_set_function("Alt | Tab", KEYBOARD_DEPRESS, alt_tab, NULL);
+    keyboard_set_function("Alt | Shift | Tab", KEYBOARD_DEPRESS,
+                          alt_shift_tab, NULL);
     keyboard_set_function("Control | Alt | Shift | m", KEYBOARD_DEPRESS,
-                          move_client);
+                          move_client, NULL);
     keyboard_set_function("Control | Alt | Shift | r", KEYBOARD_DEPRESS,
-                          resize_client);
+                          resize_client, NULL);
     mouse_set_function("Alt | Button1", MOUSE_DEPRESS, MOUSE_FRAME,
-                       move_client);
+                       move_client, NULL);
     mouse_set_function("Alt | Button3", MOUSE_DEPRESS, MOUSE_FRAME,
-                       resize_client);
+                       resize_client, NULL);
     mouse_set_function("Button1", MOUSE_DEPRESS, MOUSE_TITLEBAR,
-                       move_client);
+                       move_client, NULL);
     mouse_set_function("Button2", MOUSE_DEPRESS, MOUSE_TITLEBAR,
-                       kill_nicely);
+                       kill_nicely, NULL);
     mouse_set_function("Control | Button2", MOUSE_DEPRESS, MOUSE_TITLEBAR,
-                       kill_with_extreme_prejudice);
+                       kill_with_extreme_prejudice, NULL);
     mouse_set_function("Button3", MOUSE_DEPRESS, MOUSE_TITLEBAR,
-                       resize_maximize);
+                       resize_maximize, NULL);
 
     WM_STATE = XInternAtom(dpy, "WM_STATE", False);
     WM_CHANGE_STATE = XInternAtom(dpy, "WM_CHANGE_STATE", False);
@@ -236,20 +243,21 @@ static void scan_windows()
     if (wins != NULL) XFree(wins);
 }
 
-void alt_tab(XEvent *e)
+void alt_tab(XEvent *e, void *arg)
 {
     focus_next(event_timestamp);
 }
 
-void alt_shift_tab(XEvent *e)
+void alt_shift_tab(XEvent *e, void *arg)
 {
     focus_prev(event_timestamp);
 }
 
-void control_alt_shift_t(XEvent *e)
+void run_program(XEvent *e, void *arg)
 {
     if (fork() == 0) {
-        execlp("/usr/X11R6/bin/xterm", "xterm", NULL);
+/*        execlp(arg, arg, NULL); */
+        system((char *)arg);
         _exit(0);
     }
 }

@@ -43,20 +43,21 @@
  * 
  * These functions will grab the keyboard and may grab the mouse; they
  * also have their own event loops.  It does not make sense to move
- * and resize at the same time (use Control key to toggle).
+ * and resize at the same time (use Control key to toggle).  The void
+ * * argument is ignored.
  */
 
-void move_client(XEvent *xevent);
-void resize_client(XEvent *xevent);
+void move_client(XEvent *xevent, void *v);
+void resize_client(XEvent *xevent, void *v);
 
 /*
  * Toggle maximization state; if client->prev_width == -1 or
  * client->prev_heigth == -1, then the client is NOT maximized; else
  * the client is maximized and client->prev* holds the previous window
  * configuration.  This manipulates those appropriate attributes and
- * toggles the maximization state.
+ * toggles the maximization state.  The void * argument is ignored.
  */
 
-void resize_maximize(XEvent *xevent);
+void resize_maximize(XEvent *xevent, void *v);
 
 #endif /* MOVE_RESIZE_H */

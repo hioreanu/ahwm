@@ -17,20 +17,20 @@
 
 /* Functions which are called in response to mouse events: */
 
-typedef void (*mouse_fn)(XEvent *);
+typedef void (*mouse_fn)(XEvent *, void *);
 
 /*
  * An example function of the above type which does nothing
  */
 
-void mouse_ignore(XEvent *);
+void mouse_ignore(XEvent *, void *);
 
 /*
  * FIXME:  document
  */
 
 void mouse_set_function_ex(unsigned int button, unsigned int modifiers,
-                           int depress, int location, mouse_fn fn);
+                           int depress, int location, mouse_fn fn, void *arg);
 
 #define MOUSE_DEPRESS ButtonPress
 #define MOUSE_RELEASE ButtonRelease
@@ -43,7 +43,7 @@ void mouse_set_function_ex(unsigned int button, unsigned int modifiers,
                           MOUSE_ROOT | MOUSE_FRAME)
 
 void mouse_set_function(char *mousestring, int depress,
-                        int location, mouse_fn fn);
+                        int location, mouse_fn fn, void *arg);
 
 int mouse_parse_string(char *mousestring, unsigned int *button,
                        unsigned int *modifiers);

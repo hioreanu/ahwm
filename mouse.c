@@ -25,6 +25,7 @@ typedef struct _mousebinding {
     int depress;
     int location;
     mouse_fn function;
+    void *arg;
     struct _mousebinding *next;
 } mousebinding;
 
@@ -65,7 +66,7 @@ void mouse_handle_event(XEvent *xevent)
             if (state == mb->modifiers &&
                 (mb->location & get_location(xevent->xbutton.window)) &&
                 ((xevent->type & mb->depress) == xevent->type)) {
-                (*mb->function)(xevent);
+                (*mb->function)(xevent, mb->arg);
                 XUngrabPointer(dpy, CurrentTime);
                 return;
             }
@@ -91,7 +92,7 @@ static int get_location(Window w)
  */
 
 void mouse_set_function_ex(unsigned int button, unsigned int modifiers,
-                           int depress, int location, mouse_fn fn)
+                           int depress, int location, mouse_fn fn, void *arg)
 {
     mousebinding *newbinding;
 
@@ -105,12 +106,13 @@ void mouse_set_function_ex(unsigned int button, unsigned int modifiers,
     newbinding->depress = depress;
     newbinding->location = location;
     newbinding->function = fn;
+    newbinding->arg = arg;
     newbinding->next = bindings;
     bindings = newbinding;
 }
 
 void mouse_set_function(char *mousestring, int depress,
-                        int location, mouse_fn fn)
+                        int location, mouse_fn fn, void *arg)
 {
     unsigned int button;
     unsigned int modifiers;
@@ -120,7 +122,7 @@ void mouse_set_function(char *mousestring, int depress,
                 mousestring);
         return;
     }
-    mouse_set_function_ex(button, modifiers, depress, location, fn);
+    mouse_set_function_ex(button, modifiers, depress, location, fn, arg);
 }
 
 int mouse_parse_string(char *keystring, unsigned int *button_ret,

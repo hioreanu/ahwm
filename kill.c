@@ -8,7 +8,7 @@
 #include "kill.h"
 #include "event.h"
 
-void kill_nicely(XEvent *xevent)
+void kill_nicely(XEvent *xevent, void *v)
 {
     client_t *client;
 
@@ -26,11 +26,11 @@ void kill_nicely(XEvent *xevent)
 #ifdef DEBUG
         printf("\tWindow isn't civilized, exterminating it\n");
 #endif /* DEBUG */
-        kill_with_extreme_prejudice(xevent);
+        kill_with_extreme_prejudice(xevent, v);
     }
 }
     
-void kill_with_extreme_prejudice(XEvent *xevent)
+void kill_with_extreme_prejudice(XEvent *xevent, void *v)
 {
     client_t *client;
 

@@ -8,8 +8,8 @@
 
 #include "client.h"
 
-void kill_nicely(XEvent *);
+void kill_nicely(XEvent *, void *);
 
-void kill_with_extreme_prejudice(XEvent *);
+void kill_with_extreme_prejudice(XEvent *, void *);
 
 #endif /* KILL_H */

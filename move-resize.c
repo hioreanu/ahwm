@@ -87,7 +87,7 @@ static int get_height_resize_inc(client_t *client);
 static void move_inform_client(client_t *client);
 static Bool mouse_over_client(client_t *client);
 
-void resize_maximize(XEvent *xevent)
+void resize_maximize(XEvent *xevent, void *v)
 {
     int h_inc, w_inc;
     client_t *client;
@@ -133,7 +133,7 @@ void resize_maximize(XEvent *xevent)
  * called recursively and all simultaneously-running invocations need
  * to keep some of the same state (the resize code is much worse).
  */
-void move_client(XEvent *xevent)
+void move_client(XEvent *xevent, void *v)
 {
     client_t *client = NULL;
     int x_start, y_start;       /* only used for mouse move */
@@ -360,7 +360,7 @@ void move_client(XEvent *xevent)
             event1.type = KeyPress;
             event1.xkey.window = client->window;
         }
-        resize_client(&event1);
+        resize_client(&event1, v);
     }
 }
 
@@ -426,7 +426,7 @@ static void move_constrain(client_t *client)
  * WARNING:  this gets really, really ugly from here on
  */
 
-void resize_client(XEvent *xevent)
+void resize_client(XEvent *xevent, void *v)
 {
     client_t *client = NULL;
     int x_start, y_start, have_mouse, delta;
@@ -748,7 +748,7 @@ void resize_client(XEvent *xevent)
             event1.type = KeyPress;
             event1.xkey.window = client->window;
         }
-        move_client(&event1);
+        move_client(&event1, v);
     }
 }
 

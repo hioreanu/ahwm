@@ -11,13 +11,13 @@
 
 /* Functions which are called in response to keyboard events: */
 
-typedef void (*key_fn)(XEvent *);
+typedef void (*key_fn)(XEvent *, void *);
 
 /*
  * An example function of the above type which does nothing
  */
 
-void keyboard_ignore(XEvent *);
+void keyboard_ignore(XEvent *, void *);
 
 /*
  * Bind a key to a function.  KEYCODE and MODIFIERS are the Keycode and
@@ -29,7 +29,7 @@ void keyboard_ignore(XEvent *);
  */
 
 void keyboard_set_function_ex(unsigned int keycode, unsigned int modifiers,
-                              int depress, key_fn fn);
+                              int depress, key_fn fn, void *arg);
 
 #define KEYBOARD_DEPRESS KeyPress
 #define KEYBOARD_RELEASE KeyRelease
@@ -111,7 +111,8 @@ int keyboard_parse_string(char *keystring, unsigned int *keycode,
  * keyboard_set_function_ex()
  */
 
-void keyboard_set_function(char *keystring, int depress, key_fn fn);
+void keyboard_set_function(char *keystring, int depress,
+                           key_fn fn, void *arg);
 
 /*
  * Do a "soft" grab on all the keys that are of interest to us - this
