@@ -278,8 +278,10 @@ int main(int argc, char **argv)
                        kill_nicely, NULL);
     mouse_set_function("Control | Button2", MOUSE_DEPRESS, MOUSE_TITLEBAR,
                        kill_with_extreme_prejudice, NULL);
-    mouse_set_function("Button3", MOUSE_DEPRESS, MOUSE_TITLEBAR,
+    mouse_set_function("Button3", MOUSE_RELEASE, MOUSE_TITLEBAR,
                        resize_maximize, NULL);
+    keyboard_set_function("Control | Alt | Shift | q", KEYBOARD_RELEASE,
+                          keyboard_quote, NULL);
 
     WM_STATE = XInternAtom(dpy, "WM_STATE", False);
     WM_CHANGE_STATE = XInternAtom(dpy, "WM_CHANGE_STATE", False);
@@ -339,7 +341,7 @@ void run_program(XEvent *e, void *arg)
 /* make it easier to parse debug output */
 void mark(XEvent *e, void *arg)
 {
-    printf("---------------------------------------");
+    printf("-------------------------------------");
     printf(" MARK ");
-    printf("---------------------------------------\n");
+    printf("-------------------------------------\n");
 }

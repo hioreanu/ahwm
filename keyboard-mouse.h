@@ -95,12 +95,28 @@ typedef void (*key_fn)(XEvent *, void *);
 void keyboard_ignore(XEvent *, void *);
 
 /*
- * Bind a key to a function.  KEYCODE and MODIFIERS are the Keycode and
- * Modifiers to bind; DEPRESS is KEYBOARD_DEPRESS, KEYBOARD_RELEASE or
- * a logical OR of both, indicating whether to call the function on
- * key press, release or at both times; FN is the function to be
- * called, with the above semantics.  If duplicate keybindings are
- * assigned, the most recent is used.
+ * A special function of the above type, put here for lack of a better
+ * place.  This will "quote" the next keyboard or mouse event and send
+ * it to the client instead of processesing it; this also changes the
+ * root background to white to let user know that something is being
+ * quoted.  You can cancel a quote by simply clicking on a titlebar or
+ * doing any other action which will generate a grab but which the
+ * client doesn't care about or can't see.
+ */
+
+void keyboard_quote(XEvent *, void *);
+
+/* these go with the above function and are used by the mouse module */
+extern Bool quoting;
+void keyboard_unquote(XKeyEvent *);
+
+/*
+ * Bind a key to a function.  KEYCODE and MODIFIERS are the Keycode
+ * and Modifiers to bind; DEPRESS is KEYBOARD_DEPRESS or
+ * KEYBOARD_RELEASE (one or the other, not a logical OR), indicating
+ * whether to call the function on key press or release; FN is the
+ * function to be called, with the above semantics.  If duplicate
+ * keybindings are assigned, the most recent is used.
  */
 
 void keyboard_set_function_ex(unsigned int keycode, unsigned int modifiers,

@@ -4,6 +4,30 @@
  * copyright privileges.
  */
 
+/*
+ * OK, the stuff in here gets a little bit confusing because we have
+ * to do things *just so* or client applications will misbehave.  Each
+ * function has a distinct purpose.  There are a number of separate
+ * things we can do in any given function:
+ * 
+ * 1.  update some pointers, like focus_current or focus_stacks[]
+ * 2.  update the focus stack (focus order)
+ * 3.  update clients' titlebars to show input focus
+ * 4.  call XSetInputFocus()
+ * 5.  raise the active client
+ */
+
+/* 
+ * invariant:
+ * 
+ * focus_current == focus_stacks[workspace_current - 1]
+ * 
+ * This should hold whenever we enter or leave the window manager.  In
+ * a few fringe cases, focus_current is not the real input focus (ie,
+ * what XGetInputFocus() would return), but represents what what the
+ * real input focus will be once some condition has been satisfied.
+ */
+
 #include <X11/Xlib.h>
 #include <X11/keysym.h>
 
@@ -19,15 +43,18 @@ client_t *focus_current = NULL;
 
 client_t *focus_stacks[NO_WORKSPACES] = { NULL };
 
-static void focus_change_current(client_t *, Time);
+static void focus_change_current(client_t *, Time, Bool);
+static void focus_set_internal(client_t *, Time, Bool);
 static void permute(client_t *, client_t *);
 
-/* 
- * invariant:
- * 
- * focus_current == focus_stacks[workspace_current - 1]
- * 
- * This should hold whenever we enter or leave the window manager.
+static Bool in_alt_tab = False; /* see focus_alt_tab, focus_ensure */
+
+/*
+ * This will:
+ * update pointers
+ * update the focus stack
+ * update the clients' titlebars 
+ * call XSetInputFocus
  */
 
 void focus_add(client_t *client, Time timestamp)
@@ -50,9 +77,17 @@ void focus_add(client_t *client, Time timestamp)
         focus_stacks[client->workspace - 1] = client;
     }
     if (client->workspace == workspace_current) {
-        focus_change_current(client, timestamp);
+        focus_change_current(client, timestamp, True);
     }
 }
+
+/*
+ * This will:
+ * update pointers
+ * update the focus stack
+ * update the clients' titlebars 
+ * call XSetInputFocus
+ */
 
 void focus_remove(client_t *client, Time timestamp)
 {
@@ -83,7 +118,7 @@ void focus_remove(client_t *client, Time timestamp)
             }
             /* if removed was focused window, refocus now */
             if (client == focus_current) {
-                focus_change_current(client->next_focus, timestamp);
+                focus_change_current(client->next_focus, timestamp, True);
             }
             return;
         }
@@ -91,7 +126,16 @@ void focus_remove(client_t *client, Time timestamp)
     } while (stack != orig);
 }
 
-static void focus_set_internal(client_t *client, Time timestamp)
+/*
+ * This will:
+ * update pointers
+ * update the focus stack
+ * update the clients' titlebars 
+ * call XSetInputFocus iff (call_focus_ensure == True)
+ */
+
+static void focus_set_internal(client_t *client, Time timestamp,
+                               Bool call_focus_ensure)
 {
     client_t *p;
 
@@ -113,7 +157,7 @@ static void focus_set_internal(client_t *client, Time timestamp)
                    client->workspace, client->window, client->name));
             focus_stacks[client->workspace - 1] = client;
             if (client->workspace == workspace_current) {
-                focus_change_current(client, timestamp);
+                focus_change_current(client, timestamp, call_focus_ensure);
             }
             return;
         }
@@ -122,14 +166,31 @@ static void focus_set_internal(client_t *client, Time timestamp)
     fprintf(stderr, "XWM: client not found on focus list, shouldn't happen\n");
 }
 
+/*
+ * This will:
+ * update pointers
+ * update the focus stack
+ * update the clients' titlebars 
+ * call XSetInputFocus
+ */
+
 void focus_set(client_t *client, Time timestamp)
 {
     client_t *old = focus_current;
     
-    focus_set_internal(client, timestamp);
+    focus_set_internal(client, timestamp, True);
     if (old != NULL && client != NULL)
         permute(old, client);
 }
+
+/*
+ * This will:
+ * call XSetInputFocus
+ * raise active client
+ * 
+ * This is the only function in the module that will call
+ * XSetInputFocus; all other functions call this function.
+ */
 
 void focus_ensure(Time timestamp)
 {
@@ -138,10 +199,15 @@ void focus_ensure(Time timestamp)
         return;
     }
 
-    debug(("\tSetting focus to 0x%08X (%.10s)...\n",
+    debug(("\tSetting focus to 0x%08X ('%.10s')...\n",
            (unsigned int)focus_current->window, focus_current->name));
 
     ewmh_active_window_update();
+
+    if (in_alt_tab) {
+        client_raise(focus_current);
+        return;
+    }
     
     /* see ICCCM 4.1.7 */
     if (focus_current->xwmh != NULL &&
@@ -156,18 +222,35 @@ void focus_ensure(Time timestamp)
         }
     } else {
         debug(("\twants focus\n"));
+        XSetInputFocus(dpy, focus_current->window,
+                       RevertToPointerRoot, timestamp);
         if (focus_current->protocols & PROTO_TAKE_FOCUS) {
             debug(("\twill forcibly take focus\n"));
             client_sendmessage(focus_current, WM_TAKE_FOCUS,
                                timestamp, 0, 0, 0);
         }
-        XSetInputFocus(dpy, focus_current->window,
-                       RevertToPointerRoot, timestamp);
     }
-    XSync(dpy, False);
-    XFlush(dpy);
 
     client_raise(focus_current);
+}
+
+/*
+ * This will:
+ * update pointers
+ * update titlebars
+ * call XSetInputFocus iff (call_focus_ensure == True)
+ */
+
+static void focus_change_current(client_t *new, Time timestamp,
+                                 Bool call_focus_ensure)
+{
+    client_t *old;
+
+    old = focus_current;
+    focus_current = new;
+    client_paint_titlebar(old);
+    client_paint_titlebar(new);
+    if (call_focus_ensure) focus_ensure(timestamp);
 }
 
 #ifdef DEBUG
@@ -180,7 +263,7 @@ void dump_focus_list()
     printf("STACK: ");
     do {
         if (client == NULL) break;
-        printf("%s ", client->name);
+        printf("\t'%s'\n", client->name);
         client = client->next_focus;
     } while (client != orig);
     printf("\n");
@@ -189,12 +272,54 @@ void dump_focus_list()
 #define dump_focus_list() /* */
 #endif
 
+/*
+ * After extensive experimentation, I determined that this is the best
+ * way for this function to behave.
+ * 
+ * We want clients to receive a Focus{In,Out} event when the focus is
+ * transferred, and will only transfer the focus when the alt-tab
+ * action is completed (when user lets go of alt).  Some clients
+ * (notably all applications which use the QT toolkit) will only think
+ * that they've received the input focus when they receive a FocusIn,
+ * NotfyNormal event.  The problem is that if we transfer the input
+ * focus while we have the keyboard grabbed, this will generate
+ * FocusIn, NotfyGrab events, which some applications completely
+ * ignore (whether or not this is the correct behaviour, I don't care,
+ * that's how it is), and then any XSetInputFocus call to the current
+ * focus window made after ungrabbing the keyboard will be a no-op;
+ * thus QT applications will not believe they have the input focus
+ * (and the way QT is set up, QT applications won't take keyboard
+ * input in this state).  Needless to say, this is quite annoying.
+ * The solution is to delay all calls to XSetInputFocus until we've
+ * ungrabbed the keyboard.
+ * 
+ * This will behave correctly if clients are added or removed while
+ * this function is active.  That's the purpose of the in_alt_tab
+ * boolean - it ensures we don't call XSetInputFocus while this
+ * function is active.  This will return immediately if all the
+ * clients disappear from under our nose.
+ * 
+ * This is still sub-optimal as some clients may receive FocusIn,
+ * NotifyPointer events while we are in this function and will
+ * incorrectly think they have the input focus and update themselves
+ * accordingly.  Xterm does this.  This only lasts until the function
+ * exits, but is a bit annoying.  There is no way to fix this other
+ * than fixing the bug in xterm (other window managers have the same
+ * behaviour).
+ */
+
 void focus_alt_tab(XEvent *xevent, void *v)
 {
     client_t *orig_focus;
     unsigned int action_keycode;
     KeyCode keycode_Alt_L, keycode_Alt_R;
 
+    if (focus_current == NULL) {
+        debug(("\tNo clients in alt-tab, returning\n"));
+        return;
+    }
+    debug(("\tEntering alt-tab\n"));
+    in_alt_tab = True;
     orig_focus = focus_current;
     debug(("\torig_focus = '%s'\n", orig_focus ? orig_focus->name : "NULL"));
     dump_focus_list();
@@ -203,54 +328,61 @@ void focus_alt_tab(XEvent *xevent, void *v)
     keycode_Alt_R = XKeysymToKeycode(dpy, XK_Alt_R);
 
     XGrabKeyboard(dpy, root_window, True, GrabModeAsync,
-                  GrabModeAsync, event_timestamp);
+                  GrabModeAsync, CurrentTime);
     for (;;) {
         switch (xevent->type) {
             case KeyPress:
                 if (xevent->xkey.keycode == action_keycode) {
                     if (xevent->xkey.state & ShiftMask) {
                         focus_set_internal(focus_current->prev_focus,
-                                           event_timestamp);
+                                           event_timestamp, False);
                     } else {
                         focus_set_internal(focus_current->next_focus,
-                                           event_timestamp);
+                                           event_timestamp, False);
                     }
-                }
+                } /* FIXME:  else end the action */
                 break;
             case KeyRelease:
                 if (xevent->xkey.keycode == keycode_Alt_L
                     || xevent->xkey.keycode == keycode_Alt_R) {
                     /* user let go of all modifiers */
-                    debug(("\tfocus_current = '%.10s'\n",
-                           focus_current ? focus_current->name : "NULL"));
                     if (focus_current != NULL) {
                         permute(orig_focus, focus_current);
                     }
-                    XUngrabKeyboard(dpy, event_timestamp);
-                    debug(("\treturning from alt-tab\n"));
+                    
+                    XUngrabKeyboard(dpy, CurrentTime);
+                    /* we want to make sure server knows we've
+                     * ungrabbed keyboard before calling
+                     * XSetInputFocus: */
+                    XSync(dpy, False);
+                    in_alt_tab = False;
+                    focus_ensure(CurrentTime);
+                    
+                    debug(("\tfocus_current = '%.10s'\n",
+                           focus_current ? focus_current->name : "NULL"));
                     dump_focus_list();
+                    debug(("\tLeaving alt-tab\n"));
                     return;
                 }
                 break;
             default:
                 event_dispatch(xevent);
+                if (focus_current == NULL) {
+                    debug(("\tAll clients gone, returning from alt-tab\n"));
+                    XUngrabKeyboard(dpy, CurrentTime);
+                    in_alt_tab = False;
+                    focus_ensure(CurrentTime);
+                    return;
+                }
         }
         event_get(ConnectionNumber(dpy), xevent);
     }
 }
 
-static void focus_change_current(client_t *new, Time timestamp)
-{
-    client_t *old;
-
-    old = focus_current;
-    focus_current = new;
-    client_paint_titlebar(old);
-    client_paint_titlebar(new);
-    focus_ensure(timestamp);
-}
-
 /*
+ * This will swap two elements in the focus stack, moving one to the
+ * top of the stack.
+ * 
  * ring looks like this:
  * A-B-...-C-D-E-...-F-A
  * and we want it to look like this:

@@ -15,6 +15,9 @@
 #include "xwm.h"
 #include "cursor.h"
 #include "malloc.h"
+#include "debug.h"
+#include "workspace.h"
+#include "event.h"
 
 #ifndef MIN
 #define MIN(x,y) ((x) < (y) ? (x) : (y))
@@ -71,6 +74,20 @@ void mouse_grab_buttons(client_t *client)
     }
 }
 
+static void mouse_unquote(XButtonEvent *e)
+{
+    XSetWindowAttributes xswa;
+    
+    debug(("\tUnquoting\n"));
+    quoting = False;
+    xswa.background_pixel = workspace_pixels[workspace_current - 1];
+    XChangeWindowAttributes(dpy, root_window, CWBackPixel, &xswa);
+    XClearWindow(dpy, root_window);
+    e->time = event_timestamp;
+    XSendEvent(dpy, PointerWindow, True,
+               NoEventMask, (XEvent *)e);
+}
+
 #define ANYBUTTONMASK (Button1Mask | Button2Mask | Button3Mask \
                        | Button4Mask | Button5Mask)
 
@@ -82,11 +99,17 @@ void mouse_handle_event(XEvent *xevent)
     button = xevent->xbutton.button;
     state = xevent->xbutton.state & (~(ANYBUTTONMASK | AllLocksMask));
 
+    if (quoting) {
+        XUngrabPointer(dpy, CurrentTime);
+        keyboard_unquote(xevent);
+        return;
+    }
+    
     for (mb = bindings; mb != NULL; mb = mb->next) {
         if (button == mb->button) {
             if (state == mb->modifiers &&
                 (mb->location & get_location(xevent->xbutton.window)) &&
-                ((xevent->type & mb->depress) == xevent->type)) {
+                (xevent->type == mb->depress)) {
                 (*mb->function)(xevent, mb->arg);
                 XUngrabPointer(dpy, CurrentTime);
                 return;

@@ -13,6 +13,10 @@
 #include "keyboard.h"
 #include "client.h"
 #include "malloc.h"
+#include "workspace.h"
+#include "debug.h"
+#include "event.h"
+#include "focus.h"
 
 #ifndef MIN
 #define MIN(x,y) ((x) < (y) ? (x) : (y))
@@ -168,6 +172,7 @@ void keyboard_ignore(XEvent *e, void *v)
     return;
 }
 
+
 void keyboard_set_function_ex(unsigned int keycode, unsigned int modifiers,
                               int depress, key_fn fn, void *arg)
 {
@@ -292,6 +297,37 @@ void keyboard_grab_keys(client_t *client)
     }
 }
 
+Bool quoting = False;
+static Time last_quote_time;
+
+void keyboard_quote(XEvent *e, void *v)
+{
+    XSetWindowAttributes xswa;
+
+    debug(("\tQuoting\n"));
+    quoting = True;
+    xswa.background_pixel = white;
+    XChangeWindowAttributes(dpy, root_window, CWBackPixel, &xswa);
+    XClearWindow(dpy, root_window);
+    last_quote_time = e->xkey.time;
+}
+
+/* FIXME:  use XGetInputFocus */
+void keyboard_unquote(XKeyEvent *e)
+{
+    XSetWindowAttributes xswa;
+    
+    debug(("\tUnquoting\n"));
+    quoting = False;
+    xswa.background_pixel = workspace_pixels[workspace_current - 1];
+    XChangeWindowAttributes(dpy, root_window, CWBackPixel, &xswa);
+    XClearWindow(dpy, root_window);
+    e->time = last_quote_time;
+    e->window = focus_current->window;
+    XSendEvent(dpy, focus_current->window, True,
+               NoEventMask, (XEvent *)e);
+}
+
 void keyboard_process(XKeyEvent *xevent)
 {
     keybinding *kb;
@@ -305,13 +341,19 @@ void keyboard_process(XKeyEvent *xevent)
            (unsigned int)xevent->window, xevent->keycode,
            xevent->state, XKeysymToString(ks));
 #endif /* DEBUG */
+    
 
     code = xevent->keycode;
+    
+    if (quoting) {
+        keyboard_unquote(xevent);
+        return;
+    }
 
     for (kb = bindings; kb != NULL; kb = kb->next) {
         if (kb->keycode == code) {
             if (kb->modifiers == (xevent->state & (~AllLocksMask))
-                && (kb->depress & xevent->type) == xevent->type) {
+                && (kb->depress == xevent->type)) {
                 (*kb->function)((XEvent *)xevent, kb->arg);
                 return;
             }

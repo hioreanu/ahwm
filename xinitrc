@@ -13,7 +13,7 @@ xsetroot -cursor_name left_ptr
 
 #exec /home/ach/tmp/wmaker-inst/bin/wmaker
 #exec ./9wm
-#exec wmaker
+exec wmaker
 #exec enlightenment
 #exec fvwm2
 #exec twm
