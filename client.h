@@ -29,7 +29,7 @@ typedef struct _client_t {
     int       height;
     int       workspace;
     int       state;
-    Bool      wants_focus;
+    XWMHints *xwmh;
     /* state is one of {WithdrawnState, NormalState, IconicState} */
     /* we ignore this since we don't deal with icons */
     struct _client_t *prevfocus;

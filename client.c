@@ -6,6 +6,7 @@ XContext window_context;
 client_t *client_create(Window w)
 {
     client_t *client;
+    XWMHints *xwmh;
 
     client = malloc(sizeof(client_t));
     if (client == NULL) return NULL;
@@ -16,6 +17,7 @@ client_t *client_create(Window w)
     client->managed = 1;
     client->name = "???";
     client->state = WithdrawnState;
+    client->xwmh = XGetWMHints(dpy, w);
 
     if (XSaveContext(dpy, w, window_context, client) != 0) {
         free(client);
@@ -32,3 +34,11 @@ client_t *client_find(Window w)
     if (XFindContext(dpy, w, window_context, &client) != 0) return NULL;
     return client;
 }
+
+void client_destroy(client_t *client)
+{
+    if (client->xwmh != NULL) XFree(client->xwmh);
+    XDeleteContext(dpy, client->window, window_context);
+    free(client);
+}
+
