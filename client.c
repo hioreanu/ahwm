@@ -69,10 +69,10 @@ client_t *client_create(Window w)
     client->titlebar = None;
     client->prev_x = client->prev_y = -1;
     client->prev_height = client->prev_width = -1;
-    client->ignore_enternotify = 0;
-    client->ignore_unmapnotify = 0;
     client->orig_border_width = xwa.border_width;
+    client->flags.ignore_enternotify = 0;
     client->flags.reparented = 0;
+    client->flags.ignore_unmapnotify = 0;
     
     /* God, this sucks.  I want the border width to be zero on all
      * clients, so I need to change the client's border width at some
@@ -121,8 +121,8 @@ client_t *client_create(Window w)
         XShapeQueryExtents(dpy, client->window, &shaped, &tmp, &tmp,
                            &tmp2, &tmp2, &tmp, &tmp, &tmp, &tmp2, &tmp2);
         has_titlebar = !shaped;
-        if (shaped) debug(("\tSHAPED\n"));
-        else debug(("\tNOT SHAPED\n"));
+        if (shaped) debug(("\tIs a shaped window\n"));
+        else debug(("\tnot shaped\n"));
     }
 #endif /* SHAPE */
 
@@ -158,7 +158,13 @@ client_t *client_create(Window w)
     client_list = client;
 
     if (xwa.map_state != IsUnmapped) {
+        /* The only time when this can happen is when we just started
+         * the windowmanager and there are already some windows on
+         * the screen.  FIXME:  we should check the window's properties
+         * (like workspace, etc) to see if a previous windowmanager was
+         * doing something interesting with the window */
         debug(("\tclient_create:  client is already mapped\n"));
+        client->flags.ignore_unmapnotify = 1;
         client->state = NormalState;
         client_inform_state(client);
         client_reparent(client);
@@ -243,6 +249,7 @@ void client_reparent(client_t *client)
     /* reparent the window and map window and frame */
     debug(("\tReparenting window 0x%08X ('%.10s')\n",
            client->window, client->name));
+    XAddToSaveSet(dpy, client->window);
     XSetWindowBorderWidth(dpy, client->window, 0);
     if (client->titlebar != None) {
         XReparentWindow(dpy, client->window,
@@ -257,8 +264,7 @@ void client_reparent(client_t *client)
 void client_unreparent(client_t *client)
 {
     client->flags.reparented = 0;
-//    client->ignore_unmapnotify = 1;
-//    XUnmapWindow(dpy, client->window);
+    XRemoveFromSaveSet(dpy, client->window);
     XReparentWindow(dpy, client->window, root_window, client->x, client->y);
     XSetWindowBorderWidth(dpy, client->window, client->orig_border_width);
 }
@@ -775,7 +781,7 @@ void client_raise_internal(client_t *client, int x, int y,
             && y <= client->y + client->height) {
             debug(("\tSetting ignore_enternotify for '%s' in client_raise\n",
                    client->name));
-            client->ignore_enternotify = 1;
+            client->flags.ignore_enternotify = 1;
             *under_pointer = client->frame;
         }
         XMapRaised(dpy, client->frame);

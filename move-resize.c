@@ -928,7 +928,7 @@ static void compress_motion(XEvent *xevent)
     }
     if (newer != NULL) {
         debug(("\tMotion event compressed (%d,%d) -> (%d,%d)\n",
-               xevent->xmotion.x_root, xevent->xmotion.x_root,
+               xevent->xmotion.x_root, xevent->xmotion.y_root,
                newer->xmotion.x_root, newer->xmotion.y_root));
         memcpy(xevent, newer, sizeof(xevent));
     }

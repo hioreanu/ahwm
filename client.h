@@ -54,8 +54,6 @@ typedef struct _client_t {
     int workspace;              /* client's workspace  */
     int window_event_mask;      /* event mask of client->window */
     int frame_event_mask;       /* event mask of client->frame */
-    int ignore_enternotify;     /* see event.c */
-    int ignore_unmapnotify;
     unsigned int protocols;     /* WM_PROTOCOLS, see below (ICCCM, 4.1.2.7) */
     char *name;                 /* window's name (ICCCM, 4.1.2.1) */
     /* will not be NULL; use free() */
@@ -76,8 +74,9 @@ typedef struct _client_t {
      */
 
     struct _flags {
-        int mapped:1;
-        int reparented:1;
+        unsigned int reparented:1;         /* is window reparented to frame */
+        unsigned int ignore_enternotify:1; /* see event.c */
+        unsigned int ignore_unmapnotify:1; /* hack, see client_create */
     } flags;
     
     /* clients are also managed as doubly linked lists */
