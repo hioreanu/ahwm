@@ -44,11 +44,17 @@ typedef enum {
     I = 1, II, III, IV
 } quadrant_t;
 
+typedef enum {
+    FIRST, MIDDLE, LAST
+} resize_ordinal_t;
+
 static XEvent *compress_motion(XEvent *xevent);
 static void process_resize(client_t *client, int new_x, int new_y,
                            resize_direction_t direction,
                            quadrant_t quadrant,
-                           int *old_x, int *old_y, position_size *orig);
+                           int *old_x, int *old_y,
+                           position_size *orig,
+                           resize_ordinal_t ordinal);
 static quadrant_t get_quadrant(client_t *client, int x, int y);
 static void display_geometry(char *s, client_t *client);
 static void constrain_geometry(client_t *);
@@ -303,7 +309,7 @@ void mouse_resize_client(XEvent *xevent)
                                      CurrentTime);
                         process_resize(client, x_start, y_start,
                                        resize_direction, quadrant,
-                                       &x_start, &y_start, &orig);
+                                       &x_start, &y_start, &orig, FIRST);
                         
                     } else {
                         fprintf(stderr, "Received an unexpected button press\n");
@@ -336,15 +342,17 @@ void mouse_resize_client(XEvent *xevent)
 #endif /* DEBUG */
                 process_resize(client, xevent->xbutton.x_root,
                                xevent->xbutton.y_root, resize_direction,
-                               quadrant, &x_start, &y_start, &orig);
+                               quadrant, &x_start, &y_start, &orig, MIDDLE);
                 break;
             case ButtonRelease:
-                if (client) {
-                    process_resize(client, xevent->xmotion.x_root,
-                                   xevent->xmotion.y_root, resize_direction,
-                                   quadrant, &x_start, &y_start, &orig);
+                if (client == NULL) {
+                    fprintf(stderr, "XWM: Error, null client in resize\n");
+                    goto reset;
                 }
-                goto reset;
+                process_resize(client, xevent->xmotion.x_root,
+                               xevent->xmotion.y_root, resize_direction,
+                               quadrant, &x_start, &y_start, &orig, LAST);
+                goto done;
             
                 break;
             default:
@@ -364,6 +372,9 @@ void mouse_resize_client(XEvent *xevent)
     return;
     
  reset:
+    XClearWindow(dpy, root_window);
+
+ done:
 
     if (client != NULL) {
         XMoveResizeWindow(dpy, client->frame, client->x, client->y,
@@ -433,7 +444,8 @@ static XEvent *compress_motion(XEvent *xevent)
 static void process_resize(client_t *client, int new_x, int new_y,
                            resize_direction_t direction,
                            quadrant_t quadrant,
-                           int *old_x, int *old_y, position_size *orig)
+                           int *old_x, int *old_y,
+                           position_size *orig, resize_ordinal_t ordinal)
 {
     int x_diff, y_diff;
     int x, y, w, h;
@@ -557,12 +569,57 @@ static void process_resize(client_t *client, int new_x, int new_y,
      * selected, so we simply draw on it to erase).  We don't want any
      * flicker, so we only erase and redraw if we've made any changes
      * to the line segment */
-    if (x != client->x || y != client->y
-        || w != client->width || h != client->height) {
 
-        XDrawRectangle(dpy, root_window, root_invert_gc, x, y, w, h);
-        XDrawRectangle(dpy, root_window, root_invert_gc,
-                       client->x, client->y, client->width, client->height);
+    if (ordinal != MIDDLE || x != client->x
+        || w != client->width || y != client->y) {
+        /* redraw top bar */
+        if (ordinal != FIRST)
+            XDrawLine(dpy, root_window, root_invert_gc,
+                      x, y, x + w, y);
+        if (ordinal != LAST)
+            XDrawLine(dpy, root_window, root_invert_gc, client->x,
+                      client->y, client->x + client->width, client->y);
+        
+    }
+    if (ordinal != MIDDLE || x != client->x || w != client->width
+        || y + h != client->y + client->height) {
+        /* redraw bottom bar */
+        if (ordinal != FIRST)
+            XDrawLine(dpy, root_window, root_invert_gc,
+                      x, y + h, x + w, y + h);
+        if (ordinal != LAST)
+            XDrawLine(dpy, root_window, root_invert_gc,
+                      client->x, client->y + client->height,
+                      client->x + client->width,
+                      client->y + client->height);
+    }
+    if (ordinal != MIDDLE || y != client->y ||
+        h != client->height || x != client->x) {
+        /* redraw left bar */
+        if (ordinal != FIRST)
+            XDrawLine(dpy, root_window, root_invert_gc,
+                      x, y, x, y + h);
+        if (ordinal != LAST)
+            XDrawLine(dpy, root_window, root_invert_gc,
+                      client->x, client->y, client->x,
+                      client->y + client->height);
+    }
+    if (ordinal != MIDDLE || y != client->y || h != client->height
+        || x + w != client->x + client->width) {
+        /* redraw right bar */
+        if (ordinal != FIRST)
+            XDrawLine(dpy, root_window, root_invert_gc,
+                      x + w, y, x + w, y + h);
+        if (ordinal != LAST)
+            XDrawLine(dpy, root_window, root_invert_gc,
+                      client->x + client->width,
+                      client->y,
+                      client->x + client->width,
+                      client->y + client->height);
+    }
+
+    if (ordinal == FIRST || x != client->x || y != client->y
+        || w != client->width || h != client->height) {
         display_geometry("Resizing", client);
     }
 }
