@@ -78,6 +78,7 @@
 
 /*
  * initialize module, getting atoms and setting root properties
+ * Depends on number of workspaces being set
  */
 
 void ewmh_init();

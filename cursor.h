@@ -48,9 +48,9 @@ extern Cursor cursor_direction_map[9];
 /*
  * Initialize the above cursor objects
  * 
- * Returns 1 if things went OK, 0 if there was a problem
+ * No dependencies
  */
 
-int cursor_init();
+void cursor_init();
 
 #endif /* CURSORS_H */

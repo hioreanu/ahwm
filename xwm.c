@@ -58,6 +58,7 @@
 #include "workspace.h"
 #include "icccm.h"
 #include "ewmh.h"
+#include "paint.h"
 
 Display *dpy;
 int scr;
@@ -72,6 +73,7 @@ GC root_invert_gc;
 GC extra_gc1;
 GC extra_gc2;
 GC extra_gc3;
+GC extra_gc4;
 XFontStruct *fontstruct;
 Atom WM_STATE;
 Atom WM_CHANGE_STATE;
@@ -91,6 +93,7 @@ void mark(XEvent *e, void *arg);
 
 static int already_running_windowmanager;
 static int (*default_error_handler)(Display *, XErrorEvent *);
+
 static int tmp_error_handler(Display *dpy, XErrorEvent *error);
 static int error_handler(Display *dpy, XErrorEvent *error);
 static void scan_windows();
@@ -109,6 +112,7 @@ static void scan_windows();
  * 
  * FIXME:  move everything not defined in this file into various
  * _init functions, document this in xwm.h
+ * FIXME:  redo this comment
  */
 
 int main(int argc, char **argv)
@@ -216,6 +220,13 @@ int main(int argc, char **argv)
                           | GCFont | GCFunction
                           | GCPlaneMask | GCSubwindowMode,
                           &xgcv);
+    extra_gc4 = XCreateGC(dpy, root_window,
+                          GCForeground | GCBackground
+                          | GCLineWidth | GCLineStyle
+                          | GCCapStyle | GCJoinStyle
+                          | GCFont | GCFunction
+                          | GCPlaneMask | GCSubwindowMode,
+                          &xgcv);
     xgcv.function = GXxor;
     root_invert_gc = XCreateGC(dpy, root_window,
                                  GCForeground | GCBackground
@@ -235,11 +246,9 @@ int main(int argc, char **argv)
                                  | GCPlaneMask | GCSubwindowMode,
                                  &xgcv);
 
-    window_context = XUniqueContext(); /* FIXME:  move to client_init */
-    frame_context = XUniqueContext();
-    title_context = XUniqueContext();
-
+    client_init();
     cursor_init();
+    paint_init();
     icccm_init();
     ewmh_init();
     keyboard_init();
@@ -248,65 +257,6 @@ int main(int argc, char **argv)
 #ifdef DEBUG
     keyboard_bind("Control | Alt | Shift | l", KEYBOARD_DEPRESS,
                   mark, NULL);
-#endif
-#if 0
-    keyboard_bind("Control | Alt | Shift | t", KEYBOARD_DEPRESS,
-                  run_program, "xterm");
-    keyboard_bind("Control | Alt | Shift | n", KEYBOARD_DEPRESS,
-                  run_program, "netscape");
-    keyboard_bind("Control | Alt | Shift | k", KEYBOARD_DEPRESS,
-                  run_program, "konqueror");
-    keyboard_bind("Control | Alt | Shift | e", KEYBOARD_DEPRESS,
-                  run_program, "emacs");
-    keyboard_bind("Alt | Tab", KEYBOARD_DEPRESS, focus_alt_tab, NULL);
-    keyboard_bind("Alt | Shift | Tab", KEYBOARD_DEPRESS,
-                  focus_alt_tab, NULL);
-    keyboard_bind("Control | Alt | Shift | m", KEYBOARD_DEPRESS,
-                  move_client, NULL);
-    keyboard_bind("Control | Alt | Shift | r", KEYBOARD_DEPRESS,
-                  resize_client, NULL);
-    keyboard_bind("Control | Alt | 1", KEYBOARD_DEPRESS,
-                  workspace_client_moveto_bindable, (void *)1);
-    keyboard_bind("Control | Alt | 2", KEYBOARD_DEPRESS,
-                  workspace_client_moveto_bindable, (void *)2);
-    keyboard_bind("Control | Alt | 3", KEYBOARD_DEPRESS,
-                  workspace_client_moveto_bindable, (void *)3);
-    keyboard_bind("Control | Alt | 4", KEYBOARD_DEPRESS,
-                  workspace_client_moveto_bindable, (void *)4);
-    keyboard_bind("Control | Alt | 5", KEYBOARD_DEPRESS,
-                  workspace_client_moveto_bindable, (void *)5);
-    keyboard_bind("Control | Alt | 6", KEYBOARD_DEPRESS,
-                  workspace_client_moveto_bindable, (void *)6);
-    keyboard_bind("Control | Alt | 7", KEYBOARD_DEPRESS,
-                  workspace_client_moveto_bindable, (void *)7);
-    keyboard_bind("Alt | 1", KEYBOARD_DEPRESS,
-                  workspace_goto_bindable, (void *)1);
-    keyboard_bind("Alt | 2", KEYBOARD_DEPRESS,
-                  workspace_goto_bindable, (void *)2);
-    keyboard_bind("Alt | 3", KEYBOARD_DEPRESS,
-                  workspace_goto_bindable, (void *)3);
-    keyboard_bind("Alt | 4", KEYBOARD_DEPRESS,
-                  workspace_goto_bindable, (void *)4);
-    keyboard_bind("Alt | 5", KEYBOARD_DEPRESS,
-                  workspace_goto_bindable, (void *)5);
-    keyboard_bind("Alt | 6", KEYBOARD_DEPRESS,
-                  workspace_goto_bindable, (void *)6);
-    keyboard_bind("Alt | 7", KEYBOARD_DEPRESS,
-                  workspace_goto_bindable, (void *)7);
-    keyboard_bind("Control | Alt | Shift | q", KEYBOARD_RELEASE,
-                  keyboard_quote, NULL);
-    mouse_bind("Button2", MOUSE_RELEASE, MOUSE_TITLEBAR,
-               kill_nicely, NULL);
-    mouse_bind("Control | Button2", MOUSE_RELEASE, MOUSE_TITLEBAR,
-               kill_with_extreme_prejudice, NULL);
-    mouse_bind("Button3", MOUSE_RELEASE, MOUSE_TITLEBAR,
-               resize_maximize, NULL);
-    mouse_bind("Alt | Button1", MOUSE_DEPRESS, MOUSE_FRAME,
-               move_client, NULL);
-    mouse_bind("Alt | Button3", MOUSE_DEPRESS, MOUSE_FRAME,
-               resize_client, NULL);
-    mouse_bind("Button1", MOUSE_DEPRESS, MOUSE_TITLEBAR,
-               move_client, NULL);
 #endif
     
     prefs_init();
@@ -406,14 +356,13 @@ void xwm_quit(XEvent *e, struct _arglist *ignored)
 {
 #ifdef DEBUG
     printf("XWM: xwm_quit called, quitting\n");
-    fflush(stdout);
 #endif
     exit(0);
 }
 
 #ifdef DEBUG
 /* make it easier to parse debug output */
-void mark(XEvent *e, void *arg)
+void mark(XEvent *e, struct _arglist *ignored)
 {
     printf("-------------------------------------");
     printf(" MARK ");

@@ -420,14 +420,18 @@ static void focus_change_current(client_t *new, Time timestamp,
                         True, ButtonPressMask, GrabModeSync,
                         GrabModeAsync, None, None);
             keyboard_grab_keys(old->frame); /* FIXME */
+            mouse_grab_buttons(old);
         }
         if (new != NULL && new->focus_policy == ClickToFocus) {
             XUngrabButton(dpy, Button1, 0, new->frame);
+            mouse_grab_buttons(new);
         }
     }
     if (call_focus_ensure) focus_ensure(timestamp);
     XFlush(dpy);
 }
+
+/* FIXME:  these grabs/ungrabs should go in mouse_grab_buttons() */
 
 void focus_policy_to_click(client_t *client)
 {
@@ -437,12 +441,14 @@ void focus_policy_to_click(client_t *client)
                     True, ButtonPressMask, GrabModeSync,
                     GrabModeAsync, None, None);
         keyboard_grab_keys(client->frame); /* FIXME */
+        mouse_grab_buttons(client); /* FIXME */
     }
 }
 
 void focus_policy_from_click(client_t *client)
 {
     XUngrabButton(dpy, Button1, 0, client->frame);
+    mouse_grab_buttons(client); /* FIXME */
 }
 
 /*

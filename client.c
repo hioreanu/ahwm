@@ -50,6 +50,17 @@
 #include "stacking.h"
 #include "prefs.h"
 
+#include "paint.h" /* FIXME: remove */
+
+/*
+ * we store the data associated with each window using Xlib's XContext
+ * mechanism (which has nothing to do with X itself, it's just a hash
+ * mechanism built into Xlib as far as I can tell).
+ * window_context associates clients with their main windows
+ * frame_context associates clients with their frame windows
+ * title_context associates clients with their titlebar windows
+ */
+
 XContext window_context;
 XContext frame_context;
 XContext title_context;
@@ -57,6 +68,13 @@ XContext title_context;
 static void client_create_frame(client_t *client, position_size *win_position);
 static void remove_transient_from_leader(client_t *client);
 static void client_add_titlebar_internal(client_t *client);
+
+void client_init()
+{
+    window_context = XUniqueContext();
+    frame_context = XUniqueContext();
+    title_context = XUniqueContext();
+}
 
 client_t *client_create(Window w)
 {
@@ -93,6 +111,7 @@ client_t *client_create(Window w)
     client->pass_focus_click = 1;
     client->focus_policy = SloppyFocus;
     client->cycle_behaviour = RaiseImmediately;
+    client->color_index = 0;
     
     /* God, this sucks.  I want the border width to be zero on all
      * clients, so I need to change the client's border width at some
@@ -713,6 +732,9 @@ void _client_print(char *s, client_t *client)
 void client_paint_titlebar(client_t *client)
 {
     XGCValues xgcv;
+
+    paint_titlebar(client);
+    return;
 
     if (client == NULL || client->titlebar == None) return;
     

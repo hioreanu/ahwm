@@ -88,6 +88,11 @@ typedef struct _client_t {
      */
     int state;
 
+    /* This is an index into a table of colors (not an X colormap
+     * index).  Set and used by paint.c.  Default value is zero.
+     */
+    int color_index;
+    
     /* If some client has this client as the transient_for hint, then
      * this client is a 'leader' (my nomenclature, nothing to do with
      * window groups).  A leader has the 'transients' attribute set to
@@ -121,6 +126,7 @@ typedef struct _client_t {
     unsigned int always_on_top : 1;
     unsigned int always_on_bottom : 1;
     unsigned int omnipresent : 1;
+    
     /* unsigned int sticky : 1; */
 } client_t;                     /* 116 bytes on ILP-32 machines */
 
@@ -136,17 +142,10 @@ typedef struct _position_size {
 } position_size;
 
 /*
- * we store the data associated with each window using Xlib's XContext
- * mechanism (which has nothing to do with X itself, it's just a hash
- * mechanism built into Xlib as far as I can tell).  These are
- * initialized in xwm.c and defined in client.c.
- * window_context associates clients with their main windows
- * frame_context associates clients with their frame windows
+ * initialize this module, no dependencies
  */
 
-extern XContext window_context;
-extern XContext frame_context;
-extern XContext title_context;
+void client_init();
 
 /*
  * Create and store a newly-allocated client_t structure for a given

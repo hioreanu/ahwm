@@ -510,6 +510,7 @@ static void event_maprequest(XMapRequestEvent *xevent)
     }
     if (client->workspace == 0) {
         client->workspace = workspace_current;
+        prefs_apply(client); /* not needed, see prefs.c:context_applies() */
         if (client->titlebar != None) {
             XSetWindowAttributes xswa;
             xswa.background_pixel =

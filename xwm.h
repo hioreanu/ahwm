@@ -49,6 +49,7 @@ extern GC root_invert_gc;       /* GC with GXxor as function */
 extern GC extra_gc1;            /* GC which changes */
 extern GC extra_gc2;            /* GC which changes */
 extern GC extra_gc3;            /* GC which changes */
+extern GC extra_gc4;            /* GC which changes */
 extern XFontStruct *fontstruct; /* our font */
 extern Atom WM_STATE;           /* various atoms used throughout */
 extern Atom WM_CHANGE_STATE;

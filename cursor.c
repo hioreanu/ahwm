@@ -37,7 +37,7 @@ Cursor cursor_sizing = None;
 
 Cursor cursor_direction_map[9];
 
-int cursor_init()
+void cursor_init()
 {
     cursor_normal = XCreateFontCursor(dpy, XC_left_ptr);
     cursor_moving = XCreateFontCursor(dpy, XC_fleur);
@@ -63,6 +63,4 @@ int cursor_init()
      * window's cursor, so we define the root cursor for
      * consistency. */
     XDefineCursor(dpy, root_window, cursor_normal);
-
-    return 1;
 }

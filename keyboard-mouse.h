@@ -53,6 +53,7 @@ extern unsigned int AllLocksMask;
 /*
  * initialize or reinitialize keyboard module's internals (called at
  * startup and whenever keyboard mapping changed)
+ * No dependencies
  */
 
 void keyboard_init();

@@ -68,6 +68,10 @@ typedef struct _prefs {
     Bool always_on_bottom;
     Bool pass_focus_click;
     int cycle_behaviour;
+    char *titlebar_color;
+    char *titlebar_focused_color;
+    char *titlebar_text_color;
+    char *titlebar_text_focused_color;
 } prefs;
 
 static void get_int(type *typ, int *val);
@@ -103,6 +107,10 @@ Bool pref_default_on_top = False;
 Bool pref_default_on_bottom = False;
 Bool pref_pass_focus_click = False;
 int pref_default_cycle_behaviour = TYPE_RAISE_IMMEDIATELY;
+char *pref_default_titlebar_color = NULL;
+char *pref_default_titlebar_focused_color = NULL;
+char *pref_default_titlebar_text_color = NULL;
+char *pref_default_titlebar_text_focused_color = NULL;
 
 void prefs_init()
 {
@@ -189,6 +197,22 @@ void prefs_init()
                     case CYCLEBEHAVIOUR:
                         get_int(lp->line_value.option->option_value,
                                 &pref_default_cycle_behaviour);
+                        break;
+                    case COLORTITLEBAR:
+                        get_string(lp->line_value.option->option_value,
+                                   &pref_default_titlebar_color);
+                        break;
+                    case COLORTITLEBARFOCUSED:
+                        get_string(lp->line_value.option->option_value,
+                                   &pref_default_titlebar_focused_color);
+                        break;
+                    case COLORTEXT:
+                        get_string(lp->line_value.option->option_value,
+                                   &pref_default_titlebar_text_color);
+                        break;
+                    case COLORTEXTFOCUSED:
+                        get_string(lp->line_value.option->option_value,
+                                   &pref_default_titlebar_text_focused_color);
                         break;
                 }
                 break;
@@ -348,6 +372,30 @@ static Bool type_check_option(option *opt)
                 retval = True;
             }
             break;
+        case COLORTITLEBAR:
+            if ( (retval = CHECK_STRING(opt->option_value)) == False) {
+                fprintf(stderr,
+                        "XWM:  Unknown value for ColorTitlebar\n");
+            }
+            break;
+        case COLORTITLEBARFOCUSED:
+            if ( (retval = CHECK_STRING(opt->option_value)) == False) {
+                fprintf(stderr,
+                        "XWM:  Unknown value for ColorTitlebarFocused\n");
+            }
+            break;
+        case COLORTEXT:
+            if ( (retval = CHECK_STRING(opt->option_value)) == False) {
+                fprintf(stderr,
+                        "XWM:  Unknown value for ColorTitlebarText\n");
+            }
+            break;
+        case COLORTEXTFOCUSED:
+            if ( (retval = CHECK_STRING(opt->option_value)) == False) {
+                fprintf(stderr,
+                        "XWM:  Unknown value for ColorTitlebarTextFocused\n");
+            }
+            break;
         default:
             fprintf(stderr, "XWM: unknown option type found...\n");
             retval = False;
@@ -465,6 +513,10 @@ void prefs_apply(client_t *client)
     p.always_on_bottom = pref_default_on_bottom;
     p.pass_focus_click = pref_pass_focus_click;
     p.cycle_behaviour = pref_default_cycle_behaviour;
+    p.titlebar_color = pref_default_titlebar_color;
+    p.titlebar_focused_color = pref_default_titlebar_focused_color;
+    p.titlebar_text_color = pref_default_titlebar_text_color;
+    p.titlebar_text_focused_color = pref_default_titlebar_text_focused_color;
 
     prefs_apply_internal(client, contexts, &p);
 
@@ -559,6 +611,12 @@ void prefs_apply(client_t *client)
     } else {
         client->pass_focus_click = 0;
     }
+
+    paint_calculate_colors(client, p.titlebar_color,
+                           p.titlebar_focused_color,
+                           p.titlebar_text_color,
+                           p.titlebar_text_focused_color);
+    
     /* ADDOPT 10 */
     /* For adding an option, at this point, do something with the
      * client window, or set a flag in client_t and ensure
@@ -717,9 +775,6 @@ static Bool context_applies(client_t *client, context *cntxt)
  */
 static void option_apply(client_t *client, option *opt, prefs *p)
 {
-    int type_int;
-    Bool type_bool;
-    
     switch (opt->option_name) {
         /* ADDOPT 8 */
         case DISPLAYTITLEBAR:
@@ -747,6 +802,18 @@ static void option_apply(client_t *client, option *opt, prefs *p)
             break;
         case PASSFOCUSCLICK:
             get_bool(opt->option_value, &p->pass_focus_click);
+            break;
+        case COLORTITLEBAR:
+            get_string(opt->option_value, &p->titlebar_color);
+            break;
+        case COLORTITLEBARFOCUSED:
+            get_string(opt->option_value, &p->titlebar_focused_color);
+            break;
+        case COLORTEXT:
+            get_string(opt->option_value, &p->titlebar_text_color);
+            break;
+        case COLORTEXTFOCUSED:
+            get_string(opt->option_value, &p->titlebar_text_focused_color);
             break;
     }
 }
@@ -790,9 +857,9 @@ key_fn fn_table[] = {
 /* 13 */    NULL, /* non-interactive move/resize, must implement */
 /* 14 */    xwm_quit,
 /* 15 */    NULL, /* beep */
-/* 16 */    NULL, /* invoke, different from launch? */
+/* 16 */    NULL, /* invoke composed function */
 /* 17 */    NULL, /* expansion for menu system */
-/* 18 */    NULL, /* refresh */
+/* 18 */    NULL, /* refresh/reset */
 };
 
 static void globally_bind(line *lp)

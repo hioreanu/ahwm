@@ -89,6 +89,18 @@ AlwaysOnBottom { return TOK_ALWAYSONBOTTOM; }
 PassFocusClick { return TOK_PASSFOCUSCLICK; }
 CycleBehaviour { return TOK_CYCLEBEHAVIOUR; }
 CycleBehavior { return TOK_CYCLEBEHAVIOUR; }
+ColorTitlebar { return TOK_COLORTITLEBAR; }
+ColourTitlebar { return TOK_COLORTITLEBAR; }
+ColorTitlebarNonFocused { return TOK_COLORTITLEBAR; }
+ColourTitlebarNonFocused { return TOK_COLORTITLEBAR; }
+ColorTitlebarFocused { return TOK_COLORTITLEBARFOCUSED; }
+ColourTitlebarFocused { return TOK_COLORTITLEBARFOCUSED; }
+ColorTitlebarText { return TOK_COLORTEXT; }
+ColourTitlebarText { return TOK_COLORTEXT; }
+ColorTitlebarTextNonFocused { return TOK_COLORTEXT; }
+ColourTitlebarTextNonFocused { return TOK_COLORTEXT; }
+ColorTitlebarTextFocused { return TOK_COLORTEXTFOCUSED; }
+ColourTitlebarTextFocused { return TOK_COLORTEXTFOCUSED; }
 
 SloppyFocus { return TOK_SLOPPY_FOCUS; }
 ClickToFocus { return TOK_CLICK_TO_FOCUS; }

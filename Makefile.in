@@ -47,7 +47,7 @@ clean:
 
 client.@OBJEXT@: config.h client.h xwm.h workspace.h prefs.h keyboard-mouse.h
 client.@OBJEXT@: cursor.h focus.h event.h malloc.h debug.h ewmh.h move-resize.h
-client.@OBJEXT@: stacking.h
+client.@OBJEXT@: stacking.h paint.h
 colormap.@OBJEXT@: config.h colormap.h client.h xwm.h
 compat.@OBJEXT@: config.h compat.h
 cursor.@OBJEXT@: config.h cursor.h xwm.h
@@ -63,13 +63,17 @@ icccm.@OBJEXT@: config.h xwm.h icccm.h debug.h
 keyboard-mouse.@OBJEXT@: config.h keyboard-mouse.h client.h xwm.h prefs.h malloc.h
 keyboard-mouse.@OBJEXT@: workspace.h event.h focus.h cursor.h debug.h
 kill.@OBJEXT@: config.h kill.h client.h xwm.h prefs.h event.h debug.h
+lexer.@OBJEXT@: config.h prefs.h client.h xwm.h parser.h
 malloc.@OBJEXT@: config.h xwm.h malloc.h
 move-resize.@OBJEXT@: config.h move-resize.h prefs.h client.h xwm.h cursor.h event.h
 move-resize.@OBJEXT@: malloc.h debug.h focus.h workspace.h
+paint.@OBJEXT@: config.h paint.h client.h xwm.h debug.h malloc.h focus.h workspace.h
+paint.@OBJEXT@: prefs.h
+parser.@OBJEXT@: config.h keyboard-mouse.h client.h xwm.h prefs.h
 place.@OBJEXT@: config.h place.h client.h xwm.h workspace.h prefs.h debug.h focus.h
 place.@OBJEXT@: stacking.h
-prefs.@OBJEXT@: config.h prefs.h client.h xwm.h debug.h workspace.h keyboard-mouse.h
-prefs.@OBJEXT@: focus.h kill.h move-resize.h
+prefs.@OBJEXT@: config.h prefs.h client.h xwm.h parser.h debug.h workspace.h
+prefs.@OBJEXT@: keyboard-mouse.h focus.h kill.h move-resize.h
 qux.@OBJEXT@: client.h config.h xwm.h
 stacking.@OBJEXT@: config.h client.h xwm.h stacking.h malloc.h workspace.h prefs.h
 stacking.@OBJEXT@: debug.h
@@ -77,7 +81,7 @@ workspace.@OBJEXT@: config.h workspace.h client.h xwm.h prefs.h focus.h event.h
 workspace.@OBJEXT@: debug.h ewmh.h stacking.h
 xev.@OBJEXT@: config.h malloc.h xwm.h
 xwm.@OBJEXT@: config.h xwm.h event.h client.h keyboard-mouse.h prefs.h focus.h
-xwm.@OBJEXT@: workspace.h cursor.h move-resize.h kill.h icccm.h ewmh.h
+xwm.@OBJEXT@: workspace.h cursor.h move-resize.h kill.h icccm.h ewmh.h paint.h
 client.@OBJEXT@: config.h xwm.h
 colormap.@OBJEXT@: config.h client.h xwm.h
 compat.@OBJEXT@: config.h
@@ -91,6 +95,7 @@ keyboard-mouse.@OBJEXT@: config.h client.h xwm.h prefs.h
 kill.@OBJEXT@: config.h client.h xwm.h prefs.h
 malloc.@OBJEXT@: config.h xwm.h
 move-resize.@OBJEXT@: config.h prefs.h client.h xwm.h
+paint.@OBJEXT@: config.h client.h xwm.h
 place.@OBJEXT@: config.h client.h xwm.h
 prefs.@OBJEXT@: config.h client.h xwm.h
 stacking.@OBJEXT@: config.h client.h xwm.h

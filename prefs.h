@@ -108,7 +108,11 @@ struct _option {
            ALWAYSONTOP,
            PASSFOCUSCLICK,
            ALWAYSONBOTTOM,
-           CYCLEBEHAVIOUR } option_name;
+           CYCLEBEHAVIOUR,
+           COLORTITLEBAR,
+           COLORTITLEBARFOCUSED,
+           COLORTEXT,
+           COLORTEXTFOCUSED } option_name;
     type *option_value;
 };
 

@@ -25,7 +25,7 @@
 
 /*
  * WARNING:  This code is VERY untested, as all of my machines run at
- * 24 bit depth
+ * 24 or 32 bit depth
  */
 
 #ifndef COLORMAP_H
