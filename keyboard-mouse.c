@@ -74,7 +74,7 @@ static Time last_quote_time;
 static void modifier_combinations_helper(unsigned int state, int *n, int bit);
 static int figure_button(char *, unsigned int *);
 static int figure_keycode(char *, unsigned int *);
-static int get_location(Window w);
+static int get_location(XButtonEvent *e);
 static void warn(KeySym new, char *old, char *mod);
 static void figure_lock(KeySym keysym, int bit);
 static void unquote(XEvent *e);
@@ -482,16 +482,15 @@ Bool keyboard_handle_event(XKeyEvent *xevent)
     code = xevent->keycode;
 
     for (kb = keybindings; kb != NULL; kb = kb->next) {
-        if (kb->keycode == code) {
-            if (kb->modifiers == (xevent->state & (~AllLocksMask))
-                && (kb->depress == xevent->type)) {
-                if (quoting) {
-                    unquote((XEvent *)xevent);
-                } else {
-                    (*kb->function)((XEvent *)xevent, kb->arg);
-                }
-                return True;
+        if (kb->keycode == code
+            && kb->modifiers == (xevent->state & (~AllLocksMask))
+            && kb->depress == xevent->type) {
+            if (quoting) {
+                unquote((XEvent *)xevent);
+            } else {
+                (*kb->function)((XEvent *)xevent, kb->arg);
             }
+            return True;
         }
     }
     return False;
@@ -513,45 +512,62 @@ Bool mouse_handle_event(XEvent *xevent)
 {
     mousebinding *mb;
     unsigned int button, state;
+    int location;
+    client_t *client;
     static int grabbed_button = 0;
+    Bool set_focus = False;
 
     button = xevent->xbutton.button;
     state = xevent->xbutton.state & (~(ANYBUTTONMASK | AllLocksMask));
-    debug(("MOUSE event, button = %d, state = 0x%08X\n", button, state));
+    location = get_location(&xevent->xbutton);
+    debug(("\tMouse event, button = %d, state = 0x%08X\n", button, state));
     
-    for (mb = mousebindings; mb != NULL; mb = mb->next) {
-        if (button == mb->button) {
-            if (state == mb->modifiers &&
-                (mb->location & get_location(xevent->xbutton.window))) {
-                if (xevent->type == mb->depress) {
-                    if (quoting) {
-                        unquote(xevent);
-                    } else {
-                        if (grabbed_button == 0
-                            || (grabbed_button == xevent->xbutton.button
-                                && xevent->type == ButtonRelease
-                                && in_window(xevent, xevent->xbutton.window)))
-                            (*mb->function)(xevent, mb->arg);
-                    }
-                    XUngrabPointer(dpy, CurrentTime);
-                    grabbed_button = 0;
-                } else {
-                    XGrabPointer(dpy, xevent->xbutton.window, False,
-                                 ButtonReleaseMask | ButtonPressMask,
-                                 GrabModeAsync, GrabModeAsync, None,
-                                 None, CurrentTime);
-                    grabbed_button = button;
-                }
-                return True;
-            }
+    if (xevent->xbutton.button == Button1
+        && xevent->xbutton.state == 0) {
+        client = client_find(xevent->xbutton.window);
+        if (client != NULL
+            && client->focus_policy == ClickToFocus) {
+            focus_set(client, event_timestamp);
+            set_focus = True;
         }
     }
+    
+    for (mb = mousebindings; mb != NULL; mb = mb->next) {
+        if (button == mb->button
+            && state == mb->modifiers
+            && (location & mb->location)) {
+            if (xevent->type == mb->depress) {
+                if (quoting) {
+                    unquote(xevent);
+                } else {
+                    if (grabbed_button == 0
+                        || (grabbed_button == xevent->xbutton.button
+                            && xevent->type == ButtonRelease
+                            && in_window(xevent, xevent->xbutton.window)))
+                        (*mb->function)(xevent, mb->arg);
+                }
+                XUngrabPointer(dpy, event_timestamp);
+                grabbed_button = 0;
+            } else {
+                XGrabPointer(dpy, xevent->xbutton.window, False,
+                             ButtonReleaseMask | ButtonPressMask,
+                             GrabModeAsync, GrabModeAsync, None,
+                             None, event_timestamp);
+                grabbed_button = button;
+            }
+            return True;
+        }
+    }
+    if (set_focus && client->prefs.pass_focus_click)
+        XAllowEvents(dpy, ReplayPointer, CurrentTime);
     if (grabbed_button != 0
         && xevent->type == ButtonRelease
         && xevent->xbutton.button == grabbed_button) {
-        XUngrabPointer(dpy, CurrentTime);
+        XUngrabPointer(dpy, event_timestamp);
         grabbed_button = 0;
         return True;
+    } else if (grabbed_button == 0) {
+        XUngrabPointer(dpy, event_timestamp);
     }
     return False;
 }
@@ -812,15 +828,26 @@ static Bool in_window(XEvent *xevent, Window w)
     return False;
 }
 
-static int get_location(Window w)
+static int get_location(XButtonEvent *e)
 {
     client_t *client;
     
-    if (w == root_window) return MOUSE_ROOT;
-    client = client_find(w);
+    if (e->window == root_window) return MOUSE_ROOT;
+    client = client_find(e->window);
     if (client == NULL) return MOUSE_NOWHERE;
-    if (w == client->frame) return MOUSE_FRAME;
-    if (w == client->titlebar) return MOUSE_TITLEBAR;
+    if (e->window == client->titlebar)
+        return MOUSE_TITLEBAR;
+    if (e->window == client->frame) {
+        /* when we grab button1 for click-to-focus, we'll never get
+         * events on the titlebar window for some reason */
+        if (client->titlebar != None
+            && e->x_root >= client->x
+            && e->y_root >= client->y
+            && e->x_root <= client->x + client->width
+            && e->y_root <= client->y + TITLE_HEIGHT)
+            return MOUSE_TITLEBAR;
+        return MOUSE_FRAME;
+    }
     return MOUSE_NOWHERE;
 }
 

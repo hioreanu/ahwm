@@ -92,19 +92,21 @@ typedef struct _client_t {
     struct _client_t *next_focus;
     struct _client_t *prev_focus;
 
-    /* flags for internal use */
+    enum { ClickToFocus, SloppyFocus, DontFocus } focus_policy;
+    enum { Fixed, Smart, Cascade } map_policy;
+    
     struct _flags {
         unsigned int reparented:1;         /* is window reparented to frame */
         unsigned int ignore_unmapnotify:1; /* hack, see client_create */
     } flags;
-
-    /* flags set by user */
+    
     struct _prefs {
         unsigned int titlebar:1;
         unsigned int skip_alt_tab:1;
         unsigned int omnipresent:1;
         unsigned int always_on_top:1;
         unsigned int always_on_bottom:1;
+        unsigned int pass_focus_click:1;
     } prefs;
 } client_t;                     /* 124 bytes on ILP-32 machines */
 

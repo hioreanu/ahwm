@@ -10,10 +10,14 @@
  */
 
 #include <X11/Xlib.h>
-#include <X11/Xproto.h>
-#include <X11/Xresource.h>
-#include <X11/Xutil.h>
 #include <X11/Xatom.h>
+#include <X11/Xproto.h>
+#include <X11/Xresource.h>      /* needed for XUniqueContext in Xutil.h */
+#include <X11/Xutil.h>
+
+#ifdef SHAPE
+#include <X11/extensions/shape.h>
+#endif
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -33,10 +37,6 @@
 #include "workspace.h"
 #include "icccm.h"
 #include "ewmh.h"
-
-#ifdef SHAPE
-#include <X11/extensions/shape.h>
-#endif
 
 Display *dpy;
 int scr;
@@ -64,10 +64,10 @@ int shape_supported;
 int shape_event_base;
 #endif
 
-void alt_tab(XEvent *, void *arg);
-void alt_shift_tab(XEvent *, void *arg);
 void run_program(XEvent *e, void *arg);
+#ifdef DEBUG
 void mark(XEvent *e, void *arg);
+#endif
 
 static int already_running_windowmanager;
 static int (*error_default_handler)(Display *, XErrorEvent *);
@@ -87,7 +87,7 @@ static int error_handler(Display *dpy, XErrorEvent *error)
             && error->error_code == BadValue))
         return 0;
     fprintf(stderr, "XWM: ");
-    return error_default_handler(dpy, error);
+    return error_default_handler(dpy, error); /* calls exit() */
 }
 
 /*
@@ -130,7 +130,9 @@ int main(int argc, char **argv)
 
     already_running_windowmanager = 0;
     XSetErrorHandler(tmp_error_handler);
+    /* this causes an error if some other window manager is running */
     XSelectInput(dpy, root_window, ROOT_EVENT_MASK);
+    /* and we want to ensure the server processes the request now */
     XSync(dpy, 0);
     if (already_running_windowmanager) {
         fprintf(stderr, "XWM: You're already running a window manager, silly.\n");
@@ -140,27 +142,27 @@ int main(int argc, char **argv)
     printf("--------------------------------");
     printf(" Welcome to XWM ");
     printf("--------------------------------\n");
+    fflush(stdout);
 
-    /* get the default error handler and set the error handler */
+    /* get the default error handler and set our error handler */
     XSetErrorHandler(NULL);
     error_default_handler = XSetErrorHandler(error_handler);
 #ifdef DEBUG
     XSynchronize(dpy, True);
 #endif
 
-    cursor_init();
-    /* I would prefer not changing the root cursor at all (user can
-     * already do that with 'xsetroot'), but it's extremely
-     * distracting to have the cursor change when it simply hovers
-     * over something, and we need to define a cursor for some of our
-     * windows.  X does not provide any mechanism for getting a
-     * window's cursor, so we define the root cursor for
-     * consistency.
-     * FIXME:  move into cursor_init() */
-    XDefineCursor(dpy, root_window, cursor_normal);
+    /* set up our global variables */
+    WM_STATE = XInternAtom(dpy, "WM_STATE", False);
+    WM_CHANGE_STATE = XInternAtom(dpy, "WM_CHANGE_STATE", False);
+    WM_TAKE_FOCUS = XInternAtom(dpy, "WM_TAKE_FOCUS", False);
+    WM_SAVE_YOURSELF = XInternAtom(dpy, "WM_SAVE_YOURSELF", False);
+    WM_DELETE_WINDOW = XInternAtom(dpy, "WM_DELETE_WINDOW", False);
+    WM_PROTOCOLS = XInternAtom(dpy, "WM_PROTOCOLS", False);
 
-    workspace_update_color();
-
+#ifdef SHAPE
+    shape_supported = XShapeQueryExtension(dpy, &shape_event_base, &junk);
+#endif
+    
     fontstruct = XLoadQueryFont(dpy,
                                 "-*-helvetica-bold-r-*-*-12-*-*-*-*-*-*-*");
 
@@ -232,12 +234,16 @@ int main(int argc, char **argv)
     frame_context = XUniqueContext();
     title_context = XUniqueContext();
 
+    cursor_init();
     icccm_init();
     ewmh_init();
     keyboard_init();
+    workspace_update_color();
 
+#ifdef DEBUG
     keyboard_bind("Control | Alt | Shift | l", KEYBOARD_DEPRESS,
                   mark, NULL);
+#endif
     keyboard_bind("Control | Alt | Shift | t", KEYBOARD_DEPRESS,
                   run_program, "xterm");
     keyboard_bind("Control | Alt | Shift | n", KEYBOARD_DEPRESS,
@@ -281,6 +287,8 @@ int main(int argc, char **argv)
                   workspace_goto, (void *)6);
     keyboard_bind("Alt | 7", KEYBOARD_DEPRESS,
                   workspace_goto, (void *)7);
+    keyboard_bind("Control | Alt | Shift | q", KEYBOARD_RELEASE,
+                  keyboard_quote, NULL);
     mouse_bind("Alt | Button1", MOUSE_DEPRESS, MOUSE_FRAME,
                move_client, NULL);
     mouse_bind("Alt | Button3", MOUSE_DEPRESS, MOUSE_FRAME,
@@ -293,24 +301,8 @@ int main(int argc, char **argv)
                kill_with_extreme_prejudice, NULL);
     mouse_bind("Button3", MOUSE_RELEASE, MOUSE_TITLEBAR,
                resize_maximize, NULL);
-    keyboard_bind("Control | Alt | Shift | q", KEYBOARD_RELEASE,
-                  keyboard_quote, NULL);
 
-    WM_STATE = XInternAtom(dpy, "WM_STATE", False);
-    WM_CHANGE_STATE = XInternAtom(dpy, "WM_CHANGE_STATE", False);
-    WM_TAKE_FOCUS = XInternAtom(dpy, "WM_TAKE_FOCUS", False);
-    WM_SAVE_YOURSELF = XInternAtom(dpy, "WM_SAVE_YOURSELF", False);
-    WM_DELETE_WINDOW = XInternAtom(dpy, "WM_DELETE_WINDOW", False);
-    WM_PROTOCOLS = XInternAtom(dpy, "WM_PROTOCOLS", False);
-
-#ifdef SHAPE
-    shape_supported = XShapeQueryExtension(dpy, &shape_event_base, &junk);
-#endif
-    
     scan_windows();
-
-    XSetInputFocus(dpy, root_window, RevertToPointerRoot, CurrentTime);
-    focus_ensure(CurrentTime);
     
     xfd = ConnectionNumber(dpy);
     fcntl(xfd, F_SETFD, FD_CLOEXEC);
@@ -359,6 +351,7 @@ void run_program(XEvent *e, void *arg)
     }
 }
 
+#ifdef DEBUG
 /* make it easier to parse debug output */
 void mark(XEvent *e, void *arg)
 {
@@ -366,3 +359,4 @@ void mark(XEvent *e, void *arg)
     printf(" MARK ");
     printf("-------------------------------------\n");
 }
+#endif

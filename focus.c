@@ -249,7 +249,20 @@ static void focus_change_current(client_t *new, Time timestamp,
     focus_current = new;
     client_paint_titlebar(old);
     client_paint_titlebar(new);
+    if (old != new) {
+        if (old != NULL && old->focus_policy == ClickToFocus) {
+            debug(("\tGrabbing Button 1 of 0x%08x\n", old));
+            XGrabButton(dpy, Button1, 0, old->frame,
+                        True, ButtonPressMask, GrabModeSync,
+                        GrabModeAsync, None, None);
+            keyboard_grab_keys(old);
+        }
+        if (new != NULL && new->focus_policy == ClickToFocus) {
+            XUngrabButton(dpy, Button1, 0, new->frame);
+        }
+    }
     if (call_focus_ensure) focus_ensure(timestamp);
+    XFlush(dpy);
 }
 
 #ifdef DEBUG

@@ -326,7 +326,8 @@ static void event_enter(XCrossingEvent *xevent)
     client = client_find(xevent->window);
     client_print("EnterNotify", client);
     if (client != NULL && client->state == NormalState
-        && xevent->serial != ignore_enternotify_hack) {
+        && xevent->serial != ignore_enternotify_hack
+        && client->focus_policy == SloppyFocus) {
         debug(("\tSetting focus in response to EnterNotify\n"));
         focus_set(client, CurrentTime);
     } else {
@@ -526,7 +527,7 @@ static void event_configurerequest(XConfigureRequestEvent *xevent)
     XWindowChanges xwc;
     position_size ps;
     unsigned long new_mask;
-    
+
     client = client_find(xevent->window);
 
     if (client == NULL) {

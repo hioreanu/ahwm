@@ -22,7 +22,7 @@ extern int scr_width;           /* from DisplayWidth() */
 extern unsigned long black;     /* black pixel */
 extern unsigned long white;     /* white pixel */
 extern Window root_window;      /* root window (only one screen supported) */
-extern GC root_white_fg_gc;     /* a GC with white foreground */
+extern GC root_white_fg_gc;     /* GC with white foreground */
 extern GC root_black_fg_gc;     /* GC with black foreground */
 extern GC root_invert_gc;       /* GC with GXxor as function */
 extern GC extra_gc1;            /* GC which changes */
@@ -40,5 +40,18 @@ extern Atom WM_PROTOCOLS;
 extern int shape_supported;
 extern int shape_event_base;
 #endif
+
+/*
+ * xwm.c also contains main(), which does the following:
+ * 1.  Parse command line
+ * 2.  Open X display
+ * 3.  Select X event mask on root window
+ * 4.  Barf if some other window manager is running
+ * 5.  Initialize globals declared above
+ * 6.  Call the various _init functions, in correct order
+ * 7.  Create static key/mouse bindings
+ * 8.  Scan already-mapped windows and manage them
+ * 9.  Do the main event loop
+ */
 
 #endif /* XWM_H */

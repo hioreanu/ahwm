@@ -72,6 +72,8 @@ client_t *client_create(Window w)
     client->orig_border_width = xwa.border_width;
     client->flags.reparented = 0;
     client->flags.ignore_unmapnotify = 0;
+    client->prefs.pass_focus_click = 1;
+    client->focus_policy = SloppyFocus;
     
     /* God, this sucks.  I want the border width to be zero on all
      * clients, so I need to change the client's border width at some
@@ -823,14 +825,16 @@ static void raise_tree(client_t *node, client_t *ignore,
 {
     client_t *parent, *c;
     Window *tmp;
-    
+
+    /* go up if needed */
     if (go_up && node->transient_for != None) {
         parent = client_find(node->transient_for);
         if (parent != NULL) {
             raise_tree(parent, node, True, wb);
         }
     }
-    
+
+    /* visit node */
     if (node->workspace == workspace_current
         && node->state == NormalState) {
         if (wb->nallocated == wb->nused) {
@@ -845,17 +849,12 @@ static void raise_tree(client_t *node, client_t *ignore,
         wb->w[wb->nused++] = node->frame;
     }
 
+    /* go down */
     for (c = node->transients; c != NULL; c = c->next_transient) {
         if (c != ignore)
             raise_tree(c, NULL, False, wb);
     }
 }
-
-/*
- * We must know three things to figure out when one of our actions
- * will generate an EnterNotify event - faster to call XQueryPointer
- * once instead of whenever we raise a window
- */
 
 void client_raise(client_t *client)
 {
