@@ -114,8 +114,8 @@ void resize_maximize(XEvent *xevent, void *v)
         client->prev_y = client->y;
         client->prev_width = client->width;
         client->prev_height = client->height;
-        client->width = (DisplayWidth(dpy, scr) / w_inc) * w_inc;
-        client->height = (DisplayHeight(dpy, scr) / h_inc) * h_inc;
+        client->width = (scr_width / w_inc) * w_inc;
+        client->height = (scr_height / h_inc) * h_inc;
         client->y = client->x = 0;
     }
     XMoveResizeWindow(dpy, client->frame, client->x, client->y,
@@ -254,7 +254,7 @@ void move_client(XEvent *xevent, void *v)
                            xevent->xkey.keycode == keycode_s) {
                     if (xevent->xkey.state & ShiftMask) {
                         delta =
-                          DisplayHeight(dpy, scr) - client->y - client->height;
+                          scr_height - client->y - client->height;
                     } else {
                         delta = 1;
                     }
@@ -283,7 +283,7 @@ void move_client(XEvent *xevent, void *v)
                            xevent->xkey.keycode == keycode_d) {
                     if (xevent->xkey.state & ShiftMask) {
                         delta =
-                            DisplayWidth(dpy, scr) - client->x - client->width;
+                            scr_width - client->x - client->width;
                     } else {
                         delta = 1;
                     }
@@ -419,8 +419,8 @@ static void move_constrain(client_t *client)
 {
     while (client->x + client->width < 0) client->x++;
     while (client->y + client->height < 0) client->y++;
-    while (client->x > DisplayWidth(dpy, scr)) client->x--;
-    while (client->y > DisplayHeight(dpy, scr)) client->y--;
+    while (client->x > scr_width) client->x--;
+    while (client->y > scr_height) client->y--;
     XMoveWindow(dpy, client->frame, client->x, client->y);
     display_geometry("Moving", client);
 }
@@ -846,7 +846,7 @@ static void xrefresh()
     xswa.backing_store = NotUseful;
     xswa.save_under = False;
     w = XCreateWindow(dpy, root_window, 0, 0,
-                      DisplayWidth(dpy, scr), DisplayHeight(dpy, scr),
+                      scr_width, scr_height,
                       0, DefaultDepth(dpy, scr), InputOutput,
                       DefaultVisual(dpy, scr),
                       CWOverrideRedirect | CWBackingStore | CWSaveUnder,
