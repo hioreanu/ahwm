@@ -4,6 +4,7 @@
  * copyright privileges.
  */
 
+#include <X11/Xlib.h>
 #include <X11/keysym.h>
 #include "keyboard.h"
 #include "client.h"
@@ -15,8 +16,19 @@
  * of this is necessary, even for the simplest application.
  */
 
-void keyboard_grab_keys(client_t *client)
+void keyboard_grab_keys(Window w)
 {
-    XGrabKey(dpy, XK_0, 0, client->window, True,
+    printf("Grabbing keys of window 0x%08X\n", w);
+    XGrabKey(dpy, XK_a, ControlMask, w, True,
              GrabModeAsync, GrabModeAsync);
+/*
+    XGrabKey(dpy, XK_a, 0, w, True,
+             GrabModeAsync, GrabModeAsync);
+    XGrabKey(dpy, XK_a, Mod1Mask, w, True,
+             GrabModeAsync, GrabModeAsync);
+    XGrabKey(dpy, XK_a, Mod2Mask, w, True,
+             GrabModeAsync, GrabModeAsync);
+    XGrabKey(dpy, XK_a, ShiftMask, w, True,
+             GrabModeAsync, GrabModeAsync);
+*/
 }

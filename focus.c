@@ -88,12 +88,13 @@ void focus_ensure()
         return;
     focus_current = focus_stacks[workspace_current - 1];
     if (focus_current == NULL) {
-        XSetInputFocus(dpy, root_window, RevertToNone, CurrentTime);
+        XSetInputFocus(dpy, root_window, RevertToPointerRoot, CurrentTime);
         return;
     }
     printf("Setting focus to 0x%08X...", focus_current->window);
     fflush(stdout);
-    XSetInputFocus(dpy, focus_current->window, RevertToNone, CurrentTime);
+    XSetInputFocus(dpy, focus_current->window,
+                   RevertToPointerRoot, CurrentTime);
     printf("ok\n");
     XMapRaised(dpy, focus_current->window);
 }

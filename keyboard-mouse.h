@@ -15,7 +15,7 @@
  * has a chance to call XGrabKeys on the newly-created window).
  */
 
-void keyboard_grab_keys(client_t *client);
+void keyboard_grab_keys(Window);
 
 /*
  * Process a keyboard event - just edit this function if

@@ -204,7 +204,7 @@ static void event_maprequest(XMapRequestEvent *xevent)
     client->workspace = workspace_current;
 
     XMapWindow(xevent->display, client->window);
-    keyboard_grab_keys(client);
+    keyboard_grab_keys(client->window);
     focus_set(client);
     focus_ensure();
 }

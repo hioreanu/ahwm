@@ -19,7 +19,7 @@ client_t *client_create(Window w)
 
     if (XGetWindowAttributes(dpy, w, &xwa) == 0) return NULL;
     if (xwa.override_redirect) return NULL;
-    XSelectInput(dpy, w, EnterWindowMask);
+    XSelectInput(dpy, w, EnterWindowMask | KeyPressMask);
 
     client = malloc(sizeof(client_t));
     if (client == NULL) return NULL;

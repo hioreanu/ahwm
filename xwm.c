@@ -79,6 +79,7 @@ int main(int argc, char **argv)
     XSetErrorHandler(NULL);
     XSynchronize(dpy, True);
 
+//    keyboard_grab_keys(root_window);
     XDefineCursor(dpy, root_window, XCreateFontCursor(dpy, XC_left_ptr));
 
     window_context = XUniqueContext(); /* client.c */
@@ -86,7 +87,7 @@ int main(int argc, char **argv)
     scan_windows();
 
     printf("Setting root input focus...");
-    XSetInputFocus(dpy, root_window, RevertToNone, CurrentTime);
+    XSetInputFocus(dpy, root_window, RevertToPointerRoot, CurrentTime);
     printf("ok\n");
     focus_ensure();             /* focus.c */
     
@@ -95,6 +96,7 @@ int main(int argc, char **argv)
 
     XSync(dpy, 0);
     for (;;) {
+
         event_get(xfd, &event); /* event.c */
         event_dispatch(&event); /* event.c */
     }
@@ -111,10 +113,14 @@ static void scan_windows()
 {
     int i, n;
     Window *wins, w1, w2;
+    client_t *client;
 
     XQueryTree(dpy, root_window, &w1, &w2, &wins, &n);
-    for (i = 0; i < n; i++)
-        client_create(wins[i]);  /* client.c */
+    for (i = 0; i < n; i++) {
+        client = client_create(wins[i]);  /* client.c */
+        if (client != NULL)
+            keyboard_grab_keys(wins[i]); /* keyboard.c */
+    }
     XFree(wins);
 }
 
