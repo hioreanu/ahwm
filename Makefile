@@ -1,3 +1,4 @@
+# $Id$
 SHELL=/bin/sh
 
 CFLAGS=-I/usr/X11R6/include -L/usr/X11R6/lib -g
@@ -21,7 +22,11 @@ clean:
 
 # DO NOT DELETE
 
-client.o: client.h xwm.h
-event.o: xwm.h event.h
+client.o: client.h xwm.h workspace.h
+event.o: xwm.h event.h client.h
+focus.o: focus.h client.h xwm.h workspace.h
+workspace.o: workspace.h client.h xwm.h
 xwm.o: xwm.h event.h client.h
 client.o: xwm.h
+focus.o: client.h xwm.h
+workspace.o: client.h xwm.h
