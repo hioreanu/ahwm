@@ -115,6 +115,7 @@ client_t *client_create(Window w)
     client->pass_focus_click = 1;
     client->focus_policy = SloppyFocus;
     client->cycle_behaviour = RaiseImmediately;
+    client->sticky = 0;
     client->dont_bind_keys = 0;
     client->dont_bind_mouse = 0;
 

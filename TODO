@@ -1,3 +1,6 @@
+working on sticky, done in move-resize.c
+
+
 TODO before release:
 - option WorkspaceSendTransients (boolean)
 - on alt tab, delay between titlebar color change and raise, mebbe stacking_raise()

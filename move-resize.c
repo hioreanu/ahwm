@@ -189,6 +189,7 @@ void resize_maximize(XEvent *xevent, arglist *ignored)
 
     client = client_find(xevent->xbutton.window);
     if (client == NULL) return;
+    if (client->sticky) return;
 
     max_horiz(client);
     max_vert(client);
@@ -201,6 +202,7 @@ void resize_maximize_vertically(XEvent *xevent, arglist *ignored)
 
     client = client_find(xevent->xbutton.window);
     if (client == NULL) return;
+    if (client->sticky) return;
 
     max_vert(client);
     apply_max_state(client);
@@ -212,6 +214,7 @@ void resize_maximize_horizontally(XEvent *xevent, arglist *ignored)
 
     client = client_find(xevent->xbutton.window);
     if (client == NULL) return;
+    if (client->sticky) return;
 
     max_horiz(client);
     apply_max_state(client);
@@ -254,6 +257,7 @@ void move_client(XEvent *xevent, arglist *ignored)
         XUngrabPointer(dpy, CurrentTime);
         return;
     }
+    if (client->sticky) return;
     
     moving = 1;
     orig_x = client->x;
@@ -592,6 +596,7 @@ void resize_client(XEvent *xevent, arglist *ignored)
         XUngrabPointer(dpy, CurrentTime);
         return;
     }
+    if (client->sticky) return;
     
     sizing = 1;
     orig.x = client->x;
