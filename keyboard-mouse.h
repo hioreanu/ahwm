@@ -36,7 +36,6 @@
 
 #include <X11/Xlib.h>
 #include "client.h"
-#include "prefs.h"
 
 /*
  * Modifier masks which may be arbitrarily mapped by the user
@@ -65,14 +64,17 @@ void keyboard_init();
  * type-checking/type-mangling.
  */
 
-typedef void (*key_fn)(XEvent *, arglist *);
+/* avoid header loop with prefs.h */
+struct _arglist;
+
+typedef void (*key_fn)(XEvent *, struct _arglist *);
 typedef key_fn mouse_fn;
 
 /*
  * An example function of the above type which does nothing
  */
 
-void keyboard_ignore(XEvent *e, arglist *ignored);
+void keyboard_ignore(XEvent *e, struct _arglist *ignored);
 extern mouse_fn mouse_ignore;
 
 /*
@@ -85,7 +87,7 @@ extern mouse_fn mouse_ignore;
  * client doesn't care about or can't see.
  */
 
-void keyboard_quote(XEvent *e, arglist *ignored);
+void keyboard_quote(XEvent *e, struct _arglist *ignored);
 extern mouse_fn mouse_quote;
 
 /*
@@ -128,7 +130,7 @@ void mouse_replay(XButtonEvent *e);
  */
 
 void keyboard_bind_ex(unsigned int keycode, unsigned int modifiers,
-                      int depress, key_fn fn, arglist *args);
+                      int depress, key_fn fn, struct _arglist *args);
 
 #define KEYBOARD_DEPRESS KeyPress
 #define KEYBOARD_RELEASE KeyRelease
@@ -145,11 +147,11 @@ void keyboard_bind_ex(unsigned int keycode, unsigned int modifiers,
  * parameter may be a logical OR of the locations defined below.
  */
 
-void mouse_bind_ex(unsigned int button, unsigned int modifiers,
-                   int depress, int location, mouse_fn fn, arglist *args);
+typedef enum { MOUSE_CLICK, MOUSE_DRAG, MOUSE_DOUBLECLICK } click_type;
 
-#define MOUSE_DEPRESS ButtonPress
-#define MOUSE_RELEASE ButtonRelease
+void mouse_bind_ex(unsigned int button, unsigned int modifiers,
+                   click_type type, int location, mouse_fn fn,
+                   struct _arglist *args);
 
 #define MOUSE_NOWHERE    00
 #define MOUSE_TITLEBAR   01
@@ -222,7 +224,7 @@ void mouse_bind_ex(unsigned int button, unsigned int modifiers,
  */
 
 void keyboard_bind(char *keystring, int depress,
-                   key_fn fn, arglist *args);
+                   key_fn fn, struct _arglist *args);
 
 /*
  * This works very similar to keyboard_bind except the grammar
@@ -241,8 +243,8 @@ void keyboard_bind(char *keystring, int depress,
  * This function treats all tokens as case-insensitive.
  */
 
-void mouse_bind(char *mousestring, int depress,
-                int location, mouse_fn fn, arglist *args);
+void mouse_bind(char *mousestring, click_type type,
+                int location, mouse_fn fn, struct _arglist *args);
 
 /*
  * these functions allow one to unbind all key or mouse event that
@@ -251,9 +253,9 @@ void mouse_bind(char *mousestring, int depress,
 void keyboard_unbind_ex(unsigned int keycode, unsigned int modifiers,
                         int depress);
 void mouse_unbind_ex(unsigned int button, unsigned int modifiers,
-                     int depress, int location);
+                     click_type type, int location);
 void keyboard_unbind(char *keystring, int depress);
-void mouse_unbind(char *mousestring, int depress, int location);
+void mouse_unbind(char *mousestring, click_type type, int location);
 
 /*
  * Do a "soft" grab on all the keys that are of interest to us - this
@@ -313,13 +315,21 @@ Bool mouse_handle_event(XEvent *e);
  * also set it to the arguments for the function to invoke.
  */
 
-key_fn keyboard_find_function(XKeyEvent *xevent, arglist **args);
+key_fn keyboard_find_function(XKeyEvent *xevent, struct _arglist **args);
 
 /*
  * Returns a mask from a keycode, representing all the modifiers the
  * keycode generates.  Returns zero if keycode does not generate any
- * modifiers
+ * modifiers.
  */
 int keyboard_get_modifier_mask(int keycode);
+
+/*
+ * This is kind of ugly - in move-resize.c, move_client() and
+ * resize_client() want to know the button which initiated the drag
+ * action and the initial coordinates of the drag action.
+ */
+
+void mouse_get_drag_info(unsigned int *button, int *x, int *y);
 
 #endif /* KEYBOARD_H */

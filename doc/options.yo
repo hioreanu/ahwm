@@ -257,4 +257,19 @@ docs(UseNetWmPid) is em(False) by default.
 
 The default value of docs(UseNetWmPid) is em(False).  Not
 application-settable.
+option(WindowKillingPatience)(integer)
+This option specifies the amount of time, in milliseconds, to wait after
+calling docs(KillNicely) before calling docs(KillWithExtremePrejudice).
+If the value is zero, docs(KillWithExtremePrejudice) will not
+automatically be called after docs(KillNicely).
+
+This option is inherently dangerous, so it is disabled by default.
+Some applications may pop up a confirmation dialog upon docs(KillNicely);
+using this option with those applications would be disasterous.  On the
+other hand, some applications (like Netscape Navigator) do not pop
+up confirmation dialogs upon exit, but do often hang, necessitating
+a docs(KillWithExtremePrejudice); this option was meant for use with
+those applications.
+
+Default: zero.  Not application-settable.
 enditem()

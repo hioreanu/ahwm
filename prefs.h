@@ -29,6 +29,7 @@
 #include "config.h"
 
 #include "client.h"
+#include "keyboard-mouse.h"
 
 /* Internal configuration file datatypes; these must be exported so
  * that the parser can build the parse tree.  Search for INTERFACE to
@@ -147,7 +148,7 @@ struct _keybinding {
 
 struct _mousebinding {
     char *mousebinding_string;
-    int mousebinding_depress;
+    click_type mousebinding_type;
     int mousebinding_location;
     function *mousebinding_function;
 };

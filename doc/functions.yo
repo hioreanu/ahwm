@@ -55,6 +55,9 @@ lq()hung+rq(), it will probably not close itself, and AHWM will not
 attempt to ascertain whether or not the window is lq()hung+rq().
 Therefore, the when using this function, the window may not close
 itself; if that happens, use docs(KillWithExtremePrejudice).
+
+docs(KillWithExtremePrejudice) may be automatically called after
+docs(KillNicely) if you set the docs(WindowKillingPatience) option.
 function(KillWithExtremePrejudice)(void)
 Immediately close the current window, no questions asked.
 
@@ -86,6 +89,9 @@ these protocols are experimental and can be very dangerous in certain
 cases, they are disabled in AHWM by default.  See the documentation for
 docs(UseNetWmPid) to enable AHWM to attempt to use manlink(kill)(2)(2)
 with docs(KillWithExtremePrejudice).
+
+docs(KillWithExtremePrejudice) may be automatically called after
+docs(KillNicely) if you set the docs(WindowKillingPatience) option.
 function(Launch)(string)
 This will take the string argument and pass it to a Bourne shell.  You
 can use this function to launch programs and do useful work.

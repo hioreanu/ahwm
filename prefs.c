@@ -1213,7 +1213,7 @@ static void globally_bind(line *lp)
         fn = fn_table[mb->mousebinding_function->function_type];
         if (fn != NULL) {
             mouse_bind(mb->mousebinding_string,
-                       mb->mousebinding_depress,
+                       mb->mousebinding_type,
                        mb->mousebinding_location,
                        fn,
                        mb->mousebinding_function->function_args);

@@ -53,6 +53,9 @@
 #ifndef MIN
 #define MIN(x,y) ((x) < (y) ? (x) : (y))
 #endif
+#ifndef ABS
+#define ABS(x) ((x) >= 0 ? (x) : -(x))
+#endif
 
 typedef struct _boundkey {
     unsigned int keycode;
@@ -66,7 +69,7 @@ typedef struct _boundkey {
 typedef struct _boundbutton {
     unsigned int button;
     unsigned int modifiers;
-    int depress;
+    click_type type;
     int location;
     mouse_fn function;
     arglist *args;
@@ -84,15 +87,19 @@ mouse_fn mouse_quote = keyboard_quote;
  * == 0x20, bit 5 set), then keyboard_is_lock[5] == True.
  */
 static Bool keyboard_is_lock[8] = { False };
+
 /* the mouse and keyboard bindings */
 static boundkey *boundkeys = NULL;
 static boundbutton *boundbuttons = NULL;
+
 /* combinations of modifier keys to ignore */
 static unsigned int *modifier_combinations = NULL;
 static int n_modifier_combinations;
+
 /* used for quoting key & mouse bindings */
 static Bool quoting = False;
 static Time last_quote_time;
+
 /* used for changing desktop to white when quoting */
 static Window white_window = None;
 
@@ -259,7 +266,8 @@ void keyboard_bind_ex(unsigned int keycode, unsigned int modifiers,
 }
 
 void mouse_bind_ex(unsigned int button, unsigned int modifiers,
-                   int depress, int location, mouse_fn fn, arglist *arg)
+                   click_type type, int location, mouse_fn fn,
+                   struct _arglist *arg)
 {
     boundbutton *newbinding;
 
@@ -270,7 +278,7 @@ void mouse_bind_ex(unsigned int button, unsigned int modifiers,
     }
     newbinding->button = button;
     newbinding->modifiers = modifiers;
-    newbinding->depress = depress;
+    newbinding->type = type;
     newbinding->location = location;
     newbinding->function = fn;
     newbinding->args = arg;
@@ -301,7 +309,7 @@ void keyboard_unbind_ex(unsigned int keycode, unsigned int modifiers,
 }
 
 void mouse_unbind_ex(unsigned int button, unsigned int modifiers,
-                     int depress, int location)
+                     click_type type, int location)
 {
     boundbutton *mb, *tmp;
 
@@ -309,7 +317,7 @@ void mouse_unbind_ex(unsigned int button, unsigned int modifiers,
     for (mb = boundbuttons; mb != NULL; mb = mb->next) {
         if (mb->button == button
             && mb->modifiers == modifiers
-            && mb->depress == depress
+            && mb->type == type
             && mb->location == location) {
             if (tmp == NULL) {
                 boundbuttons = boundbuttons->next;
@@ -326,7 +334,7 @@ void mouse_unbind_ex(unsigned int button, unsigned int modifiers,
 /* FIXME: should also apply the bindings to all active clients */
 
 void keyboard_bind(char *keystring, int depress,
-                   key_fn fn, arglist *arg)
+                   key_fn fn, struct _arglist *arg)
 {
     unsigned int keycode;
     unsigned int modifiers;
@@ -338,8 +346,8 @@ void keyboard_bind(char *keystring, int depress,
     keyboard_bind_ex(keycode, modifiers, depress, fn, arg);
 }
 
-void mouse_bind(char *mousestring, int depress,
-                int location, mouse_fn fn, arglist *arg)
+void mouse_bind(char *mousestring, click_type type,
+                int location, mouse_fn fn, struct _arglist *arg)
 {
     unsigned int button;
     unsigned int modifiers;
@@ -349,7 +357,7 @@ void mouse_bind(char *mousestring, int depress,
                 mousestring);
         return;
     }
-    mouse_bind_ex(button, modifiers, depress, location, fn, arg);
+    mouse_bind_ex(button, modifiers, type, location, fn, arg);
 }
 
 void keyboard_unbind(char *keystring, int depress)
@@ -365,7 +373,7 @@ void keyboard_unbind(char *keystring, int depress)
     keyboard_unbind_ex(keycode, modifiers, depress);
 }
 
-void mouse_unbind(char *mousestring, int depress, int location)
+void mouse_unbind(char *mousestring, click_type type, int location)
 {
     unsigned int button;
     unsigned int modifiers;
@@ -375,7 +383,7 @@ void mouse_unbind(char *mousestring, int depress, int location)
                 mousestring);
         return;
     }
-    mouse_unbind_ex(button, modifiers, depress, location);
+    mouse_unbind_ex(button, modifiers, type, location);
 }
 
 void keyboard_grab_keys(Window w)
@@ -418,7 +426,7 @@ void mouse_grab_buttons(client_t *client)
     if (client->dont_bind_mouse == 1) return;
     
     for (mb = boundbuttons; mb != NULL; mb = mb->next) {
-        mask = ButtonPressMask | ButtonReleaseMask;
+        mask = ButtonPressMask | ButtonReleaseMask | ButtonMotionMask;
         if (mb->location & MOUSE_FRAME) {
             XGrabButton(dpy, mb->button, mb->modifiers, client->frame,
                         True, mask, GrabModeSync, GrabModeAsync,
@@ -451,7 +459,7 @@ void mouse_ungrab_buttons(client_t *client)
     int i;
     
     for (mb = boundbuttons; mb != NULL; mb = mb->next) {
-        mask = ButtonPressMask | ButtonReleaseMask;
+        mask = ButtonPressMask | ButtonReleaseMask | ButtonMotionMask;
         if (mb->location & MOUSE_FRAME) {
             XUngrabButton(dpy, mb->button, mb->modifiers, client->frame);
             for (i = 0; i < n_modifier_combinations; i++) {
@@ -471,7 +479,7 @@ void mouse_ungrab_buttons(client_t *client)
     }
 }
 
-void keyboard_quote(XEvent *e, arglist *ignored)
+void keyboard_quote(XEvent *e, struct _arglist *ignored)
 {
     XSetWindowAttributes xswa;
     Window windows[2];
@@ -571,7 +579,7 @@ void mouse_replay(XButtonEvent *e)
     XSendEvent(dpy, e->window, True, mask, (XEvent *)e);
 }
 
-key_fn keyboard_find_function(XKeyEvent *xevent, arglist **args)
+key_fn keyboard_find_function(XKeyEvent *xevent, struct _arglist **args)
 {
     boundkey *kb;
     int code;
@@ -620,6 +628,172 @@ Bool keyboard_handle_event(XKeyEvent *xevent)
     }
 }
 
+#define DBLCLICK_THRESH 1000
+#define DRAG_THRESH 5
+#define ANYBUTTONMASK (Button1Mask | Button2Mask | Button3Mask \
+                       | Button4Mask | Button5Mask)
+
+static int saved_x, saved_y, saved_location;
+static unsigned int saved_state, saved_button;
+
+static int distance_squared(int x1, int y1, int x2, int y2);
+static int button_to_index(unsigned int button);
+static Bool mouse_invoke(XEvent *xevent, click_type type);
+static Bool mouse_down(XButtonEvent *xevent);
+static Bool mouse_up(XButtonEvent *xevent);
+static Bool mouse_moved(XMotionEvent *xevent);
+static void click_to_focus_clicked(XButtonEvent *xevent);
+
+void mouse_get_drag_info(unsigned int *button, int *x, int *y)
+{
+    *button = saved_button;
+    *x = saved_x;
+    *y = saved_y;
+}
+
+/* we don't want to pull in math libraries only for square root function,
+ * so we work in distance squared */
+static int distance_squared(int x1, int y1, int x2, int y2)
+{
+    return (x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2);
+}
+
+static int button_to_index(unsigned int button)
+{
+    switch (button) {
+        case Button1:
+            return 0;
+        case Button2:
+            return 1;
+        case Button3:
+            return 2;
+        case Button4:
+            return 3;
+        case Button5:
+            return 4;
+        default:
+            return -1;
+    }
+}
+
+static Bool mouse_invoke(XEvent *xevent, click_type type)
+{
+    boundbutton *bb;
+    Time time;
+
+    for (bb = boundbuttons; bb != NULL; bb = bb->next) {
+        if (bb->type == type &&
+            bb->button == saved_button &&
+            bb->location == saved_location &&
+            bb->modifiers == saved_state) {
+
+            time = xevent->xbutton.time;
+            (bb->function)(xevent, bb->args);
+            XUngrabPointer(dpy, time);
+            return True;
+        }
+    }
+    return False;
+}
+
+static Bool mouse_down(XButtonEvent *xevent)
+{
+    int button_ndx;
+    
+    static Time last_mousedown[5]; /* for determining double-clicks */
+    static Bool last_mousedown_set[5] = { False, False, False, False, False };
+
+    button_ndx = button_to_index(xevent->button);
+
+    saved_x = xevent->x_root;
+    saved_y = xevent->y_root;
+    saved_state = xevent->state & (~(ANYBUTTONMASK | AllLocksMask));
+    saved_button = xevent->button;
+    saved_location = get_location(xevent);
+
+    XGrabPointer(dpy, xevent->window, False,
+                 ButtonReleaseMask | ButtonPressMask | ButtonMotionMask,
+                 GrabModeAsync, GrabModeAsync, None,
+                 None, xevent->time);
+    
+    click_to_focus_clicked(xevent);
+    
+    if (last_mousedown_set[button_ndx] &&
+        ABS(xevent->time - last_mousedown[button_ndx]) <= DBLCLICK_THRESH) {
+        /* we have a double click; invalidate timestamp, invoke function */
+        last_mousedown_set[button_ndx] = False;
+        return mouse_invoke((XEvent *)xevent, MOUSE_DOUBLECLICK);
+    } else {
+        /* listen and wait; mouse-up = click, movement = drag */
+        last_mousedown_set[button_ndx] = True;
+        last_mousedown[button_ndx] = xevent->time;
+
+        return False;
+    }
+}
+
+static Bool mouse_up(XButtonEvent *xevent)
+{
+    Time time;
+    Bool retval;
+
+    time = xevent->time;
+    retval = mouse_invoke((XEvent *)xevent, MOUSE_CLICK);
+    XUngrabPointer(dpy, time);
+    return retval;
+}
+
+static Bool mouse_moved(XMotionEvent *xevent)
+{
+    Time time;
+    Bool retval;
+
+    retval = False;
+    if (distance_squared(saved_x, saved_y, xevent->x_root,
+                         xevent->y_root) >= DRAG_THRESH * DRAG_THRESH) {
+        time = xevent->time;
+        retval = mouse_invoke((XEvent *)xevent, MOUSE_DRAG);
+        XUngrabPointer(dpy, time);
+        /* FIXME: invalidate timestamp? */
+    }
+    return retval;
+}
+
+/* FIXME: proxy root clicks */
+
+static void click_to_focus_clicked(XButtonEvent *xevent)
+{
+    client_t *client;
+    
+    if (xevent->button == Button1
+        && xevent->state & ~(AllLocksMask | ANYBUTTONMASK) == 0) {
+        client = client_find(xevent->window);
+        if (client != NULL
+            && client->focus_policy == ClickToFocus) {
+            focus_set(client, xevent->time);
+            stacking_raise(client);
+            if (client->pass_focus_click) {
+                XAllowEvents(dpy, ReplayPointer, CurrentTime);
+            }
+        }
+    }
+}
+
+Bool mouse_handle_event(XEvent *xevent)
+{
+    switch (xevent->type) {
+        case ButtonPress:
+            return mouse_down(&xevent->xbutton);
+        case ButtonRelease:
+            return mouse_up(&xevent->xbutton);
+        case MotionNotify:
+            return mouse_moved(&xevent->xmotion);
+        default:
+            return False;
+    }
+}
+
+#if 0
 /*
  * This gets a little bit messy because we can't really "grab" a
  * ButtonRelease event like we can grab a KeyRelease event -
@@ -636,10 +810,13 @@ Bool mouse_handle_event(XEvent *xevent)
 {
     boundbutton *mb;
     unsigned int button, state;
-    int location;
+    int location, i;
     client_t *client;
-    static int grabbed_button = 0;
     Bool set_focus = False;
+    click_type type;
+    static int grabbed_button = 0;
+    static Time last_mousedown[5]; /* for determining double-clicks */
+    static Bool last_mousedown_set[5] = { False, False, False, False, False };
 
     button = xevent->xbutton.button;
     state = xevent->xbutton.state & (~(ANYBUTTONMASK | AllLocksMask));
@@ -656,12 +833,50 @@ Bool mouse_handle_event(XEvent *xevent)
             set_focus = True;
         }
     }
+
+    if (xevent->type == ButtonPress) {
+        switch (xevent->xbutton.button) {
+            case Button1:
+                i = 0;
+                break;
+            case Button2:
+                i = 1;
+                break;
+            case Button3:
+                i = 2;
+                break;
+            case Button4:
+                i = 3;
+                break;
+            case Button5:
+                i = 4;
+                break;
+            default:
+                i = -1;
+        }
+        type = MOUSE_DRAG;
+        if (i != -1) {
+            /* X timestamps can wrap, must check absolute value */
+            if (last_mousedown_set[i] &&
+                ABS(xevent->xbutton.time - last_mousedown[i]) <= 1000) {
+
+                type = MOUSE_DOUBLECLICK;
+                last_mousedown_set[i] = False;
+            } else {
+                last_mousedown[i] = xevent->xbutton.time;
+                last_mousedown_set[i] = True;
+            }
+        }
+    } else {
+        type = MOUSE_CLICK;
+    }
     
     for (mb = boundbuttons; mb != NULL; mb = mb->next) {
         if (button == mb->button
             && state == mb->modifiers
             && (location & mb->location)) {
-            if (xevent->type == mb->depress) {
+            if (type == mb->type ||
+                (type == MOUSE_DOUBLECLICK && mb->type == MOUSE_DRAG)) {
                 if (quoting) {
                     unquote(xevent);
                 } else {
@@ -710,6 +925,8 @@ Bool mouse_handle_event(XEvent *xevent)
     if (set_focus) return True;
     else return False;
 }
+
+#endif
 
 /* counterpart of keyboard_quote, does not need to be public */
 static void unquote(XEvent *e)

@@ -359,6 +359,11 @@ void move_client(XEvent *xevent, arglist *ignored)
         y_start = xevent->xbutton.y_root;
         init_button = xevent->xbutton.button;
         have_mouse = 1;
+    } else if (xevent->type == MotionNotify) {
+        client = client_find(xevent->xmotion.window);
+        have_mouse = 1;
+        /* compensate for pixels already dragged, annoying without this */
+        mouse_get_drag_info(&init_button, &x_start, &y_start);
     } else if (xevent->type == KeyPress) {
         client = focus_current;
         have_mouse = 0;
@@ -420,7 +425,6 @@ void move_client(XEvent *xevent, arglist *ignored)
                     have_mouse = 1;
                     x_start = xevent->xbutton.x_root;
                     y_start = xevent->xbutton.y_root;
-                    init_button = xevent->xbutton.button;
                 }
                 break;
                 
@@ -679,11 +683,11 @@ void resize_client(XEvent *xevent, arglist *al)
 {
     client_t *client = NULL;
     int x_start, y_start, have_mouse, delta;
+    unsigned int init_button;
     resize_direction_t resize_direction = UNKNOWN;
     resize_direction_t old_resize_direction = UNKNOWN;
     position_size orig;
     XEvent event1;
-    unsigned int init_button;
     enum { CONTINUE, RESET, DONE, MOVE } action;
 
     if (moving || sizing) return;
@@ -696,10 +700,16 @@ void resize_client(XEvent *xevent, arglist *al)
         x_start = xevent->xbutton.x_root;
         y_start = xevent->xbutton.y_root;
         init_button = xevent->xbutton.button;
-        if (client != NULL)
-            resize_direction =
-                get_direction(client, xevent->xbutton.x_root,
-                              xevent->xbutton.y_root);
+        if (client != NULL) {
+            resize_direction = get_direction(client, x_start, y_start);
+        }
+    } else if (xevent->type == MotionNotify) {
+        have_mouse = 1;
+        client = client_find(xevent->xbutton.window);
+        mouse_get_drag_info(&init_button, &x_start, &y_start);
+        if (client != NULL) {
+            resize_direction = get_direction(client, x_start, y_start);
+        }
     } else if (xevent->type == KeyPress) {
         have_mouse = 0;
         client = focus_current;
@@ -798,7 +808,6 @@ void resize_client(XEvent *xevent, arglist *al)
                     have_mouse = 1;
                     x_start = xevent->xbutton.x_root;
                     y_start = xevent->xbutton.y_root;
-                    init_button = xevent->xbutton.button;
                     resize_direction =
                         get_direction(client, xevent->xbutton.x_root,
                                       xevent->xbutton.y_root);

@@ -1,4 +1,8 @@
 TODO before release:
+- BindButton -> BindClick
+- new section about binding clicks, drags, double clicks
+- new section in manual about killing windows, document heuristics, etc.
+- make moving resistance threshhold user-definable
 - resize and restart bound to same key
 - placement, use corner with least overlap first
 - _NET_WORKAREA and STRUT
@@ -6,6 +10,7 @@ TODO before release:
 - transient for self means something?  Directory property window in konq
 - figure out what the hell 'sticky' means to EWMH
 - test with a modern version of Sun's X implementation
+- function ToggleOmnipresent
 
 Wishlist:
 - real timers: needed for ping, shading animation

@@ -411,7 +411,7 @@ mousebinding: TOK_BINDBUTTON location TOK_STRING function
                       mb->mousebinding_string = make_string($3);
                       mb->mousebinding_location = $2;
                       mb->mousebinding_function = $4;
-                      mb->mousebinding_depress = MOUSE_RELEASE;
+                      mb->mousebinding_type = MOUSE_CLICK;
                   }
                   $$ = mb;
               }
@@ -423,7 +423,7 @@ mousebinding: TOK_BINDBUTTON location TOK_STRING function
                       mb->mousebinding_string = make_string($3);
                       mb->mousebinding_location = $2;
                       mb->mousebinding_function = $4;
-                      mb->mousebinding_depress = MOUSE_DEPRESS;
+                      mb->mousebinding_type = MOUSE_DRAG;
                   }
                   $$ = mb;
               }

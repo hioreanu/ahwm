@@ -227,6 +227,8 @@ void event_dispatch(XEvent *event)
              * MotionNotify events left over in the event queue from
              * the move/resize code or elsewhere where we grab the mouse
              * and listen for these - harmless, ignore them */
+            /* FIXME: remove comment */
+            mouse_handle_event(event);
             break;
             
         case EnterNotify:       /* frame EnterWindowMask, client.c */
