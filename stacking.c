@@ -50,7 +50,7 @@
  * "windows" and "frames" always contain two more items than "clients"
  * - we have the desktop window and the hiding window, which may not
  * be clients (and are kept respectively on top or bottom of all
- * clients).  "nallocated" indicates size of "clients" array.
+ * clients).  "nused" indicates the size of the "clients" array.
  * 
  * client->stacking is an index into the "clients" array.
  * If client->stacking == -1, client is not in arrays.
@@ -60,7 +60,9 @@
  * order.  In my way of thinking, XRestackWindows works backwards,
  * and I've been screwed up a number of times by this.  I have this
  * feeling that the whole idea behind the EWMH stacking list stuff
- * is because XRestackWindows works backwards.
+ * is because XRestackWindows works backwards.  Thus, the "frames"
+ * array is actually not parallel with "clients" and "windows" but
+ * is maintained in backwards order.
  * 
  * invariants:
  * 
@@ -82,7 +84,6 @@ static Window *frames = NULL;
 static client_t **clients = NULL;
 static Window *windows = NULL;
 
-static int nallocated = 0;
 static int nused = 0;
 
 Window stacking_hiding_window = None;
@@ -114,12 +115,24 @@ void stacking_add(client_t *client)
         client->stacking = -1;
     }
 
+    /* add to backwards "frames" array */
+    for (i = 0; i < nused; i++) {
+        if (order(clients[i], client) > 0)
+            break;
+        frames[nused - i + 1] = frames[nused - i];
+    }
+    frames[nused - i + 1] = client->frame;
+    
+    /* add to "clients" and "windows" */
     for (i = nused - 1; i >= 0; i--) {
         if (order(clients[i], client) == 0)
             break;
-        set(clients[i], i + 1);
+        clients[i + 1] = clients[i];
+        clients[i + 1]->stacking = i + 1;
+        windows[i + 2] = windows[i + 2];
     }
-    set(client, i + 1);
+    clients[i + 1] = client;
+    clients[i + 1]->stacking = i + 1;
 
     nused++;
     commit();
@@ -133,20 +146,18 @@ void stacking_add(client_t *client)
 void stacking_remove(client_t *client)
 {
     int i;
-    Bool was_on_top;
 
-    if (client->always_on_top)
-        was_on_top = True;
-    else
-        was_on_top = False;
-    client->always_on_top = 1;
-    restack(client, True);
-    if (was_on_top == False)
-        client->always_on_top = 0;
+    for (i = client->stacking + 1; i < nused; i++) {
+        clients[i - 1] = clients[i];
+        clients[i - 1]->stacking = i - 1;
+        windows[i] = windows[i + 1];
+    }
+    for (i = nused - client->stacking; i <= nused; i++) {
+        frames[i] = frames[i + 1];
+    }
     client->stacking = -1;
     nused--;
     commit();
-    return;
 }
 
 client_t *stacking_top()
@@ -169,12 +180,7 @@ client_t *stacking_next(client_t *client)
 
 void stacking_raise(client_t *client)
 {
-    if (client->keep_transients_on_top)
-        raise_tree(client, NULL, True);
-    else
-        restack(client, True);
-    if (client->workspace == workspace_current)
-        XMapWindow(dpy, client->frame);
+    raise_tree(client, NULL, True);
     commit();
 }
 
@@ -192,13 +198,16 @@ static void dump()
     fprintf(stderr, "----\n");
     fprintf(stderr, "Clients:\n");
     for (i = 0; i < nused; i++) {
-        fprintf(stderr, "% 2d. %s\n", i, clients[i]->name);
+        fprintf(stderr, "% 2d. %#lx %s\n",
+                i, clients[i]->frame, clients[i]->name);
     }
     fprintf(stderr, "Frames:\n");
     for (i = nused; i > 0; i--) {
         client = client_find(frames[i]);
+        fprintf(stderr, "% 2d. %#lx ", i, frames[i]);
         if (client != NULL)
-            fprintf(stderr, "% 2d. %s\n", i, client->name);
+            fprintf(stderr, "%s", client->name);
+        fprintf(stderr, "\n");
     }
     fprintf(stderr, "----\n");
 }
@@ -210,6 +219,7 @@ static void dump()
 
 static Bool grow()
 {
+    static int nallocated = 0;
     Window *win_tmp;
     client_t **client_tmp;
     Window *frame_tmp;
@@ -310,9 +320,6 @@ static void restack(client_t *client, Bool move_up)
     Window wtmp;
     int c;
 
-    if (move_up) c = 0;
-    else c = 1;
-
     i = client->stacking;
 
     if (i < 0) {
@@ -329,6 +336,9 @@ static void restack(client_t *client, Bool move_up)
         fprintf(stderr,
                 "XWM: restack: assertion failed: clients != clients[i]\n");
     }
+
+    if (move_up) c = 0;
+    else c = 1;
 
     /* move up if absolutely needed -OR-
      * if possible to move up and "move_up" = True */
@@ -425,11 +435,10 @@ static void raise_tree(client_t *node, client_t *ignore, Bool go_up)
     }
 
     /* visit node */
-    if (node->workspace == workspace_current &&
-        node->state == NormalState &&
-        (parent == NULL || order(node, parent) >= 0)) {
-        
+    if (node->workspace == workspace_current && node->state == NormalState) {
         XMapWindow(dpy, node->frame);
+    }
+    if (parent == NULL || order(node, parent) >= 0) {
         restack(node, True);
         debug(("\tRaising client %#lx ('%.10s')\n", node, node->name));
     }

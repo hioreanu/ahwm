@@ -94,6 +94,8 @@ typedef struct _prefs {
     option_setting sticky_set;
     int title_position;
     option_setting title_position_set;
+    Bool keep_transients_on_top;
+    option_setting keep_transients_on_top_set;
 } prefs;
 
 /* ADDOPT 6: set default value */
@@ -113,7 +115,8 @@ static prefs defaults = {
     False, UnSet,               /* dont_bind_mouse */
     False, UnSet,               /* dont_bind_keys */
     False, UnSet,               /* sticky */
-    DisplayLeft, UnSet          /* title_position */
+    DisplayLeft, UnSet,         /* title_position */
+    True, UnSet                 /* keep_transients_on_top */
 };
 
 static line *contexts;
@@ -446,6 +449,10 @@ static Bool type_check_option(option *opt)
             } else {
                 retval = True;
             }
+            break;
+        case KEEPTRANSIENTSONTOP:
+            retval = option_check_helper(opt->option_value,
+                                         BOOLEAN, "KeepTransientsOnTop");
             break;
         default:
             fprintf(stderr, "XWM: unknown option type found...\n");
@@ -781,6 +788,10 @@ static void option_apply(client_t *client, option *opt, prefs *p)
             get_int(opt->option_value, &p->title_position);
             p->title_position_set = opt->option_setting;
             break;
+        case KEEPTRANSIENTSONTOP:
+            get_bool(opt->option_value, &p->keep_transients_on_top);
+            p->keep_transients_on_top_set = opt->option_setting;
+            break;
     }
 }
 
@@ -989,6 +1000,10 @@ void prefs_apply(client_t *client)
                 break;
         }
         client->title_position_set = p.title_position_set;
+    }
+    if (client->keep_transients_on_top_set <= p.keep_transients_on_top_set) {
+        client->keep_transients_on_top = p.keep_transients_on_top;
+        client->keep_transients_on_top_set = p.keep_transients_on_top_set;
     }
     
     /* ADDOPT 9: apply the option to the client */

@@ -406,7 +406,7 @@ void client_remove_titlebar(client_t *client)
     if (client->titlebar == None)
         return;
     
-    printf("\tRemoving titlebar\n");
+    debug(("\tRemoving titlebar\n"));
 
     if (XQueryTree(dpy, client->frame, &junk1, &junk1, &junk2, &n) == 0) {
         reparented = False;

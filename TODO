@@ -1,6 +1,4 @@
 TODO before release:
-- option WorkspaceSendTransients (boolean)
-- on alt tab, delay between titlebar color change and raise, mebbe stacking_raise()
 - transient for self means something?  Directory property window in konq
 - colormaps
 - user-settable font, global option
@@ -11,6 +9,8 @@ TODO before release:
 - test final build with various options at least two weeks before initial release
 
 Wishlist:
+- on alt tab, delay between titlebar color change and raise
+  determined this is not from stacking_raise()
 - Raise() function, like Focus() function, compose for titlebar click
 - GotoNextWorkspace(integer)
 - CycleNextWorkspaces() (like AltTab())
@@ -131,6 +131,8 @@ Finished, no longer TODO:
 - sticky windows: don't bind move/resize actions
 - allow window titles to be centered and right-aligned
 - remove ewmh rants from code
+- option WorkspaceSendTransients (boolean)
+- use stacking_desktop_{window|frame} for EWMH
 
 Abandoned, no longer TODO:
 - "stop" focus, detect when pointer stops in a window (no timeout) -

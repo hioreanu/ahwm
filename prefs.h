@@ -124,7 +124,8 @@ struct _option {
            DONTBINDMOUSE,
            DONTBINDKEYS,
            STICKY,
-           TITLEPOSITION } option_name;
+           TITLEPOSITION,
+           KEEPTRANSIENTSONTOP } option_name;
     option_setting option_setting;
     type *option_value;
 };

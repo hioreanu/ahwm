@@ -37,6 +37,7 @@
 #include "focus.h"
 #include "kill.h"
 #include "move-resize.h"
+#include "stacking.h"
 
 /*
  * TODO:
@@ -706,8 +707,6 @@ static void on_bottom(client_t *client)
  * alt-tab, force click-to-focus, force pass-through-click,
  * always-on-bottom.  Of course, user can override any of these using
  * unconditional option settings.
- * 
- * FIXME:  use stacking_desktop_window
  */
 
 void ewmh_to_desktop(client_t *client)
@@ -727,6 +726,15 @@ void ewmh_to_desktop(client_t *client)
         }
         client->dont_bind_mouse = 1;
         client->dont_bind_mouse_set = HintSet;
+    }
+    if (stacking_desktop_window != None
+        || stacking_desktop_frame != None) {
+        fprintf(stderr, "XWM: Client '%s' wants to be a desktop,\n"
+                "but you already have a desktop window.\n", client->name);
+    } else {
+        stacking_desktop_window = client->window;
+        stacking_desktop_frame = client->frame;
+        stacking_remove(client);
     }
 }
 
