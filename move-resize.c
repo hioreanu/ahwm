@@ -62,7 +62,7 @@ static int keycode_Right, keycode_j, keycode_k, keycode_l, keycode_h;
 static int keycode_w, keycode_a, keycode_s, keycode_d;
 static int keycode_Control_L, keycode_Control_R, keycode_space;
 
-/* optimization, see display_geometry() */
+/* optimization, see move_display_geometry() */
 static char *titlebar_display = NULL;
 
 static void compress_motion(XEvent *xevent);
@@ -73,7 +73,7 @@ static void process_resize(client_t *client, int new_x, int new_y,
                            position_size *orig,
                            resize_ordinal_t ordinal);
 static resize_direction_t get_direction(client_t *client, int x, int y);
-static void display_geometry(char *s, client_t *client);
+static void move_display_geometry(client_t *client);
 static void drafting_lines(client_t *client, resize_direction_t direction,
                            int x1, int y1, int x2, int y2);
 static void draw_arrowhead(int x, int y, resize_direction_t direction);
@@ -95,6 +95,8 @@ static void move_inform_client(client_t *client);
 static Bool mouse_over_client(client_t *client);
 static void geometry_string(char *s, char *buf, int len, client_t *client,
                             int x, int y, int width, int height);
+static void resize_display_geometry(client_t *client, int x, int y,
+                                    int width, int height);
 static void resist(client_t *client, int *oldx, int *oldy, int x, int y);
 
 /* FIXME: use maximum height, width */
@@ -200,7 +202,7 @@ void move_client(XEvent *xevent, void *v)
                  cursor_moving, CurrentTime);
     XGrabKeyboard(dpy, root_window, True, GrabModeAsync, GrabModeAsync,
                   CurrentTime);
-    display_geometry("Moving", client);
+    move_display_geometry(client);
 
     action = CONTINUE;
     while (action == CONTINUE) {
@@ -234,13 +236,13 @@ void move_client(XEvent *xevent, void *v)
                     action = DONE;
                     break;
                 }
-                
+
                 resist(client, &x_start, &y_start,
                        xevent->xbutton.x_root,
                        xevent->xbutton.y_root);
+                move_display_geometry(client);
                 
                 XMoveWindow(dpy, client->frame, client->x, client->y);
-                display_geometry("Moving", client);
 
                 break;
                 
@@ -255,6 +257,7 @@ void move_client(XEvent *xevent, void *v)
                     }
                     client->y += delta;
                     move_constrain(client);
+                    move_display_geometry(client);
                     if (have_mouse) {
                         XWarpPointer(dpy, None, None, 0, 0, 0, 0, 0, delta);
                         y_start += delta;
@@ -270,6 +273,7 @@ void move_client(XEvent *xevent, void *v)
                     }
                     client->y += delta;
                     move_constrain(client);
+                    move_display_geometry(client);
                     if (have_mouse) {
                         XWarpPointer(dpy, None, None, 0, 0, 0, 0, 0, delta);
                         y_start += delta;
@@ -284,6 +288,7 @@ void move_client(XEvent *xevent, void *v)
                     }
                     client->x += delta;
                     move_constrain(client);
+                    move_display_geometry(client);
                     if (have_mouse) {
                         XWarpPointer(dpy, None, None, 0, 0, 0, 0, delta, 0);
                         x_start += delta;
@@ -299,6 +304,7 @@ void move_client(XEvent *xevent, void *v)
                     }
                     client->x += delta;
                     move_constrain(client);
+                    move_display_geometry(client);
                     if (have_mouse) {
                         XWarpPointer(dpy, None, None, 0, 0, 0, 0, delta, 0);
                         x_start += delta;
@@ -466,7 +472,6 @@ static void move_constrain(client_t *client)
     while (client->x > scr_width) client->x--;
     while (client->y > scr_height) client->y--;
     XMoveWindow(dpy, client->frame, client->x, client->y);
-    display_geometry("Moving", client);
 }
 
 /*
@@ -949,7 +954,6 @@ static void process_resize(client_t *client, int new_x, int new_y,
 {
     int x_diff, y_diff;
     int x, y, w, h, title_height;
-    char buf[64];
 
     x = client->x;
     y = client->y;
@@ -1084,16 +1088,11 @@ static void process_resize(client_t *client, int new_x, int new_y,
      */
 
     if (ordinal != FIRST && client->titlebar != None) {
-        geometry_string("Resizing", buf, 64, client,
-                        x, y, w, h);
-        XDrawString(dpy, client->titlebar, root_invert_gc, 2,
-                    TITLE_HEIGHT - 4, buf, strlen(buf));
+        resize_display_geometry(client, x, y, w, h);
     }
     if (ordinal != LAST && client->titlebar != None) {
-        geometry_string("Resizing", buf, 64, client,
-                        client->x, client->y, client->width, client->height);
-        XDrawString(dpy, client->titlebar, root_invert_gc, 2,
-                    TITLE_HEIGHT - 4, buf, strlen(buf));
+        resize_display_geometry(client, client->x, client->y,
+                                client->width, client->height);
     }
     
     if (ordinal != MIDDLE || x != client->x
@@ -1435,29 +1434,31 @@ static void geometry_string(char *s, char *buf, int len, client_t *client,
     width /= get_width_resize_inc(client);
     height /= get_height_resize_inc(client);
     snprintf(buf, len, "%dx%d+%d+%d [%s %s]",
-             width, height, x, y, s, client->instance);
+             width, height, x, y, s,
+             client->instance == NULL ? "window" : client->instance);
 }
 
-/*
- * changes the client's titlebar display to the geometry prefixed by a
- * given string
- * 
- * We want to avoid a malloc/free on each tiny movement, so we keep
- * around a buffer and some pointers....
- */
-
-static void display_geometry(char *s, client_t *client)
+static void move_display_geometry(client_t *client)
 {
-    if (client->titlebar == None) return;
     if (titlebar_display == NULL || client->name != titlebar_display) {
         titlebar_display = Malloc(256); /* arbitrary, whatever */
         if (titlebar_display == NULL) return;
         if (client->name != NULL) Free(client->name);
         client->name = titlebar_display;
     }
-    geometry_string(s, client->name, 256, client,
+    geometry_string("Moving", client->name, 256, client,
                     client->x, client->y, client->width, client->height);
     client_paint_titlebar(client);
+}
+
+static void resize_display_geometry(client_t *client, int x, int y,
+                                    int width, int height)
+{
+    static char buf[256];
+    
+    geometry_string("Resizing", buf, 256, client, x, y, width, height);
+    XDrawString(dpy, client->titlebar, root_invert_gc, 2,
+                TITLE_HEIGHT - 4, buf, strlen(buf));
 }
 
 /* FIXME:  export from keyboard.c */

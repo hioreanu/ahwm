@@ -15,7 +15,7 @@ void _debug(char *fmt, ...)
     va_start(ap, fmt);
     vprintf(fmt, ap);
     va_end(ap);
-    printf("\017"); /* fixes stupid xterm "alternate-charset" escape */
+/*    printf("\017"); */ /* fixes stupid xterm "alternate-charset" escape */
 }
 
     

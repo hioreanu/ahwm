@@ -22,7 +22,6 @@
 
 extern int workspace_current;
 
-extern char* workspace_colors[NO_WORKSPACES];
 extern unsigned long workspace_pixels[NO_WORKSPACES];
 extern unsigned long workspace_dark_highlight[NO_WORKSPACES];
 extern unsigned long workspace_darkest_highlight[NO_WORKSPACES];

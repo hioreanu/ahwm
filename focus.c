@@ -37,8 +37,8 @@ void focus_add(client_t *client, Time timestamp)
     focus_remove(client, timestamp);
     old = focus_stacks[client->workspace - 1];
     if (old == NULL) {
-        debug(("\tsetting focus stack of workspace %d to %s\n",
-               client->workspace, client->name));
+        debug(("\tsetting focus stack of workspace %d to 0x%08X ('%.10s')\n",
+               client->workspace, client->window, client->name));
         client->next_focus = client;
         client->prev_focus = client;
         focus_stacks[client->workspace - 1] = client;
@@ -67,13 +67,15 @@ void focus_remove(client_t *client, Time timestamp)
             client->next_focus->prev_focus = client->prev_focus;
             /* if was focused for workspace, update workspace pointer */
             if (focus_stacks[client->workspace - 1] == client) {
-                debug(("\tsetting focus stack of workspace %d to %s\n",
-                       client->workspace, client->next_focus->name));
+                debug(("\tsetting focus stack of workspace "
+                       "%d to 0x%08X ('%.10s')\n",
+                       client->workspace, client->next_focus->window,
+                       client->next_focus->name));
                 focus_stacks[client->workspace - 1] = client->next_focus;
             }
             /* if only client left on workspace, set to NULL */
             if (client->next_focus == client) {
-                debug(("setting focus stack of workspace %d to null\n",
+                debug(("\tSetting focus stack of workspace %d to null\n",
                        client->workspace));
                 focus_stacks[client->workspace - 1] = NULL;
                 client->next_focus = NULL;
@@ -107,8 +109,8 @@ static void focus_set_internal(client_t *client, Time timestamp)
     }
     do {
         if (p == client) {
-            debug(("setting focus stack of workspace %d to %s\n",
-                   client->workspace, client->name));
+            debug(("\tSetting focus stack of workspace %d to 0x%08X ('%.10s')\n",
+                   client->workspace, client->window, client->name));
             focus_stacks[client->workspace - 1] = client;
             if (client->workspace == workspace_current) {
                 focus_change_current(client, timestamp);
@@ -136,7 +138,7 @@ void focus_ensure(Time timestamp)
         return;
     }
 
-    debug(("\tSetting focus to 0x%08X (%s)...\n",
+    debug(("\tSetting focus to 0x%08X (%.10s)...\n",
            (unsigned int)focus_current->window, focus_current->name));
 
     ewmh_active_window_update();
@@ -177,6 +179,7 @@ void dump_focus_list()
 
     printf("STACK: ");
     do {
+        if (client == NULL) break;
         printf("%s ", client->name);
         client = client->next_focus;
     } while (client != orig);
@@ -218,7 +221,7 @@ void focus_alt_tab(XEvent *xevent, void *v)
                 if (xevent->xkey.keycode == keycode_Alt_L
                     || xevent->xkey.keycode == keycode_Alt_R) {
                     /* user let go of all modifiers */
-                    debug(("\tfocus_current = '%s'\n",
+                    debug(("\tfocus_current = '%.10s'\n",
                            focus_current ? focus_current->name : "NULL"));
                     if (focus_current != NULL) {
                         permute(orig_focus, focus_current);

@@ -25,7 +25,9 @@ extern Window root_window;      /* root window (only one screen supported) */
 extern GC root_white_fg_gc;     /* a GC with white foreground */
 extern GC root_black_fg_gc;     /* GC with black foreground */
 extern GC root_invert_gc;       /* GC with GXxor as function */
-extern GC extra_gc;             /* GC which is changed */
+extern GC extra_gc1;            /* GC which changes */
+extern GC extra_gc2;            /* GC which changes */
+extern GC extra_gc3;            /* GC which changes */
 extern XFontStruct *fontstruct; /* our font */
 extern Atom WM_STATE;           /* various atoms used throughout */
 extern Atom WM_CHANGE_STATE;

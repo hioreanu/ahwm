@@ -46,7 +46,9 @@ Window root_window;
 GC root_white_fg_gc;
 GC root_black_fg_gc;
 GC root_invert_gc;
-GC extra_gc;
+GC extra_gc1;
+GC extra_gc2;
+GC extra_gc3;
 XFontStruct *fontstruct;
 Atom WM_STATE;
 Atom WM_CHANGE_STATE;
@@ -173,13 +175,27 @@ int main(int argc, char **argv)
                                  | GCFont | GCFunction
                                  | GCPlaneMask | GCSubwindowMode,
                                  &xgcv);
-    extra_gc = XCreateGC(dpy, root_window,
-                         GCForeground | GCBackground
-                         | GCLineWidth | GCLineStyle
-                         | GCCapStyle | GCJoinStyle
-                         | GCFont | GCFunction
-                         | GCPlaneMask | GCSubwindowMode,
-                         &xgcv);
+    extra_gc1 = XCreateGC(dpy, root_window,
+                          GCForeground | GCBackground
+                          | GCLineWidth | GCLineStyle
+                          | GCCapStyle | GCJoinStyle
+                          | GCFont | GCFunction
+                          | GCPlaneMask | GCSubwindowMode,
+                          &xgcv);
+    extra_gc2 = XCreateGC(dpy, root_window,
+                          GCForeground | GCBackground
+                          | GCLineWidth | GCLineStyle
+                          | GCCapStyle | GCJoinStyle
+                          | GCFont | GCFunction
+                          | GCPlaneMask | GCSubwindowMode,
+                          &xgcv);
+    extra_gc3 = XCreateGC(dpy, root_window,
+                          GCForeground | GCBackground
+                          | GCLineWidth | GCLineStyle
+                          | GCCapStyle | GCJoinStyle
+                          | GCFont | GCFunction
+                          | GCPlaneMask | GCSubwindowMode,
+                          &xgcv);
     xgcv.function = GXxor;
     root_invert_gc = XCreateGC(dpy, root_window,
                                  GCForeground | GCBackground

@@ -26,6 +26,7 @@
 #include "malloc.h"
 #include "debug.h"
 #include "ewmh.h"
+#include "move-resize.h"
 
 XContext window_context;
 XContext frame_context;
@@ -33,6 +34,9 @@ XContext title_context;
 
 /* we only keep around clients as a list to allow iteration over all clients */
 client_t *client_list = NULL;
+
+static void client_create_frame(client_t *client, Bool has_titlebar,
+                                position_size *win_position);
 
 client_t *client_create(Window w)
 {
@@ -66,6 +70,7 @@ client_t *client_create(Window w)
     client->prev_x = client->prev_y = -1;
     client->prev_height = client->prev_width = -1;
     client->ignore_enternotify = 0;
+    client->ignore_unmapnotify = 0;
     client->orig_border_width = xwa.border_width;
     
     /* God, this sucks.  I want the border width to be zero on all
@@ -100,7 +105,7 @@ client_t *client_create(Window w)
     }
 
     client->frame_event_mask = SubstructureRedirectMask | EnterWindowMask
-                              | FocusChangeMask | StructureNotifyMask;
+                               | FocusChangeMask | StructureNotifyMask;
     client->window_event_mask = xwa.your_event_mask | StructureNotifyMask
                                 | PropertyChangeMask;
     XSelectInput(dpy, client->window, client->window_event_mask);
@@ -124,7 +129,7 @@ client_t *client_create(Window w)
     requested_geometry.y = xwa.y;
     requested_geometry.width = xwa.width;
     requested_geometry.height = xwa.height;
-    client_reparent(client, has_titlebar, &requested_geometry);
+    client_create_frame(client, has_titlebar, &requested_geometry);
     if (client->frame == None) {
         fprintf(stderr, "XWM: Could not reparent window\n");
         Free(client);
@@ -155,6 +160,7 @@ client_t *client_create(Window w)
         debug(("\tclient_create:  client is already mapped\n"));
         client->state = NormalState;
         client_inform_state(client);
+        client_reparent(client);
         XMapWindow(dpy, client->frame);
         if (client->titlebar != None)
             XMapWindow(dpy, client->titlebar);
@@ -167,8 +173,8 @@ client_t *client_create(Window w)
     return client;
 }
 
-void client_reparent(client_t *client, Bool has_titlebar,
-                     position_size *win_position)
+static void client_create_frame(client_t *client, Bool has_titlebar,
+                                position_size *win_position)
 {
     XSetWindowAttributes xswa;
     XWindowChanges xwc;
@@ -213,9 +219,6 @@ void client_reparent(client_t *client, Bool has_titlebar,
          * it; however, deleting the frame and creating a new window is
          * more expensive than just resetting the frame to the initial
          * state */
-        XSelectInput(dpy, w, client->window_event_mask & ~StructureNotifyMask);
-        XReparentWindow(dpy, w, root_window, 0, 0);
-        XChangeWindowAttributes(dpy, client->frame, mask, &xswa);
 
         mask = CWX | CWY | CWWidth | CWHeight | CWBorderWidth;
         xwc.x = ps.x;
@@ -226,20 +229,36 @@ void client_reparent(client_t *client, Bool has_titlebar,
         XConfigureWindow(dpy, client->frame, mask, &xwc);
     }
 
-    XClearWindow(dpy, client->frame);
-    /* ignore the map and unmap events caused by the reparenting: */
-    XSelectInput(dpy, w, client->window_event_mask & ~StructureNotifyMask);
-    if (has_titlebar) {
-        XReparentWindow(dpy, w, client->frame, 0, TITLE_HEIGHT);
-    } else {
-        XReparentWindow(dpy, w, client->frame, 0, 0);
-    }
-    XSelectInput(dpy, w, client->window_event_mask);
+    XClearWindow(dpy, client->frame); /* FIXME:  ??? */
 
     if (XSaveContext(dpy, client->frame,
                      frame_context, (void *)client) != 0) {
         fprintf(stderr, "XWM: XSaveContext failed, could not save frame\n");
     }
+}
+
+void client_reparent(client_t *client)
+{
+    /* reparent the window and map window and frame */
+    debug(("\tReparenting window 0x%08X '%.10s'\n",
+           client->window, client->name));
+    XSetWindowBorderWidth(dpy, client->window, 0);
+    if (client->titlebar != None) {
+        XReparentWindow(dpy, client->window,
+                        client->frame, 0, TITLE_HEIGHT);
+    } else {
+        XReparentWindow(dpy, client->window, client->frame, 0, 0);
+    }
+    XMapWindow(dpy, client->window);
+    XSync(dpy, False);
+}
+
+void client_unreparent(client_t *client)
+{
+    client->ignore_unmapnotify = 1;
+    XUnmapWindow(dpy, client->window);
+    XReparentWindow(dpy, client->window, root_window, client->x, client->y);
+    XSetWindowBorderWidth(dpy, client->window, client->orig_border_width);
 }
 
 void client_add_titlebar(client_t *client)
@@ -272,9 +291,21 @@ void client_add_titlebar(client_t *client)
 void client_remove_titlebar(client_t *client)
 {
     position_size ps;
-    
+    Bool reparented;
+    Window junk1, *junk2;
+    int n;
+
     if (client->titlebar == None)
         return;
+
+    if (XQueryTree(dpy, client->frame, &junk1, &junk1, &junk2, &n) == 0) {
+        reparented = False;
+    } else if (n == 2) {
+        reparented = True;
+    } else {
+        reparented = False;
+    }
+    
     client_position_noframe(client, &ps);
     XUnmapWindow(dpy, client->titlebar);
     XDestroyWindow(dpy, client->titlebar);
@@ -289,7 +320,8 @@ void client_remove_titlebar(client_t *client)
     client->y = ps.y;
     client->width = ps.width;
     client->height = ps.height;
-    client_reparent(client, False, &ps);
+    client_create_frame(client, False, &ps);
+    if (reparented) client_reparent(client);
 }
 
 client_t *client_find(Window w)
@@ -588,7 +620,7 @@ void _client_print(char *s, client_t *client)
     debug(("%-19s client = 0x%08X, window = 0x%08X, frame = 0x%08X\n",
            s, (unsigned int)client, (unsigned int)client->window,
            (unsigned int)client->frame));
-    debug(("%-19s name = %s, instance = %s, class = %s\n",
+    debug(("%-19s name = '%.10s', instance = '%.10s', class = '%.10s'\n",
            s, client->name, client->instance, client->class));
 }
 
@@ -598,37 +630,44 @@ void client_paint_titlebar(client_t *client)
 
     if (client == NULL || client->titlebar == None) return;
     
-    XClearWindow(dpy, client->titlebar);
     if (client == focus_current) {
+        /* using three different GCs instead of using one and
+         * continually changing its values may or may not be faster
+         * (depending on hardware) according to the Xlib docs, but
+         * this seems to reduce flicker when moving windows on my
+         * hardware */
         xgcv.foreground = workspace_pixels[client->workspace - 1];
-        XChangeGC(dpy, extra_gc, GCForeground, &xgcv);
-        XFillRectangle(dpy, client->titlebar, extra_gc,
+        XChangeGC(dpy, extra_gc1, GCForeground, &xgcv);
+        xgcv.foreground = workspace_highlight[client->workspace - 1];
+        XChangeGC(dpy, extra_gc2, GCForeground, &xgcv);
+        xgcv.foreground = workspace_dark_highlight[client->workspace - 1];
+        XChangeGC(dpy, extra_gc3, GCForeground, &xgcv);
+        
+        XFillRectangle(dpy, client->titlebar, extra_gc1,
                        0, 0, client->width, TITLE_HEIGHT);
         
-        xgcv.foreground = workspace_highlight[client->workspace - 1];
-        XChangeGC(dpy, extra_gc, GCForeground, &xgcv);
-        XDrawLine(dpy, client->titlebar, extra_gc, 0, 0,
+        XDrawLine(dpy, client->titlebar, extra_gc2, 0, 0,
                   client->width, 0);
-        XDrawLine(dpy, client->titlebar, extra_gc, 1, 1,
+        XDrawLine(dpy, client->titlebar, extra_gc2, 1, 1,
                   client->width - 2, 1);
-        XDrawLine(dpy, client->titlebar, extra_gc,
+        XDrawLine(dpy, client->titlebar, extra_gc2,
                   0, 0, 0, TITLE_HEIGHT);
-        XDrawLine(dpy, client->titlebar, extra_gc,
+        XDrawLine(dpy, client->titlebar, extra_gc2,
                   1, 1, 1, TITLE_HEIGHT - 2);
 
-        xgcv.foreground = workspace_dark_highlight[client->workspace - 1];
-        XChangeGC(dpy, extra_gc, GCForeground, &xgcv);
-        XDrawLine(dpy, client->titlebar, extra_gc,
+        XDrawLine(dpy, client->titlebar, extra_gc3,
                   1, TITLE_HEIGHT - 1, client->width - 1, TITLE_HEIGHT - 1);
-        XDrawLine(dpy, client->titlebar, extra_gc,
+        XDrawLine(dpy, client->titlebar, extra_gc3,
                   2, TITLE_HEIGHT - 2, client->width - 3, TITLE_HEIGHT - 2);
-        XDrawLine(dpy, client->titlebar, extra_gc,
+        XDrawLine(dpy, client->titlebar, extra_gc3,
                   client->width - 1, 1, client->width - 1, TITLE_HEIGHT - 2);
-        XDrawLine(dpy, client->titlebar, extra_gc,
+        XDrawLine(dpy, client->titlebar, extra_gc3,
                   client->width - 2, 2, client->width - 2, TITLE_HEIGHT - 2);
+    } else {
+        /* we don't draw a border for non-focused windows as that would
+         * require two additional colors (which is bloat) */
+        XClearWindow(dpy, client->titlebar);
     }
-    /* we don't draw a border for non-focused windows as that would
-     * require two additional colors (which is bloat) */
     
     XDrawString(dpy, client->titlebar, root_white_fg_gc, 2, TITLE_HEIGHT - 4,
                 client->name, strlen(client->name));

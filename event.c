@@ -190,14 +190,14 @@ void event_dispatch(XEvent *event)
             event_map(&event->xmap);
             break;
             
-        case MapRequest:        /* frame SubstructureRedirectMask, client.c */
+        case MapRequest:        /* root, frame SubstructureRedirectMask */
             event_maprequest(&event->xmaprequest);
             break;
             
 /*        case ReparentNotify: */ /* TODO */
 /*        case ConfigureNotify: */ /* TODO */
             
-        case ConfigureRequest:  /* frame SubstructureRedirectmask, client.c */
+        case ConfigureRequest:  /* root, frame SubstructureRedirectmask */
             event_configurerequest(&event->xconfigurerequest);
             break;
             
@@ -205,7 +205,7 @@ void event_dispatch(XEvent *event)
 /*        case ResizeRequest: */ /* TODO */
 /*        case CirculateNotify: */ /* TODO */
             
-        case CirculateRequest:  /* frame SubstructureRedirectMask, client.c */
+        case CirculateRequest:  /* root, frame SubstructureRedirectMask */
             event_circulaterequest(&event->xcirculaterequest);
             break;
             
@@ -428,8 +428,20 @@ static void event_unmap(XUnmapEvent *xevent)
         return;
     }
 
-    /* if we unmapped it ourselves, no need to do anything */
-    if (xevent->window != client->window) return;
+    /* whenever we unmap a frame, we'll get two message, one for
+     * SubstructureNotify on the root window which we will ignore */
+    if (xevent->event == root_window) return;
+
+    if (client->ignore_unmapnotify && xevent->event == client->window) {
+        debug(("\tClient has ignore_unmapnotify\n"));
+        client->ignore_unmapnotify = 0;
+        return;
+    }
+    /* if we unmapped it ourselves, no need to do anything else */
+    if (xevent->window != client->window) {
+        client_unreparent(client);
+        return;
+    }
 
     /* well, at this point, we need to do some things to the window
      * (such as setting the WM_STATE property on the window to Withdrawn
@@ -442,17 +454,16 @@ static void event_unmap(XUnmapEvent *xevent)
      * of error, and since we don't care if the requests we are about
      * to make succeed or fail, we just ignore the errors they can
      * cause. */
-    /* FIXME:  this will break with synchronous behaviour turned off */
 
     focus_remove(client, event_timestamp);
     
     if (client->state == NormalState) {
         ewmh_client_list_remove(client);
+        debug(("\tUnmapping frame in event_unmap\n"));
         XUnmapWindow(dpy, client->frame);
 
-        error_ignore(BadWindow, X_UnmapWindow);
+        debug(("\tUnmapping window in event_unmap\n"));
         XUnmapWindow(dpy, client->window);
-        error_ignore(BadWindow, X_UnmapWindow); /* FIXME */
         if (client->workspace == workspace_current) {
             under_mouse = query_stacking_order(client->frame);
             if (under_mouse != NULL) {
@@ -463,10 +474,9 @@ static void event_unmap(XUnmapEvent *xevent)
         }
     }
     client->state = WithdrawnState;
+    client_unreparent(client);
     
-    error_ignore(BadWindow, X_ChangeProperty);
     client_inform_state(client);
-    error_unignore(BadWindow, X_ChangeProperty);
 }
 
 /*
@@ -511,6 +521,7 @@ static void event_maprequest(XMapRequestEvent *xevent)
     }
 
     if (client->state == NormalState) {
+        client_reparent(client);
         XMapWindow(xevent->display, client->window);
         XMapWindow(xevent->display, client->frame);
         if (client->titlebar != None) {
@@ -520,7 +531,6 @@ static void event_maprequest(XMapRequestEvent *xevent)
         mouse_grab_buttons(client);
         if (addfocus) {
             focus_add(client, event_timestamp);
-//            ewmh_client_list_add(client);
         }
     } else {
         debug(("\tsigh...client->state = %d\n", client->state));
@@ -749,6 +759,8 @@ static void event_clientmessage(XClientMessageEvent *xevent)
         client = client_find(xevent->window);
         if (xevent->format == 32 && xevent->data.l[0] == IconicState) {
             debug(("\tClient insists on iconifying itself, placating it\n"));
+            debug(("\tUnmapping frame in event_clientmessage\n"));
+            debug(("\tUnmapping window in event_clientmessage\n"));
             XUnmapWindow(dpy, client->frame);
             XUnmapWindow(dpy, client->window);
             client->state = IconicState;

@@ -55,6 +55,7 @@ typedef struct _client_t {
     int window_event_mask;      /* event mask of client->window */
     int frame_event_mask;       /* event mask of client->frame */
     int ignore_enternotify;     /* see event.c */
+    int ignore_unmapnotify;
     unsigned int protocols;     /* WM_PROTOCOLS, see below (ICCCM, 4.1.2.7) */
     char *name;                 /* window's name (ICCCM, 4.1.2.1) */
     /* will not be NULL; use free() */
@@ -232,7 +233,9 @@ void client_inform_state(client_t *);
  * is going to have a titlebar, else False.
  */
 
-void client_reparent(client_t *, Bool, position_size *);
+//void client_reparent(client_t *, Bool, position_size *);
+void client_reparent(client_t *client);
+void client_unreparent(client_t *client);
 
 void client_add_titlebar(client_t *);
 void client_remove_titlebar(client_t *);

@@ -227,7 +227,7 @@ void ewmh_client_list_add(client_t *client)
         }
     }
     ewmh_client_list[nclients++] = client->window;
-    debug(("Adding window 0x%08X to client list, %d clients\n",
+    debug(("\tAdding window 0x%08X to client list, %d clients\n",
            client->window, nclients));
     XChangeProperty(dpy, root_window, _NET_CLIENT_LIST,
                     XA_WINDOW, 32, PropModeReplace,
@@ -244,7 +244,7 @@ void ewmh_client_list_remove(client_t *client)
                 ewmh_client_list[i - 1] = ewmh_client_list[i];
             }
             nclients--;
-            debug(("Removing window 0x%08X from client list, %d clients\n",
+            debug(("\tRemoving window 0x%08X from client list, %d clients\n",
                    client->window, nclients));
             XChangeProperty(dpy, root_window, _NET_CLIENT_LIST,
                             XA_WINDOW, 32, PropModeReplace,
