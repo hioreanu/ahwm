@@ -236,65 +236,65 @@ int main(int argc, char **argv)
     ewmh_init();
     keyboard_init();
 
-    keyboard_set_function("Control | Alt | Shift | l", KEYBOARD_DEPRESS,
-                          mark, NULL);
-    keyboard_set_function("Control | Alt | Shift | t", KEYBOARD_DEPRESS,
-                          run_program, "xterm");
-    keyboard_set_function("Control | Alt | Shift | n", KEYBOARD_DEPRESS,
-                          run_program, "netscape");
-    keyboard_set_function("Control | Alt | Shift | k", KEYBOARD_DEPRESS,
-                          run_program, "konqueror");
-    keyboard_set_function("Control | Alt | Shift | e", KEYBOARD_DEPRESS,
-                          run_program, "emacs");
-    keyboard_set_function("Alt | Tab", KEYBOARD_DEPRESS, focus_alt_tab, NULL);
-    keyboard_set_function("Alt | Shift | Tab", KEYBOARD_DEPRESS,
-                          focus_alt_tab, NULL);
-    keyboard_set_function("Control | Alt | Shift | m", KEYBOARD_DEPRESS,
-                          move_client, NULL);
-    keyboard_set_function("Control | Alt | Shift | r", KEYBOARD_DEPRESS,
-                          resize_client, NULL);
-    keyboard_set_function("Control | Alt | 1", KEYBOARD_DEPRESS,
-                          workspace_client_moveto, (void *)1);
-    keyboard_set_function("Control | Alt | 2", KEYBOARD_DEPRESS,
-                          workspace_client_moveto, (void *)2);
-    keyboard_set_function("Control | Alt | 3", KEYBOARD_DEPRESS,
-                          workspace_client_moveto, (void *)3);
-    keyboard_set_function("Control | Alt | 4", KEYBOARD_DEPRESS,
-                          workspace_client_moveto, (void *)4);
-    keyboard_set_function("Control | Alt | 5", KEYBOARD_DEPRESS,
-                          workspace_client_moveto, (void *)5);
-    keyboard_set_function("Control | Alt | 6", KEYBOARD_DEPRESS,
-                          workspace_client_moveto, (void *)6);
-    keyboard_set_function("Control | Alt | 7", KEYBOARD_DEPRESS,
-                          workspace_client_moveto, (void *)7);
-    keyboard_set_function("Alt | 1", KEYBOARD_DEPRESS,
-                          workspace_goto, (void *)1);
-    keyboard_set_function("Alt | 2", KEYBOARD_DEPRESS,
-                          workspace_goto, (void *)2);
-    keyboard_set_function("Alt | 3", KEYBOARD_DEPRESS,
-                          workspace_goto, (void *)3);
-    keyboard_set_function("Alt | 4", KEYBOARD_DEPRESS,
-                          workspace_goto, (void *)4);
-    keyboard_set_function("Alt | 5", KEYBOARD_DEPRESS,
-                          workspace_goto, (void *)5);
-    keyboard_set_function("Alt | 6", KEYBOARD_DEPRESS,
-                          workspace_goto, (void *)6);
-    keyboard_set_function("Alt | 7", KEYBOARD_DEPRESS,
-                          workspace_goto, (void *)7);
-    mouse_set_function("Alt | Button1", MOUSE_DEPRESS, MOUSE_FRAME,
-                       move_client, NULL);
-    mouse_set_function("Alt | Button3", MOUSE_DEPRESS, MOUSE_FRAME,
-                       resize_client, NULL);
-    mouse_set_function("Button1", MOUSE_DEPRESS, MOUSE_TITLEBAR,
-                       move_client, NULL);
-    mouse_set_function("Button2", MOUSE_DEPRESS, MOUSE_TITLEBAR,
-                       kill_nicely, NULL);
-    mouse_set_function("Control | Button2", MOUSE_DEPRESS, MOUSE_TITLEBAR,
-                       kill_with_extreme_prejudice, NULL);
-    mouse_set_function("Button3", MOUSE_RELEASE, MOUSE_TITLEBAR,
-                       resize_maximize, NULL);
-    keyboard_set_function("Control | Alt | Shift | q", KEYBOARD_RELEASE,
-                          keyboard_quote, NULL);
+    keyboard_bind("Control | Alt | Shift | l", KEYBOARD_DEPRESS,
+                  mark, NULL);
+    keyboard_bind("Control | Alt | Shift | t", KEYBOARD_DEPRESS,
+                  run_program, "xterm");
+    keyboard_bind("Control | Alt | Shift | n", KEYBOARD_DEPRESS,
+                  run_program, "netscape");
+    keyboard_bind("Control | Alt | Shift | k", KEYBOARD_DEPRESS,
+                  run_program, "konqueror");
+    keyboard_bind("Control | Alt | Shift | e", KEYBOARD_DEPRESS,
+                  run_program, "emacs");
+    keyboard_bind("Alt | Tab", KEYBOARD_DEPRESS, focus_alt_tab, NULL);
+    keyboard_bind("Alt | Shift | Tab", KEYBOARD_DEPRESS,
+                  focus_alt_tab, NULL);
+    keyboard_bind("Control | Alt | Shift | m", KEYBOARD_DEPRESS,
+                  move_client, NULL);
+    keyboard_bind("Control | Alt | Shift | r", KEYBOARD_DEPRESS,
+                  resize_client, NULL);
+    keyboard_bind("Control | Alt | 1", KEYBOARD_DEPRESS,
+                  workspace_client_moveto, (void *)1);
+    keyboard_bind("Control | Alt | 2", KEYBOARD_DEPRESS,
+                  workspace_client_moveto, (void *)2);
+    keyboard_bind("Control | Alt | 3", KEYBOARD_DEPRESS,
+                  workspace_client_moveto, (void *)3);
+    keyboard_bind("Control | Alt | 4", KEYBOARD_DEPRESS,
+                  workspace_client_moveto, (void *)4);
+    keyboard_bind("Control | Alt | 5", KEYBOARD_DEPRESS,
+                  workspace_client_moveto, (void *)5);
+    keyboard_bind("Control | Alt | 6", KEYBOARD_DEPRESS,
+                  workspace_client_moveto, (void *)6);
+    keyboard_bind("Control | Alt | 7", KEYBOARD_DEPRESS,
+                  workspace_client_moveto, (void *)7);
+    keyboard_bind("Alt | 1", KEYBOARD_DEPRESS,
+                  workspace_goto, (void *)1);
+    keyboard_bind("Alt | 2", KEYBOARD_DEPRESS,
+                  workspace_goto, (void *)2);
+    keyboard_bind("Alt | 3", KEYBOARD_DEPRESS,
+                  workspace_goto, (void *)3);
+    keyboard_bind("Alt | 4", KEYBOARD_DEPRESS,
+                  workspace_goto, (void *)4);
+    keyboard_bind("Alt | 5", KEYBOARD_DEPRESS,
+                  workspace_goto, (void *)5);
+    keyboard_bind("Alt | 6", KEYBOARD_DEPRESS,
+                  workspace_goto, (void *)6);
+    keyboard_bind("Alt | 7", KEYBOARD_DEPRESS,
+                  workspace_goto, (void *)7);
+    mouse_bind("Alt | Button1", MOUSE_DEPRESS, MOUSE_FRAME,
+               move_client, NULL);
+    mouse_bind("Alt | Button3", MOUSE_DEPRESS, MOUSE_FRAME,
+               resize_client, NULL);
+    mouse_bind("Button1", MOUSE_DEPRESS, MOUSE_TITLEBAR,
+               move_client, NULL);
+    mouse_bind("Button2", MOUSE_DEPRESS, MOUSE_TITLEBAR,
+               kill_nicely, NULL);
+    mouse_bind("Control | Button2", MOUSE_DEPRESS, MOUSE_TITLEBAR,
+               kill_with_extreme_prejudice, NULL);
+    mouse_bind("Button3", MOUSE_RELEASE, MOUSE_TITLEBAR,
+               resize_maximize, NULL);
+    keyboard_bind("Control | Alt | Shift | q", KEYBOARD_RELEASE,
+                  keyboard_quote, NULL);
 
     WM_STATE = XInternAtom(dpy, "WM_STATE", False);
     WM_CHANGE_STATE = XInternAtom(dpy, "WM_CHANGE_STATE", False);

@@ -100,15 +100,15 @@ void mouse_replay(XButtonEvent *);
  * keybindings are assigned, the most recent is used.
  */
 
-void keyboard_set_function_ex(unsigned int keycode, unsigned int modifiers,
-                              int depress, key_fn fn, void *arg);
+void keyboard_bind_ex(unsigned int keycode, unsigned int modifiers,
+                      int depress, key_fn fn, void *arg);
 
 #define KEYBOARD_DEPRESS KeyPress
 #define KEYBOARD_RELEASE KeyRelease
 
 /*
  * Set a function to be called in response to a mouse button event,
- * very similar to keyboard_set_function_ex().  The "location"
+ * very similar to keyboard_bind_ex().  The "location"
  * argument denotes where we are to listen for the mouse event - NB
  * that it is NOT possible to listen for button events on the actual
  * client window (against ICCCM and raises all sorts of implementation
@@ -118,8 +118,8 @@ void keyboard_set_function_ex(unsigned int keycode, unsigned int modifiers,
  * parameter may be a logical OR of the locations defined below.
  */
 
-void mouse_set_function_ex(unsigned int button, unsigned int modifiers,
-                           int depress, int location, mouse_fn fn, void *arg);
+void mouse_bind_ex(unsigned int button, unsigned int modifiers,
+                   int depress, int location, mouse_fn fn, void *arg);
 
 #define MOUSE_DEPRESS ButtonPress
 #define MOUSE_RELEASE ButtonRelease
@@ -132,7 +132,7 @@ void mouse_set_function_ex(unsigned int button, unsigned int modifiers,
                           MOUSE_ROOT | MOUSE_FRAME)
 
 /*
- * This works identically to keyboard_set_function_ex except that the
+ * This works identically to keyboard_bind_ex except that the
  * keycode and modifiers are parsed from a string.
  * 
  * The grammar for KEYSTRING has tokens which are:
@@ -194,11 +194,11 @@ void mouse_set_function_ex(unsigned int button, unsigned int modifiers,
  * ICCCM crap
  */
 
-void keyboard_set_function(char *keystring, int depress,
-                           key_fn fn, void *arg);
+void keyboard_bind(char *keystring, int depress,
+                   key_fn fn, void *arg);
 
 /*
- * This works very similar to keyboard_set_function except the grammar
+ * This works very similar to keyboard_bind except the grammar
  * is a bit different:
  * 
  * STRING       ::= MODLIST* WHITESPACE BUTTON
@@ -214,8 +214,19 @@ void keyboard_set_function(char *keystring, int depress,
  * This function treats all tokens as case-insensitive.
  */
 
-void mouse_set_function(char *mousestring, int depress,
-                        int location, mouse_fn fn, void *arg);
+void mouse_bind(char *mousestring, int depress,
+                int location, mouse_fn fn, void *arg);
+
+/*
+ * these functions allow one to unbind all key or mouse event that
+ * have been bound above
+ */
+void keyboard_unbind_ex(unsigned int keycode, unsigned int modifiers,
+                        int depress);
+void mouse_unbind_ex(unsigned int button, unsigned int modifiers,
+                     int depress, int location);
+void keyboard_unbind(char *keystring, int depress);
+void mouse_unbind(char *mousestring, int depress, int location);
 
 /*
  * Do a "soft" grab on all the keys that are of interest to us - this

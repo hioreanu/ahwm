@@ -16,6 +16,7 @@
 #define MAX(x,y) ((x) > (y) ? (x) : (y))
 #endif
 
+/* try to place in specified corner if possible */
 static Bool place_corner(client_t *client, int x, int y)
 {
     client_t *c;
@@ -59,9 +60,10 @@ static int find_overlap(client_t *one, client_t *two)
 
     x1 = MAX(one->x, two->x);
     x2 = MIN(one->x + one->width, two->x + two->width);
+    if (x2 - x1 <= 0) return 0;
     y1 = MAX(one->y, two->y);
     y2 = MIN(one->y + one->height, two->y + two->height);
-    if (y2 - y1 <= 0 || x2 - x1 <= 0) return 0;
+    if (y2 - y1 <= 0) return 0;
     return (y2 - y1) * (x2 - x1);
 }
 

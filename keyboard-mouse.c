@@ -61,10 +61,13 @@ mouse_fn mouse_quote = keyboard_quote;
  * == 0x20, bit 5 set), then keyboard_is_lock[5] == True.
  */
 static Bool keyboard_is_lock[8] = { False };
+/* the mouse and keyboard bindings */
 static keybinding *keybindings = NULL;
 static mousebinding *mousebindings = NULL;
+/* combinations of modifier keys to ignore */
 static unsigned int *modifier_combinations = NULL;
 static int n_modifier_combinations;
+/* used for quoting key & mouse bindings */
 static Bool quoting = False;
 static Time last_quote_time;
 
@@ -192,8 +195,8 @@ void keyboard_ignore(XEvent *e, void *v)
     return;
 }
 
-void keyboard_set_function_ex(unsigned int keycode, unsigned int modifiers,
-                              int depress, key_fn fn, void *arg)
+void keyboard_bind_ex(unsigned int keycode, unsigned int modifiers,
+                      int depress, key_fn fn, void *arg)
 {
     keybinding *newbinding;
 
@@ -211,8 +214,8 @@ void keyboard_set_function_ex(unsigned int keycode, unsigned int modifiers,
     keybindings = newbinding;
 }
 
-void mouse_set_function_ex(unsigned int button, unsigned int modifiers,
-                           int depress, int location, mouse_fn fn, void *arg)
+void mouse_bind_ex(unsigned int button, unsigned int modifiers,
+                   int depress, int location, mouse_fn fn, void *arg)
 {
     mousebinding *newbinding;
 
@@ -231,10 +234,55 @@ void mouse_set_function_ex(unsigned int button, unsigned int modifiers,
     mousebindings = newbinding;
 }
 
+void keyboard_unbind_ex(unsigned int keycode, unsigned int modifiers,
+                        int depress) 
+{
+    keybinding *kb, *tmp;
+
+    tmp = NULL;
+    for (kb = keybindings; kb != NULL; kb = kb->next) {
+        if (kb->keycode == keycode
+            && kb->modifiers == modifiers
+            && kb->depress == depress) {
+            if (tmp == NULL) {
+                keybindings = keybindings->next;
+                free(kb);
+            } else {
+                tmp->next = kb->next;
+                free(kb);
+            }
+        }
+        tmp = kb;
+    }
+}
+
+void mouse_unbind_ex(unsigned int button, unsigned int modifiers,
+                     int depress, int location)
+{
+    mousebinding *mb, *tmp;
+
+    tmp = NULL;
+    for (mb = mousebindings; mb != NULL; mb = mb->next) {
+        if (mb->button == button
+            && mb->modifiers == modifiers
+            && mb->depress == depress
+            && mb->location == location) {
+            if (tmp == NULL) {
+                mousebindings = mousebindings->next;
+                free(mb);
+            } else {
+                tmp->next = mb->next;
+                free(mb);
+            }
+        }
+        tmp = mb;
+    }
+}
+
 /* FIXME: should also apply the bindings to all active clients */
 
-void keyboard_set_function(char *keystring, int depress,
-                           key_fn fn, void *arg)
+void keyboard_bind(char *keystring, int depress,
+                   key_fn fn, void *arg)
 {
     unsigned int keycode;
     unsigned int modifiers;
@@ -243,12 +291,11 @@ void keyboard_set_function(char *keystring, int depress,
         fprintf(stderr, "XWM: Cannot bind key, bad keystring '%s'\n", keystring);
         return;
     }
-    keyboard_set_function_ex(keycode, modifiers, depress, fn, arg);
+    keyboard_bind_ex(keycode, modifiers, depress, fn, arg);
 }
 
-
-void mouse_set_function(char *mousestring, int depress,
-                        int location, mouse_fn fn, void *arg)
+void mouse_bind(char *mousestring, int depress,
+                int location, mouse_fn fn, void *arg)
 {
     unsigned int button;
     unsigned int modifiers;
@@ -258,7 +305,33 @@ void mouse_set_function(char *mousestring, int depress,
                 mousestring);
         return;
     }
-    mouse_set_function_ex(button, modifiers, depress, location, fn, arg);
+    mouse_bind_ex(button, modifiers, depress, location, fn, arg);
+}
+
+void keyboard_unbind(char *keystring, int depress)
+{
+    unsigned int keycode;
+    unsigned int modifiers;
+    
+    if (parse_string(keystring, &keycode, &modifiers, figure_keycode) != 1) {
+        fprintf(stderr,
+                "XWM: Cannot unbind key, bad keystring '%s'\n", keystring);
+        return;
+    }
+    keyboard_unbind_ex(keycode, modifiers, depress);
+}
+
+void mouse_unbind(char *mousestring, int depress, int location)
+{
+    unsigned int button;
+    unsigned int modifiers;
+
+    if (parse_string(mousestring, &button, &modifiers, figure_button) != 1) {
+        fprintf(stderr, "XWM: Cannot unbind mouse button, bad string '%s'\n",
+                mousestring);
+        return;
+    }
+    mouse_unbind_ex(button, modifiers, depress, location);
 }
 
 void keyboard_grab_keys(client_t *client)
@@ -392,22 +465,6 @@ void mouse_replay(XButtonEvent *e)
     XSendEvent(dpy, e->window, True, mask, (XEvent *)e);
 }
 
-static void unquote(XEvent *e)
-{
-    XSetWindowAttributes xswa;
-    
-    quoting = False;
-    xswa.background_pixel = workspace_pixels[workspace_current - 1];
-    XChangeWindowAttributes(dpy, root_window, CWBackPixel, &xswa);
-    XClearWindow(dpy, root_window);
-    if (e->type == ButtonPress
-        || e->type == ButtonRelease)
-        mouse_replay(&e->xbutton);
-    else if (e->type == KeyPress
-             || e->type == KeyRelease)
-        keyboard_replay(&e->xkey);
-}
-
 Bool keyboard_handle_event(XKeyEvent *xevent)
 {
     keybinding *kb;
@@ -499,9 +556,27 @@ Bool mouse_handle_event(XEvent *xevent)
     return False;
 }
 
+/* counterpart of keyboard_quote, does not need to be public */
+static void unquote(XEvent *e)
+{
+    XSetWindowAttributes xswa;
+    
+    quoting = False;
+    xswa.background_pixel = workspace_pixels[workspace_current - 1];
+    XChangeWindowAttributes(dpy, root_window, CWBackPixel, &xswa);
+    XClearWindow(dpy, root_window);
+    if (e->type == ButtonPress
+        || e->type == ButtonRelease)
+        mouse_replay(&e->xbutton);
+    else if (e->type == KeyPress
+             || e->type == KeyRelease)
+        keyboard_replay(&e->xkey);
+}
+
 /*
  * This is simple enough that we don't need to bring in lex (or, God
- * forbid, yacc).  Looks ugly, mostly just string manipulation.
+ * forbid, yacc).  Looks ugly, mostly just string manipulation.  Used
+ * for both keyboard and mouse parsing; function arg is difference.
  */
 
 int parse_string(char *keystring, unsigned int *button_ret,
@@ -593,6 +668,7 @@ int parse_string(char *keystring, unsigned int *button_ret,
     return 0;
 }
 
+/* utility for use with parse_string */
 static int figure_button(char *s, unsigned int *b)
 {
     if (strcasecmp(s, "Button1") == 0) {
@@ -616,6 +692,7 @@ static int figure_button(char *s, unsigned int *b)
     }
 }
 
+/* utility for use with parse_string */
 static int figure_keycode(char *s, unsigned int *k) 
 {
     KeySym ks;
@@ -634,6 +711,7 @@ static int figure_keycode(char *s, unsigned int *k)
     return 0;
 }
 
+/* returns the windows for placing a synthetic mouse event */
 static void get_event_child_windows_mouse(Window *event, Window *child,
                                           unsigned int mask)
 {
@@ -683,6 +761,7 @@ static void get_event_child_windows_mouse(Window *event, Window *child,
     }
 }
 
+/* returns the windows for placing a synthetic key event */
 static void get_event_child_windows_keyboard(Window *event, Window *child,
                                              unsigned int mask)
 {
@@ -757,6 +836,7 @@ static void warn(KeySym new, char *old, char *mod)
             mod, old, XKeysymToString(new));
 }
 
+/* utility for keyboard_init */
 static void figure_lock(KeySym keysym, int bit)
 {
     int i;
@@ -783,34 +863,25 @@ static void figure_lock(KeySym keysym, int bit)
 }
 
 /*
- * This will return an array of all the posible combinations of MODS
- * and the various 'lock' modifiers the user has mapped.  The number
- * of elements in the array is put in N.
+ * This will modify the array of all the posible combinations of the
+ * various 'lock' modifiers the user has mapped.  All arguments are
+ * used for keeping state in the recursion.
  * 
  * For example, if the user has XK_Caps_Lock generating the 'lock'
  * modifier, XK_Num_Lock generating the 'Mod3' modifier and
- * XK_Scroll_Lock generating 'Mod4', and the argument passed in is
- * 'Mod1Mask', this will return:
+ * XK_Scroll_Lock generating 'Mod4', this will generate:
  * 
- * Mod1Mask | LockMask
- * Mod1Mask | LockMask | Mod3Mask
- * Mod1Mask | LockMask | Mod3Mask | Mod4Mask
- * Mod1Mask | Mod3Mask
- * Mod1Mask | Mod3Mask | Mod4Mask
- * Mod1Mask | Mod4Mask
+ * LockMask
+ * LockMask | Mod3Mask
+ * LockMask | Mod3Mask | Mod4Mask
+ * LockMask | Mod4Mask
+ * Mod3Mask
+ * Mod3Mask | Mod4Mask
+ * Mod4Mask
  * 
- * Note that the original modifiers (without locking modifiers ORed
- * in) is not returned.  Of course, this takes an exponential amount
- * of time and space (specifically factorial of the number of locking
- * modifiers, which is exponential), so hopefully the user doesn't
- * have six locking modifiers.  To quote Knuth (Art of Computer
- * Programming, 1.2.5):
- * 
- * "It is helpful to keep the value 10! = 3,628,800 in mind; one
- * should remember that 10! is about 3 and half million.  In a sense,
- * this number represents an approximate dividing line between things
- * that are practical to compute and things that are not."
- * 
+ * Of course, this takes an exponential amount of time and space, so
+ * hopefully the user doesn't have six locking modifiers.
+ *
  * I am considering the following keysyms 'locking' modifiers (based
  * purely upon the fact that they end with '_Lock'):
  * 
