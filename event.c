@@ -115,6 +115,7 @@ void event_dispatch(XEvent *event)
     else
         printf("%-19s %s (%d)\n", "received event:",
                xevent_names[event->type], event->type);
+    xev_print(event);
 #endif /* DEBUG */
 
     /* check the event number, jump to appropriate function */
@@ -231,10 +232,6 @@ static void event_create(XCreateWindowEvent *xevent)
     client_print("Create:", client);
 #endif /* DEBUG */
     if (client == NULL) return;
-    client->x = xevent->x;
-    client->y = xevent->y;
-    client->width = xevent->width;
-    client->height = xevent->height;
 }
 
 static void event_destroy(XDestroyWindowEvent *xevent)
@@ -305,9 +302,13 @@ static void event_configurerequest(XConfigureRequestEvent *xevent)
     XWindowChanges  xwc;
     
     client = client_find(xevent->window);
+
 #ifdef DEBUG
     client_print("Configure Request:", client);
+    printf("\tBefore: %dx%d+%d+%d\n", client->x, client->y,
+           client->width, client->height);
 #endif /* DEBUG */
+    
     if (xevent->value_mask & CWX)
         client->x      = xevent->x;
     if (xevent->value_mask & CWY)
@@ -315,32 +316,31 @@ static void event_configurerequest(XConfigureRequestEvent *xevent)
     if (xevent->value_mask & CWWidth)
         client->width  = xevent->width;
     if (xevent->value_mask & CWHeight)
-        client->height = xevent->height;
+        client->height = xevent->height + TITLE_HEIGHT;
 
-    xwc.x            = xevent->x + TITLE_HEIGHT;
-    xwc.y            = xevent->y;
-    xwc.height       = xevent->height + TITLE_HEIGHT;
-    xwc.width        = xevent->width;
-    xwc.x            = xevent->x;
-    xwc.x            = xevent->x;
+    xwc.x            = client->x;
+    xwc.y            = client->y;
+    xwc.width        = client->width;
+    xwc.height       = client->height;
     xwc.border_width = xevent->border_width;
     xwc.sibling      = xevent->above;
     xwc.stack_mode   = xevent->detail;
 
-    XConfigureWindow(xevent->display, xevent->window,
-                     xevent->value_mask, &xwc);
+    XConfigureWindow(dpy, client->frame,
+                     xevent->value_mask | CWX | CWY | CWWidth | CWHeight,
+                     &xwc);
 
-    xwc.x      -= TITLE_HEIGHT;
+    xwc.y       = TITLE_HEIGHT;
+    xwc.x       = 0;
     xwc.height -= TITLE_HEIGHT;
-    XConfigureWindow(xevent->display, client->frame,
-                     xevent->value_mask, &xwc);
-    
+    XConfigureWindow(xevent->display, client->window,
+                     xevent->value_mask | CWX | CWY | CWWidth | CWHeight,
+                     &xwc);
 
-/*
- * file:/home/ach/xlib/events/structure-control/configure.html
- * file:/home/ach/xlib/window/configure.html#XWindowChanges
- */
-    
+#ifdef DEBUG
+    printf("\tBefore: %dx%d+%d+%d\n", client->x, client->y,
+           client->width, client->height);
+#endif /* DEBUG */
 }
 
 static void event_property(XPropertyEvent *xevent)

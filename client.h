@@ -35,10 +35,10 @@ typedef struct _client_t {
     Window group_leader;        /* FIXME */
     XWMHints *xwmh;             /* Hints or NULL (ICCCM, 4.1.2.4) */
     XSizeHints *xsh;            /* Size hints or NULL (ICCCM, 4.1.2.3) */
-    int x;                      /* actual position when mapped*/
-    int y;                      /* actual position when mapped*/
-    int width;                  /* actual size when mapped */
-    int height;                 /* actual size when mapped */
+    int x;                      /* frame's actual position when mapped */
+    int y;                      /* frame's actual position when mapped */
+    int width;                  /* frame's actual size when mapped */
+    int height;                 /* frame's actual size when mapped */
     int workspace;              /* client's workspace  */
     int window_event_mask;      /* event mask of client->window */
     int frame_event_mask;       /* event mask of client->frame */
@@ -152,10 +152,12 @@ typedef struct _position_size {
 /*
  * Sets the position_size argument to the position and size that a
  * frame should take around this client in strict accordance to ICCCM,
- * 4.1.2.3
+ * 4.1.2.3; FIXME: more
  */
 
 void client_frame_position(client_t *, position_size *);
+
+void client_get_position_size_hints(client_t *client, position_size *ps);
 
 /*
  * print out some debugging information about a client

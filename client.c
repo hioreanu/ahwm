@@ -43,10 +43,6 @@ client_t *client_create(Window w)
     client->transient_for = None;
     client->workspace = workspace_current;
     client->state = WithdrawnState;
-    client->x = xwa.x;
-    client->y = xwa.y;
-    client->width = xwa.width;
-    client->height = xwa.height;
     client->frame = None;
 
     client_set_name(client);
@@ -92,15 +88,26 @@ client_t *client_create(Window w)
     return client;
 }
 
+/*
+ * FIXME:  should figure a way around calling XGetWindowAttributes
+ * twice when creating a client and remapping window
+ */
+
 void client_reparent(client_t *client)
 {
     XSetWindowAttributes xswa;
+    XWindowAttributes xwa;
     XWindowChanges xwc;
     int mask;
     Window w;
     position_size ps;
 
     w = client->window;
+    if (XGetWindowAttributes(dpy, w, &xwa) == 0) {
+        fprintf(stderr,
+                "XGetWindowAttributes failed in a very inconvenient place\n");
+        return;
+    }
     mask = CWBackPixmap | CWBackPixel | CWBorderPixel
            | CWCursor | CWEventMask | CWOverrideRedirect;
     xswa.cursor = cursor_normal;
@@ -109,7 +116,17 @@ void client_reparent(client_t *client)
     xswa.event_mask = client->frame_event_mask;
     xswa.override_redirect = True;
 
+    ps.x = xwa.x;
+    ps.y = xwa.y;
+    ps.width = xwa.width;
+    ps.height = xwa.height;
+    client_get_position_size_hints(client, &ps);
     client_frame_position(client, &ps);
+    client->x = ps.x;
+    client->y = ps.y;
+    client->width = ps.width;
+    client->height = ps.height;
+    
 
     if (client->frame == None) {
         client->frame = XCreateWindow(dpy, root_window, ps.x, ps.y,
@@ -261,55 +278,72 @@ void client_inform_state(client_t *client)
     /* FIXME */
 }
 
+void client_get_position_size_hints(client_t *client, position_size *ps)
+{
+    if (client->xsh != NULL) {
+        if (client->xsh->flags & (PPosition | USPosition)) {
+            ps->x = client->xsh->x;
+            ps->y = client->xsh->y;
+        }
+        if (client->xsh->flags & (PSize | USSize)) {
+            ps->width = client->xsh->width;
+            ps->height = client->xsh->height;
+        }
+    }
+}
+
 void client_frame_position(client_t *client, position_size *ps)
 {
-    int req_x, req_y, req_width, req_height, gravity;
+    int gravity;
     int y_win_ref, y_frame_ref; /* "reference" points */
 
-    req_x = client->x;
-    req_y = client->y;
-    req_width = client->width;
-    req_height = client->height;
+#ifdef DEBUG
+    printf("\twindow wants to be positioned at %dx%d+%d+%d\n",
+           ps->x, ps->y, ps->height, ps->width);
+#endif /* DEBUG */
+
     gravity = NorthWestGravity;
     
     if (client->xsh != NULL) {
         if (client->xsh->flags & PWinGravity)
             gravity = client->xsh->win_gravity;
-        if (client->xsh->flags & (PPosition | USPosition)) {
-            req_x = client->xsh->x;
-            req_y = client->xsh->y;
-        }
-        if (client->xsh->flags & (PSize | USSize)) {
-            req_width = client->xsh->width;
-            req_height = client->xsh->height;
-        }
     }
 
     /* this is a bit simpler since we only add a titlebar at the top */
-    ps->x = req_x;
-    ps->width = req_width;
-    ps->height = req_height + TITLE_HEIGHT;
+    ps->height += TITLE_HEIGHT;
     switch (gravity) {
         case StaticGravity:
         case SouthEastGravity:
         case SouthGravity:
         case SouthWestGravity:
-            ps->y = req_y + TITLE_HEIGHT;
+#ifdef DEBUG
+            printf("\tGravity is like static\n");
+#endif /* DEBUG */
+            ps->y -= TITLE_HEIGHT;
             break;
         case CenterGravity:
         case EastGravity:
         case WestGravity:
-            y_win_ref = req_height / 2;
-            y_frame_ref = (req_height + TITLE_HEIGHT) / 2;
-            ps->y = req_y + (y_frame_ref - y_win_ref);
+            y_win_ref = ps->height / 2;
+            y_frame_ref = (ps->height + TITLE_HEIGHT) / 2;
+            ps->y += (y_frame_ref - y_win_ref);
+#ifdef DEBUG
+            printf("\tGravity is like center\n");
+#endif /* DEBUG */
             break;
         case NorthGravity:
         case NorthEastGravity:
         case NorthWestGravity:
         default:                /* assume NorthWestGravity */
-            ps->y = req_y;
+#ifdef DEBUG
+            printf("\tGravity is like NorthWest\n");
+#endif /* DEBUG */
             break;
     }
+#ifdef DEBUG
+    printf("\tframe positioned at %dx%d+%d+%d\n",
+           ps->x, ps->y, ps->height, ps->width);
+#endif /* DEBUG */
 }
 
 void client_print(char *s, client_t *client)
