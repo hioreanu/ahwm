@@ -12,6 +12,7 @@
 #include "client.h"
 #include "keyboard.h"
 #include "focus.h"
+#include "cursor.h"
 
 Display *dpy;
 int scr;
@@ -20,9 +21,6 @@ int scr_width;
 unsigned long black;
 unsigned long white;
 Window root_window;
-Cursor cursor_normal;
-Cursor cursor_moving;
-Cursor cursor_sizing;
 
 int alt_tab(Window win, Window subwindow, Time t,
             int x, int y, int root_x, int root_y);
@@ -41,9 +39,13 @@ static int tmp_error_handler(Display *dpy, XErrorEvent *error)
     return -1;
 }
 
+/*
+ * FIXME:  I might actually release some day, I really should deal
+ * with this...
+ */
 static int error_handler(Display *dpy, XErrorEvent *error)
 {
-    fprintf(stderr, "Caught some sort of X error.\n");
+    fprintf(stderr, "XWM: Caught some sort of X error.\n");
     return -1;
 }
 
@@ -69,7 +71,7 @@ int main(int argc, char **argv)
 
     dpy = XOpenDisplay(NULL);
     if (dpy == NULL) {
-        fprintf(stderr, "Could not open display '%s'\n", XDisplayName(NULL));
+        fprintf(stderr, "XWM: Could not open display '%s'\n", XDisplayName(NULL));
         exit(1);
     }
     scr = DefaultScreen(dpy);
@@ -87,7 +89,7 @@ int main(int argc, char **argv)
                  KeyReleaseMask);
     XSync(dpy, 0);
     if (already_running_windowmanager) {
-        fprintf(stderr, "You're already running a window manager, silly.\n");
+        fprintf(stderr, "XWM: You're already running a window manager, silly.\n");
         exit(1);
     }
 
@@ -103,9 +105,7 @@ int main(int argc, char **argv)
     XSynchronize(dpy, True);
 
 //    keyboard_grab_keys(root_window);
-    cursor_normal = XCreateFontCursor(dpy, XC_left_ptr);
-    cursor_moving = XCreateFontCursor(dpy, XC_fleur);
-    cursor_sizing = XCreateFontCursor(dpy, XC_sizing);
+    cursor_init();
     XDefineCursor(dpy, root_window, cursor_normal);
 
     window_context = XUniqueContext(); /* client.c */
@@ -190,4 +190,5 @@ int control_alt_shift_t(Window w, Window sw, Time t,
         execlp("/usr/X11R6/bin/xterm", "xterm", NULL);
         _exit(0);
     }
+    return 0;
 }

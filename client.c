@@ -14,6 +14,7 @@
 #include "client.h"
 #include "workspace.h"
 #include "keyboard.h"
+#include "cursor.h"
 
 XContext window_context;
 XContext frame_context;
@@ -34,7 +35,7 @@ client_t *client_create(Window w)
 
     client = malloc(sizeof(client_t));
     if (client == NULL) {
-        fprintf(stderr, "Malloc failed, unable to allocate client\n");
+        fprintf(stderr, "XWM: Malloc failed, unable to allocate client\n");
         return NULL;
     }
     memset(client, 0, sizeof(client_t));
@@ -59,7 +60,7 @@ client_t *client_create(Window w)
     if (focus_canfocus(client)) focus_add(client);
 
     if (XSaveContext(dpy, w, window_context, (void *)client) != 0) {
-        fprintf(stderr, "XSaveContext failed, could not save window\n");
+        fprintf(stderr, "XWM: XSaveContext failed, could not save window\n");
         free(client);
         return NULL;
     }
@@ -72,7 +73,7 @@ client_t *client_create(Window w)
                          frame_context, (void *)client) != 0) {
             XDeleteContext(dpy, client->window, window_context);
             free(client);
-            fprintf(stderr, "XSaveContext failed, could not save frame\n");
+            fprintf(stderr, "XWM: XSaveContext failed, could not save frame\n");
             return NULL;
         }
     } else {
@@ -105,7 +106,7 @@ void client_reparent(client_t *client)
     w = client->window;
     if (XGetWindowAttributes(dpy, w, &xwa) == 0) {
         fprintf(stderr,
-                "XGetWindowAttributes failed in a very inconvenient place\n");
+                "XWM: XGetWindowAttributes failed in a very inconvenient place\n");
         return;
     }
     mask = CWBackPixmap | CWBackPixel | CWBorderPixel
@@ -127,7 +128,6 @@ void client_reparent(client_t *client)
     client->width = ps.width;
     client->height = ps.height;
     
-
     if (client->frame == None) {
         client->frame = XCreateWindow(dpy, root_window, ps.x, ps.y,
                                       ps.width, ps.height, 0,
@@ -262,7 +262,7 @@ void client_set_xsh(client_t *client)
 
     client->xsh = XAllocSizeHints();
     if (client->xsh == NULL) {
-        fprintf(stderr, "Couldn't allocate Size Hints structure\n");
+        fprintf(stderr, "XWM: Couldn't allocate Size Hints structure\n");
         return;
     }
     if (XGetWMSizeHints(dpy, client->window, client->xsh,
@@ -348,6 +348,11 @@ void client_frame_position(client_t *client, position_size *ps)
 
 void client_print(char *s, client_t *client)
 {
+#ifndef DEBUG
+    /* this may be in the middle of a tight loop where one cannot
+     * afford even a null function call */
+    fprintf(stderr, "XWM: Crazy author forgot to remove debugging output\n");
+#endif
     if (client == NULL) {
         printf("%-19s null client\n", s);
         return;

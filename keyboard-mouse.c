@@ -39,7 +39,7 @@ void keyboard_set_function_ex(int keycode, unsigned int modifiers,
 
     newbinding = malloc(sizeof(keybinding));
     if (newbinding == NULL) {
-        fprintf(stderr, "Cannot bind key, out of memory\n");
+        fprintf(stderr, "XWM: Cannot bind key, out of memory\n");
         return;
     }
     newbinding->next = bindings;
@@ -58,7 +58,7 @@ void keyboard_set_function(char *keystring, int depress, key_fn fn)
     unsigned int modifiers;
 
     if (keyboard_string_to_keycode(keystring, &keycode, &modifiers) != 1) {
-        fprintf(stderr, "Cannot bind key, bad keystring '%s'\n", keystring);
+        fprintf(stderr, "XWM: Cannot bind key, bad keystring '%s'\n", keystring);
         return;
     }
     keyboard_set_function_ex(keycode, modifiers, depress, fn);
@@ -148,13 +148,14 @@ int keyboard_string_to_keycode(char *keystring, int *keycode_ret,
                 *(buf + strlen(buf) - 1) = '\0';
             ks = XStringToKeysym(buf);
             if (ks == NoSymbol) {
-                fprintf(stderr, "Couldn't figure out '%s'\n", buf);
+                fprintf(stderr, "XWM: Couldn't figure out '%s'\n", buf);
                 return 0;
             }
             keycode = XKeysymToKeycode(dpy, ks);
             if (keycode == 0) {
                 fprintf(stderr,
-                        "XKeysymToKeycode failed somehow (perhaps unmapped?)");
+                        "XWM: XKeysymToKeycode failed somehow "
+                        "(perhaps unmapped?)");
                 return 0;
             }
             *modifiers_ret = modifiers;
@@ -213,7 +214,7 @@ int keyboard_string_to_keycode(char *keystring, int *keycode_ret,
         } else if (strcasecmp(buf, "AltMask") == 0) {
             tmp_modifier = Mod1Mask;
         } else {
-            fprintf(stderr, "Could not figure out modifier '%s'\n", buf);
+            fprintf(stderr, "XWM: Could not figure out modifier '%s'\n", buf);
             return 0;
         }
         modifiers |= tmp_modifier;

@@ -21,7 +21,10 @@
  * the standard X program 'bitmap' to change them.
  */
 
+#include <X11/cursorfont.h>
+
 #include "cursor.h"
+#include "xwm.h"
 
 #include "ew_cursor_black.xbm"
 #include "ne_cursor_black.xbm"
@@ -62,8 +65,8 @@ int cursor_init()
     cursor_sizing_e_w = XCreatePixmapCursor(dpy, black, white, &fg, &bg,
                                             ew_cursor_black_x_hot,
                                             ew_cursor_black_y_hot);
-    XFreePixmap(black);
-    XFreePixmap(white);
+    XFreePixmap(dpy, black);
+    XFreePixmap(dpy, white);
     /* cut-and-paste end */
     
     black = XCreateBitmapFromData(dpy, root_window, ne_cursor_black_bits,
@@ -75,8 +78,8 @@ int cursor_init()
     cursor_sizing_ne_sw = XCreatePixmapCursor(dpy, black, white, &fg, &bg,
                                               ne_cursor_black_x_hot,
                                               ne_cursor_black_y_hot);
-    XFreePixmap(black);
-    XFreePixmap(white);
+    XFreePixmap(dpy, black);
+    XFreePixmap(dpy, white);
     
     black = XCreateBitmapFromData(dpy, root_window, ns_cursor_black_bits,
                                    ns_cursor_black_width, ns_cursor_black_height);
@@ -87,8 +90,8 @@ int cursor_init()
     cursor_sizing_n_s = XCreatePixmapCursor(dpy, black, white, &fg, &bg,
                                             ns_cursor_black_x_hot,
                                             ns_cursor_black_y_hot);
-    XFreePixmap(black);
-    XFreePixmap(white);
+    XFreePixmap(dpy, black);
+    XFreePixmap(dpy, white);
     
     black = XCreateBitmapFromData(dpy, root_window, nw_cursor_black_bits,
                                    nw_cursor_black_width, nw_cursor_black_height);
@@ -99,8 +102,8 @@ int cursor_init()
     cursor_sizing_nw_se = XCreatePixmapCursor(dpy, black, white, &fg, &bg,
                                               nw_cursor_black_x_hot,
                                               nw_cursor_black_y_hot);
-    XFreePixmap(black);
-    XFreePixmap(white);
+    XFreePixmap(dpy, black);
+    XFreePixmap(dpy, white);
 
     if (cursor_normal == None)       return 0;
     if (cursor_moving == None)       return 0;

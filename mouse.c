@@ -10,6 +10,9 @@
 #include <stdio.h>
 
 static XEvent *compress_motion(XEvent *xevent);
+static void process_resize(client_t *client, int new_x, int new_y,
+                           resize_direction_t direction,
+                           int *old_x, int *old_y);
 
 /*
  * WindowMaker grabs the server while processing the motion events for
@@ -189,6 +192,12 @@ typedef enum {
  * bit more complex
  */
 
+/*
+ * Escape ends the resize, does not resize client window
+ * Shift constrains resize to y->x->x+y->y->....
+ * Shift with button press constrains to x or y
+ */
+
 void mouse_resize_client(XEvent *xevent)
 {
     static client_t *client = NULL;
@@ -342,11 +351,15 @@ void mouse_resize_client(XEvent *xevent)
                         break;
                 }
 #endif /* DEBUG */
+                process_resize(client, xevent->xbutton.x_root,
+                               xevent->xbutton.y_root, resize_direction,
+                               &x_start, &y_start);
                 break;
             case ButtonRelease:
                 if (client) {
-                    client->x += xevent->xbutton.x_root - x_start;
-                    client->y += xevent->xbutton.y_root - y_start;
+                    process_resize(client, xevent->xmotion.x_root,
+                                   xevent->xmotion.y_root, resize_direction,
+                                   &x_start, &y_start);
                 }
                 goto reset;
             
@@ -405,6 +418,8 @@ void mouse_handle_event(XEvent *xevent)
 
 /* compress motion events, idea taken from WindowMaker */
 /* returns most recent event to deal with */
+/* FIXME:  deal with this more elegantly, process events
+ * which do not have right modifiers separately */
 static XEvent *compress_motion(XEvent *xevent)
 {
     static XEvent newer;
@@ -415,7 +430,7 @@ static XEvent *compress_motion(XEvent *xevent)
             && newer.xmotion.state == xevent->xmotion.state) {
             xevent = &newer;
 #ifdef DEBUG
-            printf("\tMotion event compressed (%d,%d) -> (%d,%d)\n",
+            printf("\tMotion event compressed (%d,%d)\n",
                    xevent->xmotion.x_root, xevent->xmotion.y_root);
 #endif /* DEBUG */
         } else {
@@ -425,4 +440,12 @@ static XEvent *compress_motion(XEvent *xevent)
         }
     }
     return xevent;
+}
+
+static void process_resize(client_t *client, XEvent *xevent,
+                           resize_direction_t direction,
+                           int *old_x, int *old_y)
+{
+    /* FIXME: stopped here */
+    ;
 }

@@ -9,7 +9,6 @@
 
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
-#include <X11/cursorfont.h>
 /* #include <X11/extensions/shape.h> */
 
 /* these globals are used throughout - only one screen is supported */
@@ -21,9 +20,5 @@ extern int scr_width;
 extern unsigned long black;
 extern unsigned long white;
 extern Window root_window;
-
-extern Cursor cursor_normal;
-extern Cursor cursor_moving;
-extern Cursor cursor_sizing;
 
 #endif /* XWM_H */

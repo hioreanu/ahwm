@@ -12,23 +12,28 @@
 #define TITLE_HEIGHT 15
 
 /*
- * we store the data associated with each window using Xlib's XContext
- * mechanism (which has nothing to do with X itself, it's just a hash
- * mechanism built into Xlib as far as I can tell).  These are
- * initialized in xwm.c and defined in client.c.
- * window_context associates clients with their main windows
- * frame_context associates clients with their frame windows
- */
-
-extern XContext window_context;
-extern XContext frame_context;
-
-/*
- * this is the information we store with each top-level window
+ * this is the information we store with each top-level window EXCEPT
+ * for those windows which have override_redirect set (the ONLY thing
+ * we do with override_redirect windows is an XGrabKeys since we want
+ * our global keybindings to work globally - we don't event listen for
+ * events on override_redirect windows and we will never give them the
+ * focus (if they want the focus, they can take it themselves).  If
+ * you haven't played around with this, the most common kind of
+ * top-level override_redirect window would be a popup menu (it can't
+ * be a child of a top-level window because it shouldn't be clipped).
+ * 
+ * FIXME:  change comment if go with reparenting workspaces
+ * 
+ * Regular top-level windows are reparented to a frame window we
+ * create which may or may not have an area for a titlebar.  We
+ * reparent windows even if they don't have a titlebar since a lot of
+ * X apps ASSUME that they will be reparented by a windowmanager upon
+ * creation and it's a bit easier to listen for some events on our
+ * frame rather than their app window.
  */
 
 typedef struct _client_t {
-    Window window;              /* the actual window */
+    Window window;              /* their application window */
     Window frame;               /* contains titlebar, parent of above */
     Window transient_for;       /* FIXME */
     Window next_transient;      /* FIXME */
@@ -42,8 +47,7 @@ typedef struct _client_t {
     int workspace;              /* client's workspace  */
     int window_event_mask;      /* event mask of client->window */
     int frame_event_mask;       /* event mask of client->frame */
-    char *name;
-    /* window's name (ICCCM, 4.1.2.1) */
+    char *name;                 /* window's name (ICCCM, 4.1.2.1) */
     /* will not be NULL; use free() */
     char *instance;             /* window's instance (ICCCM, 4.1.2.5) */
     char *class;                /* window's class (ICCCM, 4.1.2.5) */
@@ -68,6 +72,18 @@ typedef struct _client_t {
 /* FIXME:  prolly need to keep a list of client's transient clients */
 
 /*
+ * we store the data associated with each window using Xlib's XContext
+ * mechanism (which has nothing to do with X itself, it's just a hash
+ * mechanism built into Xlib as far as I can tell).  These are
+ * initialized in xwm.c and defined in client.c.
+ * window_context associates clients with their main windows
+ * frame_context associates clients with their frame windows
+ */
+
+extern XContext window_context;
+extern XContext frame_context;
+
+/*
  * Create and store a newly-allocated client_t structure for a given
  * window.  Returns NULL on error or if we shouldn't be touching this
  * window in any way.  This will also do a number of miscellaneous X
@@ -79,8 +95,8 @@ client_t *client_create(Window);
 
 /*
  * Find the client structure for a given window.
- * The window is either the client window you passed to client_create
- * or the frame which that function creates.
+ * The window argument is either the client window you passed to
+ * client_create or the frame which that function creates.
  * Returns NULL on error.
  */
 
@@ -110,7 +126,7 @@ void client_set_name(client_t *);
  * to NULL (unlike client_set_name()) if the application does
  * not supply this information; this function does NOT free
  * the member data at any time.  Use 'XFree()' to free the data,
- * NOT 'free()'
+ * NOT 'free()'.
  */
 
 void client_set_instance_class(client_t *);
@@ -133,14 +149,17 @@ void client_set_xsh(client_t *);
 /*
  * Ensure that a client's WM_STATE property reflects what we think it
  * should be (the 'state' member, either NormalState, Iconic,
- * Withdrawn, etc.).
+ * Withdrawn, etc.).  We set this attribute on the client's
+ * application window according to ICCCM 4.1.3.1.
  */
 
 void client_inform_state(client_t *);
 
 /*
- * reparent a client
- * FIXME: more
+ * Create a frame window for a client and reparent the client.  If the
+ * client has already been reparented, ensure the frame window
+ * properly expresses the client's size and position wishes.  Frame is
+ * stored in client->frame.
  */
 
 void client_reparent(client_t *);
@@ -152,15 +171,24 @@ typedef struct _position_size {
 /*
  * Sets the position_size argument to the position and size that a
  * frame should take around this client in strict accordance to ICCCM,
- * 4.1.2.3; FIXME: more
+ * 4.1.2.3; the position_size is an in-and-out argument.  Pass in the
+ * place where the application window wants to be placed and out comes
+ * the place where the frame should be placed, taking gravity,
+ * etc. into account.
  */
 
 void client_frame_position(client_t *, position_size *);
 
+/*
+ * Set the postion_size argument to the client's desired position and
+ * size based upon the client's hints.
+ */
+
 void client_get_position_size_hints(client_t *client, position_size *ps);
 
 /*
- * print out some debugging information about a client
+ * print out some debugging information about a client, prepended by a
+ * given string
  */
 
 void client_print(char *, client_t *);
