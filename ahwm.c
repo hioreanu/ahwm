@@ -327,8 +327,10 @@ int main(int argc, char **argv)
 
     atexit(focus_save_stacks);
     signal(SIGTERM, sigterm);
-//    signal(SIGSEGV, sigsegv);
-//    signal(SIGBUS, sigsegv);
+#ifndef DEBUG
+    signal(SIGSEGV, sigsegv);
+    signal(SIGBUS, sigsegv);
+#endif
     
     scan_windows();
     focus_load_stacks();
@@ -418,7 +420,6 @@ static void reposition(Window w)
     int fmt;
     unsigned long nitems, bytes_after_return;
     int *offset;
-    XWindowAttributes xwa;
 
     if (XGetGeometry(dpy, w, &junk, &x, &y,
                      &junk2, &height, &junk2, &junk2) == 0) {

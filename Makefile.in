@@ -29,7 +29,7 @@ install: ahwm
 	if [ ! -d @prefix@@mandir@/man5 ] ; then mkdir -m 755 -p @prefix@@mandir@/man5 ; fi
 	cp ./ahwmrc.5 @prefix@@mandir@/man5
 	chmod 644 @prefix@@mandir@/man5/ahwmrc.5
-	ln -s @prefix@@mandir@/man5/ahwmrc.5 @prefix@@mandir@/man5/ahwm.5
+	(cd @prefix@@mandir@/man5 && $(LN_S) ahwmrc.5 ahwm.5)
 
 .SUFFIXES:
 .SUFFIXES: .c .@OBJEXT@

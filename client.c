@@ -127,7 +127,6 @@ client_t *client_create(Window w)
     client->raise_delay = 0;
     client->use_net_wm_pid = 0;
     client->shaded = 0;
-    client->shading = 0;
 
     client->workspace_set = UnSet;
     client->focus_policy_set = UnSet;
@@ -396,6 +395,8 @@ static void client_add_titlebar_internal(client_t *client)
                                      TITLE_HEIGHT, 0, DefaultDepth(dpy, scr),
                                      CopyFromParent, DefaultVisual(dpy, scr),
                                      mask, &xswa);
+    /* raise title above client window so shading works properly */
+    XRaiseWindow(dpy, client->titlebar);
     if (client->titlebar != None) {
         if (XSaveContext(dpy, client->titlebar,
                          title_context, (void *)client) != 0) {
@@ -701,6 +702,7 @@ void client_get_position_size_hints(client_t *client, position_size *ps)
 
 void client_frame_position(client_t *client, position_size *ps)
 {
+#ifdef DEBUG
     static char *gravity_strings[] = {
         "ForgetGravity",
         "NorthWestGravity",
@@ -714,6 +716,7 @@ void client_frame_position(client_t *client, position_size *ps)
         "SouthEastGravity",
         "StaticGravity"
     };
+#endif
     int gravity;
     int y_win_ref, y_frame_ref; /* "reference" points */
 

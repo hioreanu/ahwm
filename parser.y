@@ -683,6 +683,7 @@ line *make_line(int type, void *dollar_one)
 int yyerror(char *s)
 {
     fprintf(stderr, "%s\n", s);
+    return 0;    /* WTF is this return value supposed to represent? */
 }
 
 line *preferences = NULL;

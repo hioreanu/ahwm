@@ -30,12 +30,13 @@
 
 #define ANIMATION_INTERVAL 8  /* milliseconds */
 
-typedef struct _animate_data {
+struct _animation {
     int i;
     void *v;
     callback_fn callback;
     finalize_fn finalize;
-} animate_data;
+    int forwards;
+};
 
 /*
  * These numbers are from a table of the normal probability
@@ -47,7 +48,8 @@ typedef struct _animate_data {
  * parameters, it takes around half a second to complete an animation.
  */
 
-float animation_multiplicands[64] = {
+float animation_multiplicands[65] = {
+    0.000000,
     0.000968, 0.001350, 0.001866, 0.002555, 0.003467, 0.004661, 0.006210,
     0.008198, 0.010724, 0.013903, 0.017864, 0.022750, 0.028717, 0.035930,
     0.044565, 0.054799, 0.066807, 0.080757, 0.096800, 0.115070, 0.135666,
@@ -62,31 +64,54 @@ float animation_multiplicands[64] = {
 
 static void animate_fire(timer *t, void *v);
 
-void animate(callback_fn callback, finalize_fn finalize, void *v)
+animation *animate(callback_fn callback, finalize_fn finalize, void *v)
 {
-    animate_data *data;
+    animation *data;
 
-    data = malloc(sizeof(animate_data));
-    if (data == NULL) return;
+    data = malloc(sizeof(animation));
+    if (data == NULL) return NULL;
     data->i = 0;
     data->v = v;
     data->callback = callback;
     data->finalize = finalize;
+    data->forwards = 1;
     timer_new(ANIMATION_INTERVAL, animate_fire, (void *)data);
+    return data;
+}
+
+void animation_reverse(animation *data)
+{
+    data->forwards = !data->forwards;
+}
+
+void animation_start_backwards(animation *data)
+{
+    animation_reverse(data);
+    data->i = (sizeof(animation_multiplicands) / sizeof(float)) - data->i - 1;
 }
 
 static void animate_fire(timer *t, void *v)
 {
-    animate_data *data = (animate_data *)v;
+    animation *data = (animation *)v;
 
     (data->callback)(animation_multiplicands[data->i], data->v);
 
     timer_cancel(t);
-    data->i++;
-    if (data->i == sizeof(animation_multiplicands) / sizeof(float)) {
-        if (data->finalize != NULL) (data->finalize)(data->v);
-        free(data);
+    if (data->forwards) {
+        data->i++;
+        if (data->i == sizeof(animation_multiplicands) / sizeof(float)) {
+            if (data->finalize != NULL) (data->finalize)(data->v);
+            free(data);
+        } else {
+            timer_new(ANIMATION_INTERVAL, animate_fire, v);
+        }
     } else {
-        timer_new(ANIMATION_INTERVAL, animate_fire, v);
+        data->i--;
+        if (data->i < 0) {
+            if (data->finalize != NULL) (data->finalize)(data->v);
+            free(data);
+        } else {
+            timer_new(ANIMATION_INTERVAL, animate_fire, v);
+        }
     }
 }

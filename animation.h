@@ -23,13 +23,49 @@
  * SUCH DAMAGE.
  */
 
+/*
+ * Calls a callback function at a certain frequency, providing a
+ * cartoonish accelerate/decelerate effect useful for shading,
+ * automated moving, etc.
+ */
+
 #ifndef ANIMATION_H
 #define ANIMATION_H
 
-/* FIXME: comment */
+struct _animation;
+typedef struct _animation animation;
+
+/*
+ * Callback functions take two parameters:  a data member which you
+ * define when you start the animation and a float which represents
+ * how much of the animation has completed thus far (0.0 at first,
+ * 1.0 at the last step).
+ */
 typedef void (*callback_fn)(float, void *);
+
+/*
+ * The finalize function is called after calling the callback for the
+ * last time.
+ */
 typedef void (*finalize_fn)(void *);
 
-void animate(callback_fn callback, finalize_fn finalize, void *v);
+/*
+ * start an animation and return an opaque object (which is useful for
+ * reversing the animation).
+ */
+animation *animate(callback_fn callback, finalize_fn finalize, void *v);
+
+/*
+ * Reverse sets the animation to go backwards, retracing the last step.
+ * If the animation has already completed n steps, it will do those n steps
+ * again, but backwards
+ */
+void animation_reverse(animation *);
+
+/*
+ * start_backwards is like reverse, except instead of retracing the
+ * last n steps, it starts retracing from the last minus nth step.
+ */
+void animation_start_backwards(animation *);
 
 #endif /* ANIMATION_H */

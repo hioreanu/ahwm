@@ -73,8 +73,6 @@ static void event_map(XMapEvent *);
 static void event_reparentnotify(XReparentEvent *);
 static void configure_nonclient(XConfigureRequestEvent *xevent);
 static void raise_on_timeout(timer *t, void *v);
-static void set_raise_timer(unsigned int milliseconds);
-static struct timeval *get_raise_timer();
 
 #ifdef SHAPE
 static void event_shape(XShapeEvent *);
@@ -990,7 +988,9 @@ static void event_map(XMapEvent *xevent)
 }
 
 /*
- * If we get this, we update our frame to match the client's shape
+ * If we get this, we update our frame to match the client's shape.
+ * This stuff is not documented in standard XFree86 distribution: look
+ * in XFree86 cvs for proper XShape documentation.
  */
 
 #ifdef SHAPE

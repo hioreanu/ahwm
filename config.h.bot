@@ -1,0 +1,51 @@
+/* Define if you have the syserrlist global variable. */
+#undef HAVE_SYSERRLIST
+
+/* Define if you have the Shape X11 extension. */
+#undef SHAPE
+
+#ifndef HAVE_SYS_WAIT_H
+# error "AHWM needs porting to your system (no sys/wait.h); please contact the author."
+#endif
+
+#ifndef HAVE_UNISTD_H
+# error "AHWM needs porting to your system (no unistd.h); please contact the author."
+#endif
+
+#ifndef HAVE_FCNTL_H
+# error "AHWM needs porting to your system (no fcntl.h); please contact the author."
+#endif
+
+#ifndef HAVE_LIMITS_H
+# error "AHWM needs porting to your system (need PATH_MAX in limits.h); please contact
+the auth
+or."
+#endif
+
+#ifndef HAVE_SELECT
+# ifdef HAVE_POLL
+#  error "AHWM needs porting to your system (use poll instead of select); please
+contact the au
+thor."
+# else
+#  error "AHWM needs porting to your system (no poll or select); please contact the
+author."
+# endif
+#endif
+
+/* Windows uses '_snprintf' instead of 'snprintf' for some reason. */
+#ifndef HAVE_SNPRINTF
+# ifdef HAVE__SNPRINTF
+#  define snprintf _snprintf
+# else
+#  define HOMEGROWN_SNPRINTF
+# endif
+#endif
+
+#ifndef HAVE_STRERROR
+# ifdef HAVE_SYSERRLIST
+#  define HOMEGROWN_STRERROR
+# else
+#  error "AHWM needs porting to your system (no strerror); please contact the author."
+# endif
+#endif
