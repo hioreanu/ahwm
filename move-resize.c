@@ -47,6 +47,10 @@ typedef enum {
 static int keycode_Escape = 0, keycode_Shift_L, keycode_Shift_R;
 static int keycode_Return, keycode_Up, keycode_Down, keycode_Left;
 static int keycode_Right, keycode_j, keycode_k, keycode_l, keycode_h;
+static int keycode_Control_L, keycode_Control_R;
+
+static int moving = 0;
+static int sizing = 0;
 
 static XEvent *compress_motion(XEvent *xevent);
 static void process_resize(client_t *client, int new_x, int new_y,
@@ -57,25 +61,17 @@ static void process_resize(client_t *client, int new_x, int new_y,
                            resize_ordinal_t ordinal);
 static resize_direction_t get_direction(client_t *client, int x, int y);
 static void display_geometry(char *s, client_t *client);
-static void get_display_width_height(client_t *client, int *w, int *h);
 static void drafting_lines(client_t *client, resize_direction_t direction,
                            int x1, int y1, int x2, int y2);
 static void draw_arrowhead(int x, int y, resize_direction_t direction);
 static void xrefresh();
-static void cycle_resize_direction(resize_direction_t *current,
-                                   resize_direction_t *old);
-static void warp_pointer(client_t *client, resize_direction_t direction);
+static void cycle_resize_direction_mouse(resize_direction_t *current,
+                                         resize_direction_t *old);
+static void cycle_resize_direction_keyboard(resize_direction_t *current);
 static void set_keys();
-
-void move_resize_meta_button1(XEvent *xevent)
-{
-    move_client(xevent, Mod1Mask, Button1, Button1Mask);
-}
-
-void move_resize_meta_button3(XEvent *xevent)
-{
-    resize_client(xevent, Mod1Mask, Button3, Button3Mask);
-}
+static void move_constrain(client_t *client);
+static int get_width_resize_inc(client_t *client);
+static int get_height_resize_inc(client_t *client);
 
 /*
  * This takes over the event loop and grabs the pointer until the move
@@ -83,85 +79,76 @@ void move_resize_meta_button3(XEvent *xevent)
  * called recursively and all simultaneously-running invocations need
  * to keep some of the same state (the resize code is much worse).
  */
-void move_client(XEvent *xevent, unsigned int init_state,
-                 unsigned int init_button, unsigned int init_button_mask)
+void move_client(XEvent *xevent)
 {
-    static client_t *client = NULL;
-    static int x_start, y_start;
+    client_t *client = NULL;
+    int x_start, y_start;       /* only used for mouse move */
+    int orig_x, orig_y;
+    int have_mouse;
+    unsigned int init_button;
     XEvent event1;
+    enum { CONTINUE, DONE, RESET, RESIZE } action;
 
+    if (moving || sizing) return;
     if (keycode_Escape == 0) set_keys();
+    if (xevent->type == ButtonPress) {
+        client = client_find(xevent->xbutton.window);
+        x_start = xevent->xbutton.x_root;
+        y_start = xevent->xbutton.y_root;
+        init_button = xevent->xbutton.button;
+        have_mouse = 1;
+    } else if (xevent->type == KeyPress) {
+        client = client_find(xevent->xkey.window);
+        have_mouse = 0;
+    } else {
+        fprintf(stderr, "XWM: Error, move_client called incorrectly\n");
+        return;
+    }
+    if (client == NULL) {
+        fprintf(stderr, "XWM: Not moving a non-client\n");
+        return;
+    }
+    moving = 1;
+    orig_x = client->x;
+    orig_y = client->y;
     
-    do {
+    /* I kind of like being able to move a window
+     * without giving it focus, and this doesn't
+     * cause any problems: */
+    /* focus_set(client); */
+    /* focus_ensure(); */
+    if (have_mouse)
+        XGrabPointer(dpy, root_window, True,
+                     PointerMotionMask | ButtonReleaseMask,
+                     GrabModeAsync, GrabModeAsync, None,
+                     cursor_moving, CurrentTime);
+    XGrabKeyboard(dpy, root_window, True, GrabModeAsync, GrabModeAsync,
+                  CurrentTime);
+    display_geometry("Moving", client);
+
+    action = CONTINUE;
+    while (action == CONTINUE) {
+        XNextEvent(dpy, &event1);
+        xevent = &event1;
+        
         switch (xevent->type) {
             case EnterNotify:
             case LeaveNotify:
+            case ButtonPress:
                 /* we have a separate event loop here because we want
                  * to gobble up all EnterNotify and LeaveNotify events
                  * while moving or resizing the window */
-                break;
-            case ButtonPress:
-                if (xevent->xbutton.button == init_button) {
-                    if (client != NULL) {
-                        /* received button1 down while moving a window */
-                        fprintf(stderr, "unexpected button down\n");
-                        goto reset;
-                    } else if (xevent->xbutton.state & init_state) {
-                        /* received normal mod1 + button1 press */
-                        client = client_find(xevent->xbutton.window);
-                        if (client == NULL) {
-                            /* error - we should never do xgrabbutton() on
-                             * an override_redirect window */
-                            fprintf(stderr, "Not moving a non-client\n");
-                            return;
-                        }
-                        /* I kind of like being able to move a window
-                         * without giving it focus, and this doesn't
-                         * cause any problems: */
-                        /* focus_set(client); */
-                        /* focus_ensure(); */
-                        x_start = xevent->xbutton.x_root;
-                        y_start = xevent->xbutton.y_root;
-#ifdef DEBUG
-                        printf("\tgrabbing the mouse for moving\n");
-#endif /* DEBUG */
-                        XGrabPointer(dpy, root_window, True,
-                                     PointerMotionMask | ButtonPressMask
-                                     | ButtonReleaseMask,
-                                     GrabModeAsync, GrabModeAsync, None,
-                                     cursor_moving, CurrentTime);
-                        XGrabKeyboard(dpy, root_window, True,
-                                      GrabModeAsync, GrabModeAsync,
-                                      CurrentTime);
-                        display_geometry("Moving", client);
-                    } else {
-                        /* error - we were called from somewhere else
-                         * to deal with a button press that's not ours */
-                        fprintf(stderr,
-                                "XWM: received an unknown button press\n");
-                    }
-                } else {
-                    /* not an error - user may have clicked another button
-                     * while resizing a window */
-#ifdef DEBUG
-                    printf("\tIgnoring stray button press\n");
-#endif /* DEBUG */
-                }
+                /* we also don't care about button presses */
                 break;
             
             case MotionNotify:
+                if (!have_mouse) break;
                 xevent = compress_motion(xevent);
-
-                /* this can happen with the motion compressing */
-                if (!(xevent->xmotion.state & init_button_mask)) {
-                    fprintf(stderr,
-                            "XWM: motion event without correct button\n");
-                    goto reset;
-                }
                 if (client == NULL) {
                     fprintf(stderr,
                             "XWM: error, null client while moving\n");
-                    goto reset;
+                    action = DONE;
+                    break;
                 }
                 /* just move the window */
                 client->x += xevent->xbutton.x_root - x_start;
@@ -178,32 +165,63 @@ void move_client(XEvent *xevent, unsigned int init_state,
             case KeyPress:
                 if (xevent->xkey.keycode == keycode_Up ||
                            xevent->xkey.keycode == keycode_k) {
-                    XWarpPointer(dpy, None, None, 0, 0, 0, 0, 0, -1);
+                    if (have_mouse) {
+                        XWarpPointer(dpy, None, None, 0, 0, 0, 0, 0, -1);
+                    } else {
+                        client->y--;
+                        move_constrain(client);
+                    }
                 } else if (xevent->xkey.keycode == keycode_Down ||
                            xevent->xkey.keycode == keycode_j) {
-                    XWarpPointer(dpy, None, None, 0, 0, 0, 0, 0, 1);
+                    if (have_mouse) {
+                        XWarpPointer(dpy, None, None, 0, 0, 0, 0, 0, 1);
+                    } else {
+                        client->y++;
+                        move_constrain(client);
+                    }
                 } else if (xevent->xkey.keycode == keycode_Left ||
                            xevent->xkey.keycode == keycode_h) {
-                    XWarpPointer(dpy, None, None, 0, 0, 0, 0, -1, 0);
+                    if (have_mouse) {
+                        XWarpPointer(dpy, None, None, 0, 0, 0, 0, -1, 0);
+                    } else {
+                        client->x--;
+                        move_constrain(client);
+                    }
                 } else if (xevent->xkey.keycode == keycode_Right ||
                            xevent->xkey.keycode == keycode_l) {
-                    XWarpPointer(dpy, None, None, 0, 0, 0, 0, 1, 0);
+                    if (have_mouse) {
+                        XWarpPointer(dpy, None, None, 0, 0, 0, 0, 1, 0);
+                    } else {
+                        client->x++;
+                        move_constrain(client);
+                    }
                 } else if (xevent->xkey.keycode == keycode_Return) {
-                    goto reset;
-                /* ignore Escape, can't think of a good reason one would
-                 * want to quit a move operation */
+                    action = DONE;
+                    break;
+                } else if (xevent->xkey.keycode == keycode_Escape) {
+                    client->x = orig_x;
+                    client->y = orig_y;
+                    action = DONE;
+                    break;
+                } else if (xevent->xkey.keycode == keycode_Control_L ||
+                           xevent->xkey.keycode == keycode_Control_R) {
+                    action = RESIZE;
+                    break;
                 } else {
-                    /* can still use alt-tab while moving */
+                    /* can still use alt-tab, etc. while moving */
                     event_dispatch(xevent);
                 }
                 break;
 
             case ButtonRelease:
-                if (client) {
-                    client->x += xevent->xbutton.x_root - x_start;
-                    client->y += xevent->xbutton.y_root - y_start;
+                if (have_mouse && xevent->xbutton.button == init_button) {
+                    if (client) {
+                        client->x += xevent->xbutton.x_root - x_start;
+                        client->y += xevent->xbutton.y_root - y_start;
+                    }
+                    action = DONE;
+                    break;
                 }
-                goto reset;
             
                 break;
                 
@@ -218,19 +236,8 @@ void move_client(XEvent *xevent, unsigned int init_state,
                 break;
         }
 
-        if (client != NULL) {
-            XNextEvent(dpy, &event1);
-            xevent = &event1;
-        }
-
-        /* static client is set to null in reset code below (this
-         * function may be nested arbitrarily */
-    } while (client != NULL);
+    }
         
-    return;
-    
- reset:
-
     if (client != NULL) {
         XMoveWindow(dpy, client->frame, client->x, client->y);
         if (client->name != NULL) free(client->name);
@@ -239,188 +246,265 @@ void move_client(XEvent *xevent, unsigned int init_state,
         /* must send a synthetic ConfigureNotify to the client
          * according to ICCCM 4.1.5 */
         /* FIXME:  make this a function in client.c */
-        /* FIXME:  breaks with netscape */
-        event1.type = ConfigureNotify;
-        event1.xconfigure.display = dpy;
-        event1.xconfigure.event = client->window;
-        event1.xconfigure.window = client->window;
-        event1.xconfigure.x = client->x;
-        event1.xconfigure.y = client->y + TITLE_HEIGHT;
-        event1.xconfigure.width = client->width;
-        event1.xconfigure.height = client->height - TITLE_HEIGHT;
-        event1.xconfigure.border_width = 0;
-        event1.xconfigure.above = client->frame; /* fixme */
-        event1.xconfigure.override_redirect = False;
-        XSendEvent(dpy, client->window, False, StructureNotifyMask, &event1);
-        XFlush(dpy);
+        if (action != RESET) {
+            event1.type = ConfigureNotify;
+            event1.xconfigure.display = dpy;
+            event1.xconfigure.event = client->window;
+            event1.xconfigure.window = client->window;
+            event1.xconfigure.x = client->x;
+            event1.xconfigure.y = client->y + TITLE_HEIGHT;
+            event1.xconfigure.width = client->width;
+            event1.xconfigure.height = client->height - TITLE_HEIGHT;
+            event1.xconfigure.border_width = 0;
+            event1.xconfigure.above = client->frame; /* fixme */
+            event1.xconfigure.override_redirect = False;
+            XSendEvent(dpy, client->window, False,
+                       StructureNotifyMask, &event1);
+            XFlush(dpy);
+        }
     }
 
-#ifdef DEBUG
-    printf("\tUngrabbing the mouse for move\n");
-#endif /* DEBUG */
-
-    client = NULL;
-    x_start = y_start = -1;
-    XUngrabPointer(dpy, CurrentTime);
+    if (have_mouse) XUngrabPointer(dpy, CurrentTime);
     XUngrabKeyboard(dpy, CurrentTime);
+    moving = 0;
+    if (action == RESIZE) {
+        /* if we want to toggle from a move to a resize, we create
+         * a fake XEvent, filling out the fields that the resize
+         * code looks at.  The event isn't sent (no X requests are
+         * made - it is just used to call the resize code. */
+        if (have_mouse) {
+            event1.type = ButtonPress;
+            event1.xbutton.window = client->window;
+            event1.xbutton.x_root = x_start;
+            event1.xbutton.y_root = y_start;
+            event1.xbutton.button = init_button;
+        } else {
+            event1.type = KeyPress;
+            event1.xkey.window = client->window;
+        }
+        resize_client(&event1);
+    }
 }
-    
+
+/* helper for move function, don't let user move window off-screen */
+static void move_constrain(client_t *client)
+{
+    while (client->x + client->width < 0) client->x++;
+    while (client->y + client->height < 0) client->y++;
+    while (client->x > DisplayWidth(dpy, scr)) client->x--;
+    while (client->y > DisplayHeight(dpy, scr)) client->y--;
+    XMoveWindow(dpy, client->frame, client->x, client->y);
+    display_geometry("Moving", client);
+}
+
 /*
  * WARNING:  this gets really, really ugly from here on
  */
 
-/*
- * escape ends the resize, does not resize client window
- * enter ends the resize, resizes client window
- * shift constrains resize to y->x->x+y->y->....
- * shift with button press constrains to x or y
- * left, right, up, down, h, j, k and l work as expected
- */
-
-void resize_client(XEvent *xevent, unsigned int init_state,
-                   unsigned int init_button, unsigned int init_button_mask)
+void resize_client(XEvent *xevent)
 {
-    static client_t *client = NULL;
-    static int x_start, y_start;
-    static resize_direction_t resize_direction = UNKNOWN;
-    static resize_direction_t old_resize_direction = UNKNOWN;
-    static position_size orig;
+    client_t *client = NULL;
+    int x_start, y_start, have_mouse, delta;
+    resize_direction_t resize_direction = UNKNOWN;
+    resize_direction_t old_resize_direction = UNKNOWN;
+    position_size orig;
     XEvent event1;
+    unsigned int init_button;
+    enum { CONTINUE, RESET, DONE, MOVE } action;
 
+    if (moving || sizing) return;
     if (keycode_Escape == 0) set_keys();
+    
+    if (xevent->type == ButtonPress) {
+        have_mouse = 1;
+        client = client_find(xevent->xbutton.window);
+        x_start = xevent->xbutton.x_root;
+        y_start = xevent->xbutton.y_root;
+        init_button = xevent->xbutton.button;
+        resize_direction =
+            get_direction(client, xevent->xbutton.x_root,
+                          xevent->xbutton.y_root);
+    } else if (xevent->type == KeyPress) {
+        have_mouse = 0;
+        client = client_find(xevent->xkey.window);
+        if (client != NULL) {
+            x_start = client->x + client->width;
+            y_start = client->y + client->height;
+        }
+        resize_direction = SE;
+    }
+    if (client == NULL) {
+#ifdef DEBUG
+        printf("\tNot resizing a non-client\n");
+#endif /* DEBUG */
+        return;
+    }
+    
+    sizing = 1;
+    orig.x = client->x;
+    orig.y = client->y;
+    orig.width = client->width;
+    orig.height = client->height;
+    if (have_mouse) {
+        XGrabPointer(dpy, root_window, True,
+                     PointerMotionMask | ButtonPressMask
+                     | ButtonReleaseMask,
+                     GrabModeAsync, GrabModeAsync, None,
+                     cursor_direction_map[resize_direction],
+                     CurrentTime);
+    }
+    XGrabKeyboard(dpy, root_window, True,
+                  GrabModeAsync, GrabModeAsync,
+                  CurrentTime);
+    process_resize(client, x_start, y_start,
+                   resize_direction, old_resize_direction,
+                   &x_start, &y_start, &orig, FIRST);
 
-    do {
+    action = CONTINUE;
+    while (action == CONTINUE) {
+        XNextEvent(dpy, &event1);
+        xevent = &event1;
         switch (xevent->type) {
             case EnterNotify:
             case LeaveNotify:
-                break;
             case ButtonPress:
-                if (xevent->xbutton.button == init_button) {
-                    if (client != NULL) {
-                        /* received button3 down while sizing a window */
-                        fprintf(stderr, "XWM: unexpected button3 down\n");
-                        goto reset;
-                    } else if (xevent->xbutton.state & init_state) {
-                        client = client_find(xevent->xbutton.window);
-                        if (client == NULL) {
-#ifdef DEBUG
-                            printf("\tNot resizing a non-client\n");
-#endif /* DEBUG */
-                            return;
-                        }
-                        x_start = xevent->xbutton.x_root;
-                        y_start = xevent->xbutton.y_root;
-                        resize_direction =
-                            get_direction(client, xevent->xbutton.x_root,
-                                          xevent->xbutton.y_root);
-                        orig.x = client->x;
-                        orig.y = client->y;
-                        orig.width = client->width;
-                        orig.height = client->height;
-#ifdef DEBUG
-                        printf("\tGrabbing the mouse for resizing\n");
-#endif /* DEBUG */
-                        XGrabPointer(dpy, root_window, True,
-                                     PointerMotionMask | ButtonPressMask
-                                     | ButtonReleaseMask,
-                                     GrabModeAsync, GrabModeAsync, None,
-                                     cursor_direction_map[resize_direction],
-                                     CurrentTime);
-                        XGrabKeyboard(dpy, root_window, True,
-                                      GrabModeAsync, GrabModeAsync,
-                                      CurrentTime);
-                        process_resize(client, x_start, y_start,
-                                       resize_direction, old_resize_direction,
-                                       &x_start, &y_start, &orig, FIRST);
-                        
-                    } else {
-                        fprintf(stderr,
-                                "XWM: received an unexpected button press\n");
-                    }
-                } else {
-#ifdef DEBUG
-                    printf("\tignoring stray button press\n");
-#endif /* DEBUG */
-                }
                 break;
 
             case KeyPress:
                 if (xevent->xkey.keycode == keycode_Escape) {
-                    goto reset;
+                    action = RESET;
+                    break;
                 } else if (xevent->xkey.keycode == keycode_Return) {
-                    process_resize(client, xevent->xkey.x_root,
-                                   xevent->xkey.y_root, resize_direction,
-                                   old_resize_direction, &x_start, &y_start,
-                                   &orig, LAST);
-                    goto done;
+                    if (have_mouse) {
+                        process_resize(client, xevent->xkey.x_root,
+                                       xevent->xkey.y_root, resize_direction,
+                                       old_resize_direction, &x_start,
+                                       &y_start, &orig, LAST);
+                    } else {
+                        process_resize(client, x_start, y_start,
+                                       resize_direction, old_resize_direction,
+                                       &x_start, &y_start, &orig, LAST);
+                    }
+                    action = DONE;
+                    break;
                 } else if (xevent->xkey.keycode == keycode_Shift_L ||
                            xevent->xkey.keycode == keycode_Shift_R) {
-                    cycle_resize_direction(&resize_direction,
-                                           &old_resize_direction);
-                    XChangeActivePointerGrab(dpy,
-                       PointerMotionMask | ButtonPressMask | ButtonReleaseMask,
-                       cursor_direction_map[resize_direction], CurrentTime);
+                    if (have_mouse) {
+                        cycle_resize_direction_mouse(&resize_direction,
+                                                     &old_resize_direction);
+                        XChangeActivePointerGrab(dpy,
+                                    PointerMotionMask
+                                    | ButtonPressMask | ButtonReleaseMask,
+                                    cursor_direction_map[resize_direction],
+                                    CurrentTime);
+                    } else {
+                        cycle_resize_direction_keyboard(&resize_direction);
+                    }
                     xrefresh();
                     process_resize(client, x_start, y_start, resize_direction,
                                    old_resize_direction, &x_start, &y_start,
                                    &orig, FIRST);
                 } else if (xevent->xkey.keycode == keycode_Up ||
                            xevent->xkey.keycode == keycode_k) {
-                    if (resize_direction != EAST && resize_direction != WEST)
-                        warp_pointer(client, NORTH);
+                    if (resize_direction != EAST && resize_direction != WEST) {
+                        delta = get_height_resize_inc(client);
+                        if (have_mouse) {
+                            XWarpPointer(dpy, None, None, 0, 0, 0, 0,
+                                         0, -delta);
+                        } else {
+                            process_resize(client, x_start, y_start - delta,
+                                           resize_direction,
+                                           old_resize_direction,
+                                           &x_start, &y_start, &orig, MIDDLE);
+                        }
+                    }
                 } else if (xevent->xkey.keycode == keycode_Down ||
                            xevent->xkey.keycode == keycode_j) {
-                    if (resize_direction != EAST && resize_direction != WEST)
-                        warp_pointer(client, SOUTH);
+                    if (resize_direction != EAST && resize_direction != WEST) {
+                        delta = get_height_resize_inc(client);
+                        if (have_mouse) {
+                            XWarpPointer(dpy, None, None, 0, 0, 0, 0,
+                                         0, delta);
+                        } else {
+                            process_resize(client, x_start, y_start + delta,
+                                           resize_direction,
+                                           old_resize_direction,
+                                           &x_start, &y_start, &orig, MIDDLE);
+                        }
+                    }
                 } else if (xevent->xkey.keycode == keycode_Left ||
                            xevent->xkey.keycode == keycode_h) {
-                    if (resize_direction != NORTH && resize_direction != SOUTH)
-                        warp_pointer(client, WEST);
+                    if (resize_direction != NORTH && resize_direction != SOUTH) {
+                        delta = get_width_resize_inc(client);
+                        if (have_mouse) {
+                            XWarpPointer(dpy, None, None, 0, 0, 0, 0,
+                                         -delta, 0);
+                        } else {
+                            process_resize(client, x_start - delta, y_start,
+                                           resize_direction,
+                                           old_resize_direction,
+                                           &x_start, &y_start, &orig, MIDDLE);
+                        }
+                    }
                 } else if (xevent->xkey.keycode == keycode_Right ||
                            xevent->xkey.keycode == keycode_l) {
-                    if (resize_direction != NORTH && resize_direction != SOUTH)
-                        warp_pointer(client, EAST);
+                    if (resize_direction != NORTH && resize_direction != SOUTH) {
+                        delta = get_width_resize_inc(client);
+                        if (have_mouse) {
+                            XWarpPointer(dpy, None, None, 0, 0, 0, 0,
+                                         delta, 0);
+                        } else {
+                            process_resize(client, x_start + delta, y_start,
+                                           resize_direction,
+                                           old_resize_direction,
+                                           &x_start, &y_start, &orig, MIDDLE);
+                        }
+                    }
+                } else if (xevent->xkey.keycode == keycode_Control_L ||
+                           xevent->xkey.keycode == keycode_Control_R) {
+                    process_resize(client, x_start, y_start,
+                                   resize_direction, old_resize_direction,
+                                   &x_start, &y_start, &orig, LAST);
+                    action = MOVE;
+                    break;
                 } else {
                     /* can still use alt-tab while resizing */
                     event_dispatch(xevent);
                 }
                 break;
+                
             case MotionNotify:
+                if (!have_mouse) break;
+                
                 xevent = compress_motion(xevent);
 
-                /* this can happen with motion compression */
-                if (!(xevent->xmotion.state & init_button_mask)) {
-                    fprintf(stderr,
-                            "XWM: motion event w/o button while moving\n");
-                    goto reset;
-                }
                 if (client == NULL) {
                     fprintf(stderr, "XWM: error, null client in resize\n");
-                    goto reset;
+                    action = RESET;
+                    break;
                 }
-
-#ifdef DEBUG
-                printf("sizing from (%d,%d) to (%d,%d)\n",
-                       x_start, y_start, xevent->xbutton.x_root,
-                       xevent->xbutton.y_root);
-#endif /* DEBUG */
                 process_resize(client, xevent->xbutton.x_root,
                                xevent->xbutton.y_root, resize_direction,
                                old_resize_direction, &x_start, &y_start,
                                &orig, MIDDLE);
                 break;
             case ButtonRelease:
-                if (client == NULL) {
-                    fprintf(stderr, "XWM: error, null client in resize\n");
-                    goto reset;
+                if (have_mouse && xevent->xbutton.button == init_button) {
+                    if (client == NULL) {
+                        fprintf(stderr, "XWM: error, null client in resize\n");
+                        action = RESET;
+                        break;
+                    }
+                    process_resize(client, xevent->xmotion.x_root,
+                                   xevent->xmotion.y_root, resize_direction,
+                                   old_resize_direction, &x_start, &y_start,
+                                   &orig, LAST);
+                    action = DONE;
+                    break;
                 }
-                process_resize(client, xevent->xmotion.x_root,
-                               xevent->xmotion.y_root, resize_direction,
-                               old_resize_direction, &x_start, &y_start,
-                               &orig, LAST);
-                goto done;
             
                 break;
+                
             default:
 #ifdef DEBUG
                 printf("\tStart recursive event processing\n");
@@ -431,20 +515,15 @@ void resize_client(XEvent *xevent, unsigned int init_state,
 #endif /* DEBUG */
                 break;
         }
-        XNextEvent(dpy, &event1);
-        xevent = &event1;
-    } while (client != NULL);
-        
-    return;
+    }
     
- reset:
-    xrefresh();
-    client->x = orig.x;
-    client->y = orig.y;
-    client->width = orig.width;
-    client->height = orig.height;
-
- done:
+    if (action == RESET) {
+        xrefresh();
+        client->x = orig.x;
+        client->y = orig.y;
+        client->width = orig.width;
+        client->height = orig.height;
+    }
 
     if (client != NULL) {
         XMoveResizeWindow(dpy, client->frame, client->x, client->y,
@@ -456,15 +535,39 @@ void resize_client(XEvent *xevent, unsigned int init_state,
         client_paint_titlebar(client);
     }
 
-#ifdef DEBUG
-    printf("\tUngrabbing the mouse\n");
-#endif /* DEBUG */
-
-    client = NULL;
-    x_start = y_start = -1;
-    resize_direction = UNKNOWN;
-    XUngrabPointer(dpy, CurrentTime);
+    if (have_mouse) XUngrabPointer(dpy, CurrentTime);
     XUngrabKeyboard(dpy, CurrentTime);
+    sizing = 0;
+    if (action == MOVE) {
+        if (have_mouse) {
+            event1.type = ButtonPress;
+            event1.xbutton.window = client->window;
+            event1.xbutton.x_root = x_start;
+            event1.xbutton.y_root = y_start;
+            event1.xbutton.button = init_button;
+        } else {
+            event1.type = KeyPress;
+            event1.xkey.window = client->window;
+        }
+        move_client(&event1);
+    }
+}
+
+static void cycle_resize_direction_keyboard(resize_direction_t *d)
+{
+    switch (*d) {
+        case SE:
+            *d = NE;
+            break;
+        case NE:
+            *d = NW;
+            break;
+        case NW:
+            *d = SW;
+            break;
+        default:
+            *d = SE;
+    }
 }
 
 /*
@@ -474,8 +577,8 @@ void resize_client(XEvent *xevent, unsigned int init_state,
  * NW -> NORTH -> WEST -> NW -> ....
  */
 
-static void cycle_resize_direction(resize_direction_t *current,
-                                   resize_direction_t *old)
+static void cycle_resize_direction_mouse(resize_direction_t *current,
+                                         resize_direction_t *old)
 {
     resize_direction_t tmp;
     
@@ -613,31 +716,23 @@ static void process_resize(client_t *client, int new_x, int new_y,
         y_diff = 0;
     if (direction == NORTH || direction == SOUTH)
         x_diff = 0;
-#ifdef DEBUG
-    printf("\tx_diff = %d, y_diff = %d\n", x_diff, y_diff);
-#endif /* DEBUG */
     if (client->xsh != NULL && (client->xsh->flags & PResizeInc)) {
-#ifdef DEBUG
-        printf("\txsh->width_inc = %d, xsh->height_inc = %d\n",
-               client->xsh->width_inc, client->xsh->height_inc);
-#endif /* DEBUG */
-        if (y_diff > client->xsh->height_inc
-            || (-y_diff) > client->xsh->height_inc) {
+        if (y_diff >= client->xsh->height_inc
+            || (-y_diff) >= client->xsh->height_inc) {
             y_diff -= (y_diff % client->xsh->height_inc);
-            if (y_diff < 0) y_diff += client->xsh->height_inc;
+            if (y_diff < 0 && y_diff % client->xsh->height_inc != 0)
+                y_diff += client->xsh->height_inc;
         } else {
             y_diff = 0;
         }
-        if (x_diff > client->xsh->width_inc
-            || (-x_diff) > client->xsh->width_inc) {
+        if (x_diff >= client->xsh->width_inc
+            || (-x_diff) >= client->xsh->width_inc) {
             x_diff -= (x_diff % client->xsh->width_inc);
-            if (x_diff < 0) x_diff += client->xsh->width_inc;
+            if (x_diff < 0 && x_diff % client->xsh->width_inc != 0)
+                x_diff += client->xsh->width_inc;
         } else {
             x_diff = 0;
         }
-#ifdef DEBUG
-        printf("\t(After) x_diff = %d, y_diff = %d\n", x_diff, y_diff);
-#endif /* DEBUG */
     }
 
     if (x_diff != 0) {
@@ -827,25 +922,6 @@ static void process_resize(client_t *client, int new_x, int new_y,
 }
 
 /*
- * Get two integers which should be displayed to the user to indicate
- * the width and height (think xterm)
- */
-
-static void get_display_width_height(client_t *client, int *w, int *h)
-{
-    int w_inc, h_inc;
-    
-    if (client->xsh != NULL && (client->xsh->flags & PResizeInc)) {
-        w_inc = client->xsh->width_inc;
-        h_inc = client->xsh->height_inc;
-    } else {
-        w_inc = h_inc = 1;
-    }
-    *w = client->width / w_inc;
-    *h = (client->height - TITLE_HEIGHT) / h_inc;
-}
-
-/*
  * Utility function for resize.  Draws some pretty little lines and
  * stuff that I find really help when resizing.  The direction
  * indicates for which side of the client this is to be done and the
@@ -862,13 +938,9 @@ static void drafting_lines(client_t *client, resize_direction_t direction,
     int font_width, font_height;
     int x_room, y_room;
     char label[16];
-    
-    if (client->xsh != NULL && (client->xsh->flags & PResizeInc)) {
-        w_inc = client->xsh->width_inc;
-        h_inc = client->xsh->height_inc;
-    } else {
-        w_inc = h_inc = 1;
-    }
+
+    w_inc = get_width_resize_inc(client);
+    h_inc = get_height_resize_inc(client);
     font_width = (fontstruct->max_bounds.rbearing
                   - fontstruct->min_bounds.lbearing + 1);
 
@@ -1073,7 +1145,8 @@ static void display_geometry(char *s, client_t *client)
     static char *titlebar_display = NULL;
     int width, height;
 
-    get_display_width_height(client, &width, &height);
+    width = client->width / get_width_resize_inc(client);
+    height = (client->height - TITLE_HEIGHT) / get_height_resize_inc(client);
     if (client->name != titlebar_display) {
         titlebar_display = malloc(256); /* arbitrary, whatever */
         if (titlebar_display == NULL) return;
@@ -1099,35 +1172,27 @@ static void set_keys()
     keycode_k = XKeysymToKeycode(dpy, XK_k);
     keycode_l = XKeysymToKeycode(dpy, XK_l);
     keycode_h = XKeysymToKeycode(dpy, XK_h);
+    keycode_Control_L = XKeysymToKeycode(dpy, XK_Control_L);
+    keycode_Control_R = XKeysymToKeycode(dpy, XK_Control_R);
 }
 
-/*
- * warps the pointer in the direction specified (one of {NORTH, SOUTH,
- * EAST, WEST}) by an amount that should cause a resize
- */
-
-static void warp_pointer(client_t *client, resize_direction_t direction)
+static int get_width_resize_inc(client_t *client)
 {
-    int multiplier;
-
-    if (direction == NORTH || direction == WEST)
-        multiplier = -1;
-    else
-        multiplier = 1;
-    if (direction == NORTH || direction == SOUTH) {
-        if (client->xsh != NULL &&
-            client->xsh->flags & PResizeInc)
-            XWarpPointer(dpy, None, None, 0, 0, 0, 0, 0,
-                         multiplier * (client->xsh->height_inc));
-        else
-            XWarpPointer(dpy, None, None, 0, 0, 0, 0, 0, multiplier);
+    if (client->xsh != NULL
+        && client->xsh->flags & PResizeInc) {
+        return client->xsh->width_inc;
     } else {
-        if (client->xsh != NULL &&
-            client->xsh->flags & PResizeInc)
-            XWarpPointer(dpy, None, None, 0, 0, 0, 0,
-                         multiplier * (client->xsh->width_inc), 0);
-        else
-            XWarpPointer(dpy, None, None, 0, 0, 0, 0, multiplier, 0);
+        return 1;
+    }
+}
+
+static int get_height_resize_inc(client_t *client)
+{
+    if (client->xsh != NULL
+        && client->xsh->flags & PResizeInc) {
+        return client->xsh->height_inc;
+    } else {
+        return 1;
     }
 }
 
