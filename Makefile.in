@@ -42,8 +42,11 @@ dep:
 depend: dep
 tags: dep
 
+#wordcount:
+#	@cat *.c *.h | fgrep -v '#include' | cpp -E - | egrep -v '^[ \t]*$$' | wc -l
+
 wordcount:
-	@cat *.c *.h | fgrep -v '#include' | cpp -E - | egrep -v '^[ \t]*$$' | wc -l
+	@echo `echo parser.y lexer.l $(OBJS) | sed -e 's/\.o/\.[ch]/g' -e 's/parser\.\[ch\]//' -e 's/lexer\.\[ch\]//'` | xargs wc -l
 wc: wordcount
 
 clean:
