@@ -129,8 +129,8 @@ void event_get(int xfd, XEvent *event)
     for (;;) {
         have_timeout = timer_next_time(&tv);
         if (XPending(dpy) > 0) {
-            event_timestamp = figure_timestamp(event);
             XNextEvent(dpy, event);
+            event_timestamp = figure_timestamp(event);
             return;
         }
         FD_ZERO(&fds);
@@ -163,7 +163,7 @@ void event_dispatch(XEvent *event)
         "KeyRelease",           /* YES */
         "ButtonPress",          /* YES */
         "ButtonRelease",        /* YES */
-        "MotionNotify",         /* special case */
+        "MotionNotify",         /* YES */
         "EnterNotify",          /* YES */
         "LeaveNotify",          /* YES */
         "FocusIn",              /* TODO */
@@ -189,7 +189,7 @@ void event_dispatch(XEvent *event)
         "SelectionClear",       /* NO */
         "SelectionRequest",     /* NO */
         "SelectionNotify",      /* NO */
-        "ColormapNotify",       /* TODO */
+        "ColormapNotify",       /* YES */
         "ClientMessage",        /* YES */
         "MappingNotify",        /* TODO */
     };
@@ -219,15 +219,7 @@ void event_dispatch(XEvent *event)
             
         case ButtonPress:       /* XGrabButton in mouse.c */
         case ButtonRelease:     /* XGrabButton in mouse.c */
-            mouse_handle_event(event);
-            break;
-            
-        case MotionNotify:
-            /* the only way this can happen is if we have some stray
-             * MotionNotify events left over in the event queue from
-             * the move/resize code or elsewhere where we grab the mouse
-             * and listen for these - harmless, ignore them */
-            /* FIXME: remove comment */
+        case MotionNotify:      /* XGrabButton in mouse.c */
             mouse_handle_event(event);
             break;
             
