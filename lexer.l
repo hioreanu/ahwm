@@ -72,7 +72,8 @@ DIGIT [0-9]
         } else if (c == '\n') {
             line_number++;
         } else {
-            error("Unterminated C-style comment\n");
+            fprintf(stderr, "XWM: unterminated C-style comment on line %d\n",
+                    line_number);
             break;
         }
     }
