@@ -70,6 +70,12 @@ void timer_init();
 timer_t *timer_new(int msecs, timer_fn fn, void *arg);
 
 /*
+ * Cancel a timer before it shoots
+ */
+
+void timer_cancel(timer_t *timer);
+
+/*
  * Copy into TV the next time a timer will shoot.  The value placed
  * into TV is suitable for use with select(2).  Returns 1 if copied in
  * a value; returns 0 if there are no pending timers.  Value placed in

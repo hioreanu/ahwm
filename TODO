@@ -3,14 +3,13 @@ TODO before release:
 - placement, use corner with least overlap first
 - _NET_WORKAREA and STRUT
 - keep _WM_STATE, _WIN_LAYER updated
-- implement "ping" protocol
-- use WM_MACHINE_NAME, _NET_WM_PID for killing windows
-- option to turn off _NET_WM_PID stuff, protocol not used by default
 - transient for self means something?  Directory property window in konq
 - figure out what the hell 'sticky' means to EWMH
 - test with a modern version of Sun's X implementation
 
 Wishlist:
+- real timers: needed for ping, shading animation
+- implement "ping" protocol
 - 'is!' overrides '=', even if '=' comes later
 - GotoNextWorkspace(integer)
 - CycleNextWorkspaces() (like AltTab())
@@ -155,6 +154,8 @@ Finished, no longer TODO:
 - window placement wrt. old titlebars on restart, use X property
 - implement MoveResize()
 - start xwm from an xterm, that xterm doesn't get _NET_DESKTOP prop
+- use WM_MACHINE_NAME, _NET_WM_PID for killing windows
+- option to turn off _NET_WM_PID stuff, protocol not used by default
 
 Abandoned, no longer TODO:
 - "stop" focus, detect when pointer stops in a window (no timeout) -

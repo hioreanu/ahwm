@@ -54,6 +54,7 @@ struct _timer_t {
 
 static int timeval_compare(struct timeval *tv1, struct timeval *tv2);
 static void timeval_normalize(struct timeval *tv);
+static void timer_run_with_tv(struct timeval *now);
 
 static timer_t array[NTIMERS];
 
@@ -62,6 +63,8 @@ static int first_free = -1;
 
 /* small optimization, avoid walking list in timer_next_time */
 static int minimum = -1;
+
+static int in_timer_run = 0;
 
 void timer_init()
 {
@@ -76,34 +79,37 @@ timer_t *timer_new(int msecs, timer_fn fn, void *arg)
     int i;
     struct timeval tv;
 
-    gettimeofday(&tv, NULL);
     if (first_free != -1) {
         i = first_free;
         first_free = -1;
+        if (in_timer_run == 0) {
+            gettimeofday(&tv, NULL);
+            array[i].tv = tv;
+        }
+        /* else leave array[i].tv as-is, save a call to gettimeofday() */
     } else {
         for (i = 0; i < NTIMERS; i++) {
             if (array[i].state == FREE) {
                 break;
             }
         }
-    }
-    if (i == NTIMERS) {
-        return NULL;
-    } else {
-        array[i].state = ACTIVE;
-        array[i].fn = fn;
-        array[i].arg = arg;
-        array[i].tv = tv;
-        tv.tv_usec += msecs * 1000;
-        timeval_normalize(&tv);
-        array[i].tv = tv;
-        if (minimum == -1) {
-            minimum = i;
-        } else if (timeval_compare(&array[minimum].tv, &array[i].tv) > 0) {
-            minimum = i;
+        if (i == NTIMERS) {
+            return NULL;
         }
-        return &(array[i]);
+        gettimeofday(&tv, NULL);
+        array[i].tv = tv;
     }
+    array[i].state = ACTIVE;
+    array[i].fn = fn;
+    array[i].arg = arg;
+    array[i].tv.tv_usec += msecs * 1000;
+    timeval_normalize(&array[i].tv);
+    if (minimum == -1 ||
+        timeval_compare(&array[minimum].tv, &array[i].tv) > 0) {
+            
+        minimum = i;
+    }
+    return &(array[i]);
 }
 
 /* assumes both members are positive */
@@ -132,14 +138,11 @@ static int timeval_compare(struct timeval *tv1, struct timeval *tv2)
     }
 }
 
-/* this is also bogus, keep track of next time */
-/* FIXME: timer_run and timer_next_time will many times be run
- * together, reduce number of calls to gettimeofday() */
 int timer_next_time(struct timeval *tv)
 {
     struct timeval now;
 
-    gettimeofday(&now);
+    gettimeofday(&now, NULL);
     timer_run_with_tv(&now);
     if (minimum == -1) return 0;
     tv->tv_sec = array[minimum].tv.tv_sec - now.tv_sec;
@@ -151,29 +154,50 @@ int timer_next_time(struct timeval *tv)
     return 1;
 }
 
+void timer_cancel(timer_t *timer)
+{
+    int i;
+
+    timer->state = FREE;
+    if (timer - array == minimum) {
+        minimum = -1;
+        for (i = 0; i < NTIMERS; i++) {
+            if (array[i].state == ACTIVE) {
+                if (minimum == -1 ||
+                    timeval_compare(&array[minimum].tv, &array[i].tv) > 0) {
+                    
+                    minimum = i;
+                }
+            }
+        }
+    }
+}
+
 /* small optimization, don't call gettimeofday twice if possible */
 static void timer_run_with_tv(struct timeval *now)
 {
     int i, prev_min;
 
+    in_timer_run = 1;
     prev_min = -1;
     for (i = 0; i < NTIMERS; i++) {
         if (array[i].state == ACTIVE) {
             if (timeval_compare(now, &array[i].tv) <= 0) {
                 array[i].state = FREE;
+                array[i].tv = *now; /* works with first_free, see timer_new() */
                 first_free = i;
                 (array[i].fn)(array[i].arg);
                 if (i == minimum) {
                     minimum = prev_min;
                 }
-            } else if (minimum == -1) {
-                minimum = i;
-            } else if (timeval_compare(&array[minimum].tv, &array[i].tv) > 0) {
+            } else if (minimum == -1 ||
+                       timeval_compare(&array[minimum].tv, &array[i].tv) > 0) {
                 prev_min = minimum;
                 minimum = i;
             }
         }
     }
+    in_timer_run = 0;
 }
 
 void timer_run()
