@@ -1,0 +1,22 @@
+META-DOCUMENTATION - documentation about the documentation
+
+We use yodl, an excellent text processing tool, to produce manual pages
+and html.  Pre-generated files are, of course, included.  If you want
+to work on the documentation, you'll need yodl:
+
+http://www.xs4all.nl/~jantien/yodl/
+
+A note about style:
+
+This documentation is intended to be 100% complete.  Every behaviour
+should be documented, so the user should never have to experiment to
+find out how something works.  Strange X11-isms (like transient
+windows) should be explained both in and of themselves and with
+reference to MacOS or Windows if appropriate.
+
+The intended audience is intelligent but inexperienced with X11/unix.
+I like to think of the intended audience as a neurosurgeon or a
+mathematician - the audience is smarter than I am, so we don't "talk
+down" to them, but they don't have the time or motivation to delve into
+X/unix documentation, so we strive for brevity and completeness at the
+same time.

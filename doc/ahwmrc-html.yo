@@ -1,0 +1,151 @@
+mailto(hioreanu+web-uce@uchicago.edu)
+
+COMMENT(yodl puts this in <em> tags - not sure why...)
+abstract(htmltag(em)(0)
+
+AHWM is an X11 window manager and
+"htmltag(code)(1)~/.ahwmrc+htmltag(code)(0)" is its configuration file.
+This manual is an in-depth explanation of the file's syntax and the
+semantics of the file's directives.  The canonical location of this
+manual is
+url(http://people.cs.uchicago.edu/~ahiorean/ahwm/doc/)(http://people.cs.uchicago.edu/~ahiorean/ahwm/doc/).
+htmltag(em)(1))
+
+article(AHWMRC)(Alex Hioreanu)(February 2002)
+
+redef(navigation)(0)(NOTRANS(\
+<center><a href="ahwmrc-html.html">Return to Contents</a></center>
+))
+redef(navtop)(0)(navigation() NOTRANS(<hr>))
+redef(navbot)(0)(NOTRANS(<hr>) navigation())
+
+includefile(common.yo)
+
+htmlnewfile()
+navtop()
+
+sect(Meta Manual)
+
+includefile(note.yo)
+
+navbot()
+htmlnewfile()
+navtop()
+
+sect(Syntax)
+
+What follows is an informal specification of the file's syntax,
+followed by a discussion of the syntax, and then some examples
+illustrating some more difficult points about the syntax.
+
+startit()
+it() ref(syntax-ebnf): link(EBNF)(syntax-ebnf)
+it() ref(syntax-discussion): link(Discussion)(syntax-discussion)
+it() ref(binding-ebnf): link(Binding syntax)(binding-ebnf)
+it() ref(syntax-types): link(Types)(syntax-types)
+it() ref(syntax-examples): link(Examples)(syntax-examples)
+endit()
+
+navbot()
+htmlnewfile()
+navtop()
+
+subsect(EBNF)
+label(syntax-ebnf)
+
+includefile(syntax-ebnf.yo)
+
+navbot()
+htmlnewfile()
+navtop()
+
+subsect(Discussion)
+label(syntax-discussion)
+
+includefile(syntax-discussion.yo)
+
+navbot()
+htmlnewfile()
+navtop()
+
+subsect(Binding Syntax)
+label(binding-ebnf)
+
+includefile(binding-ebnf.yo)
+
+navbot()
+htmlnewfile()
+navtop()
+
+subsect(Types)
+label(syntax-types)
+
+includefile(types.yo)
+
+navbot()
+htmlnewfile()
+navtop()
+
+subsect(Examples)
+label(syntax-examples)
+
+includefile(syntax-examples.yo)
+
+navbot()
+htmlnewfile()
+navtop()
+
+sect(Semantics)
+
+startit()
+it() ref(discussion): link(Discussion)(discussion)
+it() ref(contexts): link(Context Selectors)(contexts)
+it() ref(options): link(Options)(options)
+it() ref(functions): link(Functions)(functions)
+endit()
+
+navbot()
+htmlnewfile()
+navtop()
+
+subsect(Discussion)
+label(discussion)
+
+includefile(discussion.yo)
+
+navbot()
+htmlnewfile()
+navtop()
+
+subsect(Context Selectors)
+label(contexts)
+
+includefile(contexts.yo)
+
+navbot()
+htmlnewfile()
+navtop()
+
+subsect(Options)
+label(options)
+
+includefile(options.yo)
+
+navbot()
+htmlnewfile()
+navtop()
+
+subsect(Functions)
+label(functions)
+
+includefile(functions.yo)
+
+navbot()
+htmlnewfile()
+navtop()
+
+sect(License)
+
+includefile(license.yo)
+
+navbot()

@@ -1,0 +1,362 @@
+startitem()
+
+The remaining sections of this document describe how to select windows
+for setting options, what options you can set and what functions you
+can bind to keystrokes.  This section describes various concepts which
+don't belong in the shorter descriptions of the following sections.
+
+This section also explains the rationale behind some of AHWM's design
+decisions.  These decisions were made based on experimentation and
+interpretation of currently-accepted human interface guidelines.
+
+item(Workspaces)
+label(workspaces)
+
+AHWM supports bf(workspaces).  Each workspace contains a number of
+windows and each window is belongs to one workspace.  Only the windows
+in the em(current workspace) are visible; thus, you can use workspaces
+to organize windows for easier access.
+
+Unlike some other window managers, workspaces are indivisible emdash()
+AHWM does not support "viewports" into workspaces and a window may not
+occupy part of one workspace and part of another.  Workspaces are
+numbered using the natural numbers; thus, the available workspaces are
+1, 2, ..., docs(NumberOfWorkspaces). A workspace has no "name" other
+than its number. There is no geometric relationship between workspaces,
+but, if you wish, you may think of the workspaces as arranged on a
+horizontal line, from left to right according to the workspace number.
+
+The number of workspaces is fixed once AHWM has started and can be set
+using the docs(NumberOfWorkspaces) option.  The docs(SendToWorkspace)
+function can change a window's workspace, and the docs(GoToWorkspace) can
+change the current workspace.  
+
+Windows which are em(omnipresent) (eg, those for which the
+docs(Omnipresent) option is set to True) are visible in all workspaces.
+You can think of omnipresent windows as windows whose workspace is
+always the current workspace.
+
+item(Moving and Resizing)
+label(moving)
+
+Since moving and resizing windows is the responsibility of the window
+manager, the way AHWM deals with this is documented here.
+
+You can use the docs(MoveResize) function for a non-interactive move or
+resize.  This allows you, for instance, to bind an action to a titlebar
+click which immediately moves the window to the top of the screen or
+resizes the window to half of the screen width.
+
+You can use the docs(MoveInteractively) and the
+docs(ResizeInteractively) functions to interactively move or resize
+windows.  You can move or resize windows using both the keyboard and
+the mouse.
+
+While moving or resizing a window, the window's titlebar indicates the
+window's size and position.  All movement is em(opaque) emdash() the
+window contents are shown while moving, rather than a box indicating
+the windows position.  All sizing is em(boxed) emdash() a box
+representing the windows size is drawn and the window contents remain
+in their original position until the end of the resize action.
+
+Some window managers use boxed movement because opaque movement
+requires more resources.  After experimentation on older computers in
+stressed environments, it was determined that virtually all computers
+today can handle opaque movement, so AHWM implements only opaque
+movement.
+
+Some window managers use opaque resizing as it gives better feedback as
+to a window's new size.  While moving a window, only the window manager
+and the X server do any work, but when a window is resized, the
+application also needs to resize the window's internal structure (it
+must move and resize its own widgets).  After experimentation on the
+latest and most powerful hardware, it was determined that most X11
+toolkits are not able to redisplay themselves quickly enough to support
+opaque resizing, so AHWM supports only boxed resizing.
+
+Moving a window against the edge of the screen is em(resisted) emdash() you
+have to move lq()more+rq() to move part of a window off the edge of the
+screen.  This allows you to more easily position a window precisely at
+the edge of the screen.
+
+Other window managers support em(edge attraction) rather than em(edge
+resistance), where moving a window near the edge of the screen warps
+the window to the edge of the screen.  AHWM implements edge resistance
+rather than edge attraction for two reasons:  (1) edge attraction is
+very unintuitive for most users and (2) it is more common to wish to
+have a window near the edge of the screen (but still within the screen)
+than it is to wish to have a window just off the edge of the screen.
+
+While you are moving a window, the following keystrokes are available:
+
+startdit()
+
+dit(bf(Left Arrow), bf(h), bf(a)) Move one unit left.
+dit(bf(Right Arrow), bf(l), bf(d)) Move one unit right (that's an
+lq()ell+rq() and not a lq()one+rq()).
+dit(bf(Down Arrow), bf(j), bf(s)) Move one unit down.
+dit(bf(Up Arrow), bf(k), bf(w)) Move one unit up.
+dit(bf(Shift) and any of the above movement keys) Shifting a movement
+keystroke moves to the extreme edge of the screen.
+dit(bf(Escape)) End moving and return the window to the position before
+starting the move.
+dit(bf(Enter)) End moving and accept the window's current position.
+dit(bf(Control)) End moving, accept changes and begin a resize action.
+
+enddit()
+
+When resizing a window, two out of the four edges of a window may be
+moved.  When a resize action is started using the mouse, the quadrant
+of the window which received the click determines which two edges are
+movable.  When a resize action is initiated via a keystroke, the
+lower-right corner of the window is initially movable.
+
+Some window managers allow a resize action to begin with moving only
+one edge of the window instead of two.  Again, the edge or edges to be
+made movable are determined by the position of the click.  Generally,
+the targets for initiating a single-edge resize are much larger than
+the targets for initiating a double-edge resize.  The most common case
+is that a user wishes to resize a window both horizontally and
+vertically, so this design causes a number of mis-clicks and forces
+greater precision in placing the initial click.  With AHWM, you can
+hold down a modifier and drag out a size very quickly without precisely
+positioning the mouse.  If you want to precisely control the window's
+size, you can use the keyboard, as the keyboard is a much more precise
+device for such actions.
+
+AHWM also provides a keystroke to change which edges are movable
+during a resize.  You can use this key (the space bar) if you wish to
+constrain a mouse-based movement to only one direction.  When a resize
+action is initiated with the keyboard, this changes the corner which is
+movable in the following order:  Down+Right -> Up+Right -> Up+Left ->
+Down+Left -> Down+Right -> ....  When a resize action is initiated with
+the mouse, this keystroke can be used to constrain which edges are
+movable as follows:  Horizontal and Vertical -> Vertical only ->
+Horizontal only -> Horizontal and Vertical -> ....
+
+Whereas moving windows always happens in increments of one pixel, some
+windows may not function correctly at arbitrary sizes.  For instance,
+xterm cannot fully use arbitrary size windows, but rather can only
+fully use windows sized in increments of its font size.  These
+constraints are taken into account and affect the maximum and minimum
+size of a window as well as the units for resizing.
+
+When resizing a window, the following keystrokes are available:
+
+startdit()
+
+dit(bf(Left Arrow), bf(h), bf(a)) Resize one unit left.
+dit(bf(Right Arrow), bf(l), bf(d)) Resize one unit right (that's an
+lq()ell+rq() and not a lq()one+rq()).
+dit(bf(Down Arrow), bf(j), bf(s)) Resize one unit down.
+dit(bf(Up Arrow), bf(k), bf(w)) Resize one unit up.
+dit(bf(Shift) and any of the above movement keys) Shifting a movement
+keystroke resizes ten units instead of one.
+dit(bf(Escape)) End resizing and return the window to the position before
+starting the resize.
+dit(bf(Enter)) End resizing and accept the window's current position.
+dit(bf(Control)) End resizing, accept changes and begin a move action.
+dit(bf(Space)) Change which edges are movable during the resize.  See
+above for a description how this works.
+
+enddit()
+
+item(Focus Policies)
+label(focus)
+
+X11 has a notion of the currently focused window (hereafter the
+em(focus window)).  The focus window is the window which accepts
+keyboard input.  The way in which you change the focus window using the
+mouse is called the em(focus policy).
+
+X11 also has a notion of the em(topmost) window, or the window which is
+on top of all other windows.  Note that the two notions (focus and
+topmost) are separate.
+
+AHWM supports two focus policies:  em(click-to-focus) and em(sloppy
+focus).  You can change the focus policy on a per-window or
+per-workspace basis setting the docs(FocusPolicy) option.
+
+Proprietary non-unix operating systems usually only support
+click-to-focus.  With click-to-focus, you click on window to make it
+the focus window and to make it the topmost window.  The mouse click
+used to focus a window may or may not be passed to the application,
+depending on the setting of docs(PassFocusClick).  The default value of
+docs(PassFocusClick) is true, which is the same behaviour as most
+proprietary non-unix operating systems.
+
+With sloppy focus, you change the focus window by positioning the mouse
+over a window emdash() you do not have to click on the window.  The root
+window (the desktop window) is never focused, as it usually doesn't do
+anything useful when it receives keyboard input.  Other window managers
+support em(focus-follows-mouse) which allows the root window to become
+focused, but this is unintuitive behaviour (and most people find it
+annoying), so AHWM does not support focus-follows-mouse.
+
+When a window becomes the focus window through sloppy focus, it will
+become the topmost window after a set period of time.  You can change
+this period of time by setting the docs(RaiseDelay) option, which
+expresses time in milliseconds.
+
+For a discussion of the motivation for the raise delay and of how other
+window managers incorrectly implement sloppy focus, please see the
+following document:
+
+url(http://people.cs.uchicago.edu/~ahiorean/ahwm/sloppy-focus.html)(http://people.cs.uchicago.edu/~ahiorean/ahwm/sloppy-focus.html)
+
+item(Window Cycling)
+label(cycling)
+
+While the focus policy determines how one can change the focus window
+using the mouse, window cycling allows one to change the focus window
+using the keyboard.
+
+All the windows in a workspace are maintained on a em(stack).  A stack
+is a first-in-last-out list emdash() the first element put on the stack (the
+bottom element) is the last element removed from the stack and the last
+element put on the stack (the top element) is the first element removed
+from the stack.
+
+Window cycling allows one to walk up and down a stack.  You always
+start at the focus window (the top of the stack).  The docs(CycleNext)
+function moves down the stack, while the docs(CyclePrevious) function
+moves up the stack.  Moving past the top or bottom of the stack wraps
+around to the other end of the stack.
+
+After you've selected a window for focusing, that window is moved to
+the top of the stack.
+
+Other window managers implement window cycling using a simple circular
+list instead of a stack.  Neither the stack nor the circular list
+methods are immediately intuitive; however, the stack method has one
+distinct advantage.  With the circular list method, one must always
+examine which window has been cycled to before ending the cycle action.
+On the other hand, with the stack-based method, sometimes the user does
+not need to examine which window is being cycled to before ending the
+cycle action.  This is because the stack-based method moves the most
+frequently-used windows to the top of the stack.  When a user has seven
+windows on the screen but is only using two of them currently, the
+lq()other+rq() window is always available with only one keystroke.
+With the stack-based implementation switching back and forth from one
+window to the other requires only two keystrokes while the circular
+list implementation requires seven keystrokes.
+
+A cycling action begins when one types the docs(CycleNext) or
+docs(CyclePrevious) keystroke and it ends when one has let go of all
+the modifiers which are involved in the docs(CycleNext) and
+docs(CyclePrevious) keystrokes.  One can cycle up and down the stack,
+but the focus window is not moved to the top of the stack until the
+cycle action ends.
+
+During a cycle action, windows will always be focused immediately, but
+they may or may not be raised, according to the setting of the
+docs(CycleBehaviour) option.
+
+The rationale for this is that immediately raising the window will
+munge the stacking order of the windows, while not raising the window
+provides little feedback as to where one is on the focus stack.  The
+ideal solution would be to display a list of icons and window names
+during the cycle and to raise the focus window only upon the end of the
+cycle action.  The reasons for AHWM not implementing icons are many and
+varied (and difficulty is not one of those reasons) and providing a
+list of window names without icons provides textual, but not visual
+feedback.
+
+Windows can also be excluded from the cycle stack by setting the
+docs(CycleBehaviour) option to em(SkipCycle).  Windows which do not
+accept keyboard input are automatically excluded from the focus stack;
+however, some windows claim they accept keyboard input, but then ignore
+all keyboard input.  The em(SkipCycle) setting is intended to allow you
+to deal with those windows.
+
+item(Quoting)
+label(quoting)
+
+Sometimes you may wish to send an application a keystroke but you've
+bound that keystroke to an AHWM action.  em(Quoting) allows you to
+bypass AHWM and pass the keystroke or mouse click through to the
+application.
+
+One of the functions you can bind to a keystroke or mouse click is the
+docs(Quote) function.  The docs(Quote) function invokes em(quote mode).
+When you are in quote mode, AHWM will behave normally except that the
+next keystroke or mouse action that AHWM would intercept will instead
+be passed to the window that would normally receive it (ie, the focus
+window for a keystroke, the window under the mouse pointer for a mouse
+click).  AHWM will then exit quote mode.
+
+If you change your mind about quoting an action, you can exit quote
+mode by invoking the docs(Quote) function again.
+
+The root background will be changed to white when in quote mode to
+remind you that AHWM is behaving differently.
+
+Quoting does not always work correctly.  In order to understand why, a
+note about the implementation of quote mode is required.
+
+When in quote mode, AHWM needs to know when you've typed a keystroke
+that would normally be intercepted in order to exit quote mode after
+the keystroke has been received by the application.  Therefore, AHWM
+needs to lq()listen+rq() for these keystroke events, even while in
+quote mode.  The first problem is that X11 does not allow more than one
+application to lq()listen+rq() for these keystrokes, so these
+keystrokes will only be passed to AHWM, and not the application window.
+Thus, AHWM needs to lq()manufacture+rq() or lq()fake+rq() a keystroke
+event to pass to the application window upon receiving a bound
+keystroke.  The second problem is that X11 allows an application to
+determine which keystroke events are lq()real+rq() and
+lq()manufactured+rq().  Some applications will ignore
+lq()manufactured+rq() keystroke events.  This applies to mouse clicks
+as well.
+
+It is important to note that both problems mentioned in the above
+paragraph are AHWM's problems, and not problems with the X11 system.
+X11 has very good reasons for both these design decisions, but they
+make implementing a completely correct quote mode impossible.
+
+Thus, quote mode will not work with an application if the application
+ignores lq()manufactured+rq() events.  One such application is recent
+versions of XFree86's manlink(xterm)(1)(1x) program.  In order to make
+quote mode work with xterm, you need to add the following line to your
+q(~/.Xdefaults) file:
+
+tt(xterm.VT100.allowSendEvents: true)
+
+And after adding this line, either restart your X session or run
+manlink(xrdb)(1)(1x) in the appropriate fashion.
+
+Note that adding this line to your q(~/.Xdefaults) creates an
+bf(IMMENSE GAPING SECURITY HOLE).  On the other hand, quote mode is
+quite nice emdash() it's your call.
+
+item(Function Aggregations)
+label(aggregations)
+
+AHWM supports function aggregations or user-defined functions.  A
+function aggregation allows you to bind more than one action to a
+keystroke or mouse click.
+
+You can define a function aggregation using the bf(Define) keyword.
+Use the bf(Invoke) keyword to bind an aggregation to a keystroke or
+mouse click.
+
+Function aggregations don't take arguments and the AHWM configuration
+language does not support any programming constructs, so function
+aggregations are not really user-definable functions.  The names of
+function aggregations are bf(CASE-SENSITIVE).
+
+You may define recursive function aggregations, but this is not
+recommended.  For example, given the following configuration:
+
+verbatim(\
+Define "Recursive Function" { Invoke("Recursive Function"); };
+BindKey "Alt | c" Invoke("Recursive Function");)
+
+AHWM will crash when you type q(Alt | c).  Specifically, AHWM will
+continue invoking the recursive function until it runs out of stack
+space.  AHWM never attempts to second-guess you.
+
+NB: if you are looking for an easier way to crash AHWM, the docs(Crash)
+function may be of interest.  See also manlink(kill)(1)(1).
+
+enditem()

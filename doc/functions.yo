@@ -1,0 +1,158 @@
+This section describes all the available em(functions) emdash() a
+function is an action which one can bind to a mouse click or a
+keystroke.  A function may have zero or more parameters, each with a
+given type.  If a function takes no parameters, its type will be
+specified as em(void) in this section.  Most functions operate on a
+window, called the em(current window) in this section.  If a function
+is bound to a keystroke, the current window is the window with the
+input focus; if a function is bound to a mouse click, the current
+window is the window which received the mouse click.
+
+startitem()
+function(Crash)(void)
+Cause AHWM to crash.  Specifically, this will cause AHWM to dereference
+a NULL pointer, which will raise a segmentation fault.
+
+The point of this function is to make it easy to test that AHWM's
+crash-handler is working correctly.  The function is documented for
+completeness, and this is a good place to mention that AHWM will
+attempt to handle crashes to the best of its ability.
+
+You probably don't want to use this function.  Then again, that's your
+choice, not mine.
+
+It is unfortunate that this is alphabetically the first function.  The
+rest of the functions are actually useful.
+function(CycleNext)(void)
+Cycle to the next window on the focus stack.  For a complete
+discussion, please see the subsection entitled doc(Window Cycling)(cycling).
+function(CyclePrevious)(void)
+Cycle to the previous window on the focus stack.  For a complete
+discussion, please see the subsection entitled doc(Window Cycling)(cycling).
+function(Focus)(void)
+Make the current window the focus window.  Binding this function to a
+keystroke is pointless, as the current window is the focus window for
+functions bound to keystrokes.  This function is meant to be bound to a
+mouse click.
+function(GoToWorkspace)(integer)
+This changes the workspace to the specified workspace.  Going from the
+current workspace to the same workspace is allowed and this has a
+similar effect to the standard X program manlink(xrefresh)(1)(1x).  See
+also the section entitled doc(Workspaces)(workspaces).
+function(Invoke)(void)
+Invoke a function aggregation (aka, a user-defined function).  Please
+see the section entitled doc(Function Aggregations)(aggregations).
+function(KillNicely)(void)
+Ask the current window to close itself.
+
+Specifically, it will use the q(WM_DELETE_WINDOW) protocol, if the window
+supports this protocol.  If the window does not support this protocol,
+the window will immediately be closed as with
+docs(KillWithExtremePrejudice).
+
+If an application supports the q(WM_DELETE_WINDOW) protocol and is
+lq()hung+rq(), it will probably not close itself, and AHWM will not
+attempt to ascertain whether or not the window is lq()hung+rq().
+Therefore, the when using this function, the window may not close
+itself; if that happens, use docs(KillWithExtremePrejudice).
+function(KillWithExtremePrejudice)(void)
+This function will immediately close the current window, no questions
+asked.
+
+Specifically, this function will use manlink(XKillClient)(3)(3x).  This
+is guaranteed to close the window, but the application will not receive
+any notice that anything has happened until its next X request fails
+because it has been disconnected from the X server.  In most cases,
+this will cause the application to exit ungracefully.  In some
+poorly-written applications, this may cause you to lose your work.
+
+If the application is truly completely lq()hung+rq(), it will not
+process X events, so it will not receive X errors.  This means that
+although the application's window is gone, the application is still
+alive and taking up resources such as memory and CPU time.  Netscape
+Navigator 4.x has a tendency to do exactly this.  The best recourse in
+such a situation is to open a terminal window and use
+manlink(kill)(1)(1).  Since X is a network-transparent system, the
+application may be running on a different machine than AHWM; therefore,
+AHWM cannot kill the application for you.
+
+In order to ameliorate this situation, the url(Extended Window Manager
+Hints)(http://www.freedesktop.org/standards/wm-spec/) document defines
+a protocol for (1) determining if an application might be
+lq()hung+rq(), (2) determining an application's PID, if the application
+is running on a unix-like system, and (3) determining the host the
+application is running on if the application's X session is running
+over TCP/IP or on the local host.  AHWM does not yet implement this
+protocol, as it is still extremely experimental.  In addition, client
+applications must implement this protocol, so this will not solve the
+Netscape Navigator problem.
+function(Launch)(string)
+This will take the string argument and pass it to a Bourne shell.  You
+can use this function to launch programs and do useful work.
+function(Maximize)(void)
+Toggle the maximization state of the window.  When a window is
+maximized, it will take up as much of the screen as possible.  Whenever
+a maximized window is moved or resized, it will no longer be considered
+maximized.
+function(MaximizeHorizontally)(void)
+Toggle the horizontal maximization state of the window.  This function
+is similar to docs(Maximize), except that it only maximizes horizontally.
+function(MaximizeVertically)(void)
+Toggle the vertical maximization state of the window.  This function
+is similar to docs(Maximize), except that it only maximizes vertically.
+function(MoveInteractively)(void)
+Move a window interactively, either with the mouse or keyboard.  See
+the section entitled doc(Moving and Resizing)(moving) for details.
+function(MoveResize)(string)
+Move and/or resize a window non-interactively.
+
+The string argument is in the form accepted by
+manlink(XParseGeometry)(3)(3x).  This allows you to specify any or all
+components of a size and position.  NB: when you move or resize a
+window interactively, the size units displayed may not be pixels (for
+instance, the size units for xterm are defined by the font height and
+width).  The size units for this function are always pixels.
+
+bf(Examples):
+
+tt(MoveResize("100x200")) nl()
+This resizes the window to one hundred by two hundred pixels and does
+not change the window's position.
+
+tt(MoveResize("+300+400")) nl()
+This moves the window to three hundred pixels below the top of the screen
+and four hundred units from the left side of the screen.  The window is
+not resized.
+
+tt(MoveResize("100x200+300+400")) nl()
+This has the effect of combining the above two examples; the window is
+both moved and resized.
+function(Quote)(void)
+Enter or exit quote mode.  You can use quote mode to pass an
+application a keystroke or mouse click that would normally be used by
+AHWM.  See the subsection entitled doc(Quoting)(quoting) for details.
+function(Raise)(void)
+Raise the current window.  The focus window is usually also the raised
+window, so binding this to a keystroke may not be very useful.
+function(ResizeInteractively)(void)
+Resize a window interactively, either with the mouse or keyboard.  See
+the section entitled doc(Moving and Resizing)(moving) for details.
+function(Nop)(void)
+Do nothing.  You can bind this function to a keystroke, and then the
+keystroke will be lq()eaten+rq() by AHWM.
+function(Quit)(void)
+Exit AHWM with zero (successful) status.  This will most likely end
+your X session.
+function(Restart)(void)
+Restart AHWM.  When AHWM stops and then starts again, it should return
+to the exact same state.  AHWM reads the file q(~/.ahwmrc) when it
+starts, so you can simply use this function when you change your
+q(~/.ahwmrc) file to apply the changes without logging out of your X
+session.
+function(SendToWorkspace)(integer)
+Move the current window to the specified workspace.
+NB that this does not change the current workspace.  If you wish to
+both send a window to a workspace and change the current workspace with
+one action, you can define a function aggregation.  See also the
+section entitled doc(Workspaces)(workspaces).
+enditem()

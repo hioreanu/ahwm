@@ -1,0 +1,18 @@
+Both em(options) and em(functions) have em(types), and this section
+describes the available types.
+startitem()
+item(Boolean)
+One of the symbols q(True) or q(False).
+item(String)
+A string with C-like syntax.  Most ANSI C escape sequences are permitted;
+please refer to a C manual for the exact syntax.
+
+bf(Examples:) tt("foo \\ \" ", "HTTP 200 OK\r\n")
+item(Integer)
+An integer in decimal notation.
+item(Enumeration)
+One of a small number of symbols.  All enumerations are described as
+in this manual as follows:  enumeration(Fixed, NoOverlap, Contiguous)
+which would indicate that one of the three symbols q(Fixed),
+q(NoOverlap) or q(Contiguous) would be legal.
+enditem()

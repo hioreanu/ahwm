@@ -1,0 +1,77 @@
+In addition to the file's syntax, defined above, binding actions to
+keystrokes or mouse clicks requires a string argument.  This string
+argument describes which keys and buttons along with which modifier
+keys are to be bound.
+
+The binding grammar has tokens from three groups:
+
+starteit()
+eit() A em(KeySym) which is one of the symbols from the file
+tt(<X11/keysym.h>), with the q(XK_) prefix removed, em(except) for the
+following symbols which are em(not) tokens: nl()
+tt(Shift_L) nl()
+tt(Shift_R) nl()
+tt(Control_L) nl()
+tt(Control_R) nl()
+tt(Meta_L) nl()
+tt(Meta_R) nl()
+tt(Alt_L) nl()
+tt(Alt_R) nl()
+tt(Super_L) nl()
+tt(Super_R) nl()
+tt(Hyper_L) nl()
+tt(Hyper_R) nl()
+tt(Caps_Lock) nl()
+tt(Shift_Lock) nl()
+
+All of the symbols in this group are bf(CASE-SENSITIVE).
+
+eit() A em(Modifier), which is one of the following symbols: nl()
+tt(Shift), tt(ShiftMask) nl()
+tt(Control), tt(ControlMask) nl()
+tt(Mod1), tt(Mod1Mask) nl()
+tt(Mod2), tt(Mod2Mask) nl()
+tt(Mod3), tt(Mod3Mask) nl()
+tt(Mod4), tt(Mod4Mask) nl()
+tt(Mod5), tt(Mod5Mask) nl()
+tt(Alt), tt(AltMask) nl()
+tt(Meta), tt(MetaMask) nl()
+tt(Hyper), tt(HyperMask) nl()
+tt(Super), tt(SuperMask) nl()
+
+All of the symbols in this group are case-insensitive.
+
+eit() A bf(Button), which is one of the following symbols: nl()
+tt(Button1) nl()
+tt(Button2) nl()
+tt(Button3) nl()
+tt(Button4) nl()
+tt(Button5) nl()
+
+All of the symbols in this group are case-insensitive.
+
+endeit()
+
+You can see what keysyms your keystrokes generate by launching the X program
+manlink(xev)(1)(1x) and typing into the window.  See also
+manlink(xmodmap)(1)(1x) for more information.  The buttons are usually
+interpreted as follows: nl()
+tt(Button1) is the left mouse button. nl()
+tt(Button2) is the middle mouse button. nl()
+tt(Button3) is the right mouse button. nl()
+tt(Button4) is mouse wheel down. nl()
+tt(Button5) is mouse wheel up. nl()
+
+The informal grammar for binding to keystrokes is:
+
+left(string)(modlist* keysym)
+end()
+left(modlist)(modifier q(|))
+end()
+left(modifier)(<one of the above symbols from group 2>)
+end()
+left(keysym)(<one of the above symbols from group 1>)
+end()
+
+The grammar to binding to mouse events is equivalent to that for
+binding to keystrokes except that buttons are used instead of KeySyms.

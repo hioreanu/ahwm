@@ -1,0 +1,15 @@
+The documentation for AHWM is available in three places:
+
+starteit()
+
+eit() the AHWM manual page, installed automatically with AHWM
+eit() the HTML form of the AHWM manual, the most up-to-date version of
+which is available at:
+url(http://people.cs.uchicago.edu/~ahiorean/ahwm/doc/)(http://people.cs.uchicago.edu/~ahiorean/ahwm/doc/)
+eit() the default AHWM configuration file, which is created when you
+start AHWM for the first time.
+
+endit()
+
+This manual is comprehensive.  If you're low on time, you may want to
+try the default configuration file first.

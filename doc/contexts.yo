@@ -1,0 +1,65 @@
+This section defines the selectors available to define contexts.
+COMMENT(FIXME: link to syntax)
+
+startitem()
+context(IsShaped)(boolean)
+If this selector is true, windows which are shaped (using the XShape
+extension) will match.  Applications will generally use the XShape
+extension so they can display a non-rectangular top-level window.  The
+standard X program manlink(xclock)(1)(1x) is an example of such an
+application.
+context(InWorkspace)(integer)
+If a window is located in the same workspace as specifed in this
+selector, the context selector will match the window.  The number q(0)
+(zero) is not a valid argument for this selector.  Windows which are
+omnipresent COMMENT(FIXME: link) will match only when the current
+workspace is the same as the workspace specified in the argument to
+bf(InWorkspace).
+context(WindowName)(string)
+This will match based on a window's name.  This does exact string
+matching, so you must specify the window's entire name.  If you give an
+argument of q(*), this will match em(any) window.  The window name
+oftentimes will change, so you may be better off matching based on
+bf(WindowInstance) or bf(WindowClass).  The window's name is the string
+which is displayed in the window's titlebar.  You may also find the
+window's name by using the standard X program manlink(xprop)(1)(1x) and
+looking for the q(WM_NAME) property.
+context(WindowClass)(string)
+This will match based on a window's lq()Class+rq().  This does exact
+string matching.  Windows with the same lq()Class+rq() are somehow
+related, perhaps by belonging to the same application.  You can find a
+window's class by using the manlink(xprop)(1)(1x) program and looking for
+the second value of the q(WM_CLASS) property.
+context(WindowInstance)(string)
+This will match based on a window's lq()Instance+rq().  This does exact
+string matching.  Windows with the same lq()Instance+rq() are different
+invocations of the same window.  You can find a window's instance by
+using the manlink(xprop)(1)(1x) program and looking for the first value of the
+q(WM_CLASS) property.
+context(HasTransient)(context)
+This context selector is placed in front of another context selector.
+The resulting context will then match window A if window A has a
+transient window B, and window B matches the selector after the
+bf(HasTransient) selector.
+Transient windows are generally short-lived dialog boxes.
+context(TransientFor)(context)
+This context selector is placed in front of another context selector.
+The resulting context will then match window A if window A is a
+transient of window B, and window B matches the selector after the
+bf(TransientFor) selector.
+context(Not)(context)
+This context selector is placed in front of another context selector.
+The resulting context will then match window A if window A em(does not)
+match the selector after the bf(Not) selector.
+
+bf(Example):  The following two are equivalent:
+
+verbatim(\
+IsShaped True { ... }
+Not IsShaped False { ... })
+enditem()
+
+
+
+
+

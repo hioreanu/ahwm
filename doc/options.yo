@@ -1,0 +1,210 @@
+This section describes all the available em(options) emdash() an option
+changes the way AHWM behaves.  Each option has a em(type), which is
+indicated after the option name.  Options may be defined globally, or
+may be enclosed within a em(context).  Options may be set by the user
+or application; the application's setting normally overrides the user's
+setting (except for options set using q(is!) which cannot be overridden
+by any application).  Each function below mentions whether or not it
+can be set by an application using a hint.  Each option has a default
+value, which is the value taken if not specifed in the configuration
+file.  Note that when you start AHWM for the first time, a
+configuration file is created, which specifies a number of options;
+therefore, the default values may not apply when you start AHWM for the
+first time.
+
+startitem()
+option(AlwaysOnBottom)(boolean)
+If true, this window will remain below all other windows.  Default:
+False.  Application-settable.
+option(AlwaysOnTop)(boolean)
+If true, this window will remain on top of all other windows.  Default:
+False.  Application-settable.
+option(ColorTitlebar)(string)
+This option determines the background color of the titlebar when the
+window is not focused.
+
+This value of this option must be a valid X color specification.  For
+the full details of X color specifications, please see the lq()Color
+Strings+rq() entry in the Xlib manual (available at
+url(http://tronche.com/gui/x/xlib/color/strings/)(http://tronche.com/gui/x/xlib/color/strings/)).
+
+Examples of valid color strings:
+
+q(red), q(darkslategray)
+
+q(#FF0000), q(#2F4F4F)
+
+q(rgb:F/0/0), q(rgb:2f/4f/4f)
+
+The default background color of non-focused windows is black.  Not
+application-settable.
+option(ColorTitlebarFocused)(string)
+This option determines the background color of the titlebar when the
+window is focused.
+
+This value of this option must be a valid X color specification.  See
+docs(ColorTitlebar) for the syntax of X color specifications.
+
+The default background color of focused windows is white.  Not
+application-settable.
+option(ColorTitlebarText)(string)
+This option determines the color of the titlebar title text when the
+window is not focused.
+
+This value of this option must be a valid X color specification.  See
+docs(ColorTitlebar) for the syntax of X color specifications.
+
+The default color of the window titles of non-focused windows is
+white.  Not application-settable.
+option(ColorTitlebarTextFocused)(string)
+This option determines the color of the titlebar title text when the
+window is focused.
+
+This value of this option must be a valid X color specification.  See
+docs(ColorTitlebar) for the syntax of X color specifications.
+
+The default color of the window title of focused windows is black.
+Not application-settable.
+option(CycleBehaviour)({SkipCycle, RaiseImmediately, RaiseOnCycleFinish, DontRaise})
+This option determines the behaviour of the docs(CycleNext) and
+docs(CyclePrevious) functions.
+
+When a window has docs(CycleBehaviour) set to em(SkipCycle), it will
+not be included in the cycle list.
+
+With em(RaiseImmediately), the window will be raised immediately upon
+cycling.  If docs(CycleNext) is bound to q(Alt | Tab), this means that
+the window will be raised when you hit q(Tab) with q(Alt) held down.
+
+With em(RaiseOnCycleFinish), the window will not be raised when it is
+cycled; rather, it will be raised if it is the focused window when the
+cycle action ends.  If docs(CycleNext) is bound to q(Alt | Tab), this
+means the window will be raised when you let go of q(Alt).
+
+With em(DontRaise), the window will not be raised at all.
+
+See also the section entitled doc(Window Cycling)(cycling).
+
+The default value of docs(CycleBehaviour) is em(RaiseImmediately).
+Application-settable: an application may request not to be included on
+the focus stack.
+option(DefaultWorkspace)(integer)
+Specifies the workspace for new windows.  Use zero to map windows into
+the current workspace.  See also the section entitled doc(Workspaces)(workspaces).
+Default: zero.  Application-settable.
+option(DisplayTitleBar)(boolean)
+Specifies whether the window will have a titlebar.  Default: True.
+Application-settable.
+option(DontBindMouse)(boolean)
+If true, AHWM will not bind mouse actions on the specified window.
+
+Note that you can pass a bound mouse click to an application window
+using the docs(Quote) function.
+
+Default: False.  Not application-settable.
+option(DontBindKeys)(boolean)
+If true, AHWM will not bind keystrokes on the specified window.
+
+Note that you can pass a bound keystroke to an application window using
+the docs(Quote) function.  Also note that you will not be able to use
+your keyboard to change the focus or the workspace when a window with
+docs(DontBindKeys) set to True is focused.
+
+The default value of docs(DontBindKeys) is false.  Not application-settable.
+option(FocusPolicy)({ClickToFocus, SloppyFocus, DontFocus})
+The focus policy states how a window may be focused using the mouse.
+The currently focused window is the window which receives keyboard
+input.
+
+With the em(SloppyFocus) policy, a window is focused if you move the
+pointer into the window.  Note that the focus will only be changed when
+you move the pointer; the focus will not be changed when a window is
+unmapped or when a window resizes itself to be under the pointer.  This
+behaviour is somewhat different from the sloppy focus policies of other
+window managers.  The window will be raised according to
+docs(RaiseDelay).
+
+With the em(ClickToFocus) policy, a window is focused and raised if you
+click on it.  This is what users of propietary non-unix operating
+systems expect.  The focusing click may or may not be passed to the
+window, depending on the value of docs(PassFocusClick).
+
+With the em(DontFocus) policy, the window is never focused.  A window
+with the focus policy set to DontFocus will be exluded from the
+focus-cycle list (so this focus policy implies docs(CycleBehaviour) is
+em(SkipCycle)).
+
+See also the section entitled doc(Focus Policies)(focus).
+
+The default value of docs(FocusPolicy) is em(ClickToFocus).
+Application-settable: an application may indicate that it does not
+accept keyboard input, in which case the application will have a
+docs(FocusPolicy) of em(DontFocus).
+option(KeepTransientsOnTop)(boolean)
+When true, AHWM will attempt to keep this window's transient windows on
+top of it.  In practice, this means that AHWM will attempt to keep a
+application's temporary dialog boxes stacked on top of the application.
+
+The default value of docs(KeepTransientsOnTop) is True.  Not
+application-settable.
+option(NumberOfWorkspaces)(integer)
+This option determines the number of workspaces available.
+
+The number of workspaces cannot be changed once AHWM has started.
+
+NB: this option must be applied globally.  If you specify this
+option in a non-global context, it will be silently ignored.
+
+See also the section entitled doc(Workspaces)(workspaces).
+
+The default value of docs(NumberOfWorkspaces) is q(7) (seven).  Not
+application-settable.
+option(Omnipresent)(boolean)
+If true, the window will be visible on all workspaces.  See also the
+section entitled doc(Workspaces)(workspaces).  Default:  False.
+Application-settable.
+option(PassFocusClick)(boolean)
+This option does nothing unless the docs(FocusPolicy) is
+em(ClickToFocus).  If the docs(FocusPolicy) em(is) em(ClickToFocus) and
+docs(PassFocusClick) is true, the window will receive the focusing
+click.  See also the section entitled doc(Focus Policies)(focus).  Default:
+True.  Not application-settable.
+option(RaiseDelay)(integer)
+This option does nothing unless the docs(FocusPolicy) is
+em(SloppyFocus).  If the docs(FocusPolicy) em(is) em(SloppyFocus),
+docs(RaiseDelay) specifies an amount of time, in milliseconds, to wait
+before raising a window when the window is focused using the mouse.
+Use a value of zero to raise immediately.  See also the section
+entitled doc(Focus Policies)(focus).  Default: zero.  Not
+application-settable.
+option(Sticky)(boolean)
+When true, the window will not respond to move or resize requests.
+Default: False.  Application-settable.
+option(TitlebarFont)(string)
+This option determines the font to use for titlebars.
+
+NB: this option must be applied globally.  If you specify this
+option in a non-global context, it will be silently ignored.
+
+The height of the titlebar is also determined by this option.
+
+The value of this option must be a valid X font name.  For the full
+syntax of X font names, please see the document lq()X Logical Font
+Description Conventions+rq(), available in PDF format here:
+url(http://www.x-docs.org/XLFD/xlfd.pdf)(http://www.x-docs.org/XLFD/xlfd.pdf).
+
+You can also find a suitable font name by using the standard X program
+manlink(xfontsel)(1)(1x).
+
+The default value of docs(TitlebarFont) depends on the available fonts.
+Not application-settable.
+option(TitlePosition)({DisplayLeft, DisplayRight, DisplayCentered, DontDisplay})
+This option determines where on the titlebar the window title will be
+displayed.  For em(DisplayLeft), em(DisplayRight), and
+em(DislpayCentered), the title will be displayed on the left, right, or
+center of the titlebar, respectively.  For em(DontDisplay), the window
+title will not be displayed.
+
+The default value of docs(TitlePosition) is em(DisplayLeft).  Not
+application-settable.
+enditem()

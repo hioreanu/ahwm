@@ -1,0 +1,90 @@
+includefile(common.yo)
+mailto(hioreanu+ahwm@uchicago.edu)
+
+COMMENT($Id$)
+
+manpage(ahwmrc)
+       (5)
+       (January 2002)
+       (The AHWM Window Manager)
+       (AHWM)
+
+manpagename(ahwmrc)(configuration file for the AHWM window manager)
+
+manpagesynopsis()
+
+bf($HOME/.ahwmrc) ahwmrc is the configuration file for the AHWM window
+manager.  This manual is an in-depth explanation of the file's syntax
+and the semantics of the file's directives.
+
+manpagesection(META MANUAL)
+
+includefile(note.yo)
+
+manpagesection(SYNTAX)
+
+What follows is an informal specification of the file's syntax,
+followed by a discussion of the syntax, and then some examples
+illustrating some more difficult points about the syntax.
+
+roffcmd(.SS)(SYNTAX EBNF)()()
+
+includefile(syntax-ebnf.yo)
+
+roffcmd(.SS)(SYNTAX DISCUSSION)()()
+
+includefile(syntax-discussion.yo)
+
+roffcmd(.SS)(BINDING SYNTAX)()()
+
+includefile(binding-ebnf.yo)
+
+roffcmd(.SS)(SYNTAX EXAMPLES)()()
+
+includefile(syntax-examples.yo)
+
+manpagesection(TYPES)
+
+includefile(types.yo)
+
+manpagedescription()
+
+includefile(discussion.yo)
+
+manpagesection(CONTEXTS)
+
+includefile(contexts.yo)
+
+manpagesection(OPTIONS)
+
+includefile(options.yo)
+
+manpagesection(FUNCTIONS)
+
+includefile(functions.yo)
+
+manpagesection(SEE ALSO)
+
+manlink(X)(1)(1x),
+manlink(xprop)(1)(1x),
+manlink(xrdb)(1)(1x),
+manlink(xmodmap)(1)(1x),
+manlink(xev)(1)(1x),
+manlink(kill)(1)(1),
+manlink(xfontsel)(1)(1x),
+manlink(twm)(1)(1x),
+manlink(xterm)(1)(1x),
+manlink(xclock)(1)(1x),
+manlink(xrefresh)(1)(1x),
+manlink(XKillClient)(3)(3x),
+manlink(XParseGeometry)(3)(3x),
+em(Inter-Client Communication Conventions Manual, Version 2.0),
+em(Extended Window Manager Hints, Version 1.1)
+
+manpagesection(LICENSE)
+
+includefile(license.yo)
+
+manpageauthor()
+
+Written by Alex Hioreanu, hioreanu+ahwm@uchicago.edu.

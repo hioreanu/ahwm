@@ -1,0 +1,38 @@
+Each line is terminated with a semicolon (q(;)) (contexts are not
+terminated with a semicolon).  The syntax is not whitespace-sensitive,
+except that whitespace is used to separate tokens.  The file's
+directives are em(not) case-sensitive, but some elements of strings
+em(are) case-sensitive (these elements will be noted as bf(CASE
+SENSITIVE) in this manual).  Comments are introduced in three ways:  as
+Bourne shell-like comments (anything after the hash symbol (q(#)) to
+the end of the line), as C-style comments (anything between slash-star
+(q(/*)) and star-slash (q(*/))), or as C++-style comments (anything
+after slash-slash (q(//)) to the end of the line).  C-style comments do
+not nest, as in C.
+
+The file consists of a number of directives, including em(options).
+Options may be enclosed within a em(context), which makes those options
+apply only when the conditions specified in the context are true.
+Contexts are used to define different options for different windows.
+Some options (such as docs(NumberOfWorkspaces)) may only be defined
+globally (they may not appear in a context).  The order of options
+within any given context is not important, except that if an option is
+specified more than once, only the last setting is used.  However, the
+order of contexts is significant emdash() when a window matches more
+than one context, all directives from all contexts will be applied to
+the window, but if a directive appears more than once in any of the
+matching contexts, the last seen directive will be used.
+
+Most of AHWM's options are set by the user; however, some options may
+be set by the application.  For instace, a popup menu may set a hint
+that the window shouldn't be decorated with a titlebar.
+
+Application-set hints override normal user-set hints.  However, instead
+of using q(=) to set an option, you can use q(is!).  When you use
+q(is!), the option cannot be changed by the application.  This is
+useful in when you do not like the hints an application sets.  All
+hint-definable behaviour is also user-definable.
+
+Other directives are available for binding keystrokes and mouse clicks
+and for defining aggregations of actions for binding to keystrokes and
+mouse clicks.

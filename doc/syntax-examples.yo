@@ -1,0 +1,72 @@
+Bindings look like this:
+verbatim(\
+BindKey "Control | Shift | Meta | t" Launch("xterm");
+BindButton Titlebar "Mod1 | Button3" Maximize();
+BindDrag Titlebar "Button1" MoveInteractively();)
+Options can be set as follows:
+verbatim(\
+NumberOfWorkspace = 13;
+FocusPolicy = ClickToFocus;)
+Function  aggregations  (user-defined  functions)  may  be
+defined and bound as follows:
+verbatim(\
+Define "My Goto Workspace 2 Function" {
+    Launch("xsetroot -solid \"#2F4F4F\"");
+    GotoWorkspace(2);
+}
+BindKey "Alt | 2" Invoke("My Goto Workspace 2 Function");)
+The rest of this section describes how to use contexts to set different
+options on different windows.
+
+To have titlebars on shaped windows, but to remove titlebars from
+windows whose TRANSIENT_FOR hint points to a shaped window (regardless
+of whether or not the transient window is shaped):
+verbatim(\
+IsShaped True {
+    DisplayTitlebar = True;
+}
+TransientFor IsShaped True {
+    DisplayTitlebar = False;
+})
+Note that order matters, and the following will put titlebars on all
+shaped windows (even those that are transient for another shaped
+window):
+verbatim(\
+TransientFor IsShaped True { DisplayTitlebar = False; }
+IsShaped True { DisplayTitlebar = True; })
+To have titlebars on all shaped windows except those named q(oclock):
+verbatim(\
+IsShaped True {
+    DisplayTitlebar = True;
+    WindowName "oclock" {
+        DisplayTitlebar = False;
+    }
+})
+Note that this can be done in more than one way, such as:
+verbatim(\
+IsShaped True { DisplayTitlebar = True; }
+WindowName "oclock" { DisplayTitlebar = False; })
+Both of the above ways are equally efficient.  Not that the following
+is em(not) equivalent to the above two:
+verbatim(\
+WindowName "oclock" { DisplayTitlebar = False; }
+IsShaped True { DisplayTitlebar = True; })
+This will make q(oclock) have a titlebar since it is a shaped window
+and the contents are evaluated in order whenever a window is created.
+
+To give another example of how order matters, consider the following:
+verbatim(\
+DisplayTitlebar = True;
+InWorkspace 7 {
+    DisplayTitlebar = False;
+    WindowClass "Xterm" {
+        DisplayTitlebar = True;
+    }
+}
+WindowClass "Xterm" {
+    DisplayTitlebar = False;
+})
+Do xterms in workspace 7 have titlebars?  The answer is no: all xterms
+(including those in workspace 7) will em(not) have titlebars since the
+second q(WindowClass) context overrides the previous options, even
+those nested deep within some other context.
