@@ -21,9 +21,12 @@ parser.c: parser.y
 lexer.c: lexer.l
 	flex -i -olexer.c lexer.l
 
+# this is intentional - 'make install' should always ignore the umask
 install: ahwm
+	if [ ! -d @prefix@@bindir@ ] ; then mkdir -m 755 -p @prefix@@bindir@ ; fi
 	cp ./ahwm @prefix@@bindir@
 	chmod 755 @prefix@@bindir@/ahwm
+	if [ ! -d @prefix@@mandir@/man5 ] ; then mkdir -m 755 -p @prefix@@mandir@/man5 ; fi
 	cp ./ahwmrc.5 @prefix@@mandir@/man5
 	chmod 644 @prefix@@mandir@/man5/ahwmrc.5
 	ln -s @prefix@@mandir@/man5/ahwmrc.5 @prefix@@mandir@/man5/ahwm.5
