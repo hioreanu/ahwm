@@ -116,7 +116,7 @@ typedef struct _client_t {
 
     /* user preferences */
     enum { ClickToFocus, SloppyFocus, DontFocus } focus_policy : 2;
-    enum { Fixed, Smart, Cascade } map_policy : 2; /* FIXME: mouse */
+    enum { Fixed, Smart, Cascade, Mouse } map_policy : 2;
     unsigned int has_titlebar : 1;
     unsigned int is_shaped : 1;
     unsigned int skip_alt_tab : 1;

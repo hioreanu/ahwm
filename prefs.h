@@ -70,10 +70,12 @@ struct _line {
 };
 
 struct _type {
-    enum { BOOLEAN, INTEGER, STRING } type_type;
+    enum { BOOLEAN, INTEGER, STRING, FOCUS_ENUM } type_type;
     union {
         int intval;
         char *stringval;
+        enum { TYPE_SLOPPY_FOCUS, TYPE_CLICK_TO_FOCUS,
+               TYPE_DONT_FOCUS } focus_enum;
     } type_value;
 };
 
@@ -95,7 +97,10 @@ struct _context {
 
 struct _option {
     enum { DISPLAYTITLEBAR,
+           OMNIPRESENT,
+           SKIPALTTAB,
            DEFAULTWORKSPACE,
+           FOCUSPOLICY,
            NUMBEROFWORKSPACES } option_name;
     type *option_value;
 };

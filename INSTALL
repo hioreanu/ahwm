@@ -8,9 +8,13 @@ man xwm
 The configure script has no special options.  If one of the above steps
 fails, contact me (Alex Hioreanu, hioreanu@uchicago.edu).
 
+If you do not have root access to the machine on which you wish to install
+xwm, you can use './configure --prefix=$HOME' instead of './configure'; the
+'make install' step only installs the xwm binary and a couple of man pages.
+
 After you've installed the program, you will need to change your window
 manager to be XWM.  The way this is done wholly depends on how your
-system is set up:
+system is set up; use one of the following guidelines:
 
 1. If you use XDM (or any XDM clone which provides a graphical login prompt),
    you will probably need to edit the file "~/.xsession"; somewhere in there

@@ -30,7 +30,7 @@ illustrating some more difficult points about the syntax.
 .br
 | binding \(lq;\(rq
 .IP "option = option\-name \(lq=\(rq type"
-.IP "option\-name = \(lq\fBTitlebar\fP\(rq"
+.IP "option\-name = \(lq\fBDisplayTitlebar\fP\(rq"
 .br
 | \(lq\fBMapPolicy\fP\(rq
 .br
@@ -101,13 +101,13 @@ of whether or not the transient window is shaped):
 .ft C
 IsShaped True {
 .br
-	Titlebar = True;
+	DisplayTitlebar = True;
 .br
 };
 .br
 TransientFor IsShaped True {
 .br
-	Titlebar = False;
+	DisplayTitlebar = False;
 .br
 };
 .PP
@@ -116,20 +116,20 @@ shaped windows (even those that are transient for another shaped
 window):
 .PP
 .ft C
-TransientFor IsShaped True { Titlebar = False; };
+TransientFor IsShaped True { DisplayTitlebar = False; };
 .br
-IsShaped True { Titlebar = True; };
+IsShaped True { DisplayTitlebar = True; };
 .PP
 To have titlebars on all shaped windows except those named 'oclock':
 .PP
 .ft C
 IsShaped True {
 .br
-	Titlebar = True;
+	DisplayTitlebar = True;
 .br
 	WindowName "oclock" {
 .br
-		Titlebar = False;
+		DisplayTitlebar = False;
 .br
 	};
 .br
@@ -138,17 +138,17 @@ IsShaped True {
 Note that this can be done in more than one way, such as:
 .PP
 .ft C
-\fCIsShaped True { Titlebar = True; };
+\fCIsShaped True { DisplayTitlebar = True; };
 .br
-WindowName "oclock" { Titlebar = False; };
+WindowName "oclock" { DisplayTitlebar = False; };
 .PP
 Both of the above ways are equally efficient.  Note that the following
 is NOT equivalent to the above two:
 .PP
 .ft C
-\fCWindowName "oclock" { Titlebar = False; };
+\fCWindowName "oclock" { DisplayTitlebar = False; };
 .br
-IsShaped True { Titlebar = True; };
+IsShaped True { DisplayTitlebar = True; };
 .PP
 This will make "oclock" have a titlebar since it is a shaped window and
 the contexts are evaluated in order whenever a window is mapped.
@@ -156,15 +156,15 @@ the contexts are evaluated in order whenever a window is mapped.
 To give another example of how order matters, consider the following:
 .PP
 .ft C
-\fCTitlebar = True;
+\fCDisplayTitlebar = True;
 .br
 Workspace 7 {
 .br
-	Titlebar = False;
+	DisplayTitlebar = False;
 .br
 	Class "XTerm" {
 .br
-		Titlebar = True;
+		DisplayTitlebar = True;
 .br
 	};
 .br
@@ -172,7 +172,7 @@ Workspace 7 {
 .br
 Class "XTerm" {
 .br
-	Titlebar = False;
+	DisplayTitlebar = False;
 .br
 };
 .PP
@@ -228,13 +228,53 @@ This section describes all the available \fBoptions\fP \(em an
 \fBtype\fP, which is indicated after the option name.
 
 .TP
-.BI "TitleBar " (boolean)
+.BI "DisplayTitleBar " (boolean)
 Specifies whether or not a window will have a titlebar.  Default: True for
 non-shaped windows, False for shaped windows.
 .TP
 .BI "DefaultWorkspace " (integer)
 Specifies the workspace for new windows.  Use zero to map to the current
 workspace.  Default: zero.
+.TP
+.BI "FocusPolicy " "({ClickToFocus, SloppyFocus, DontFocus})"
+The focus policy states how a window may be focused using the mouse.  The
+currently focused window is the window which receives keyboard input.
+
+With the SloppyFocus policy, a window is focused if you move the pointer
+into the window.  Note that the focus will only be changed when you move
+the pointer; the focus will not be changed when a window is unmapped or
+when a window resizes itself to be under the pointer.  This behaviour is
+very different from the sloppy focus policies of other window managers.
+The window will be raised according to \fBRaiseDelay\fP.
+
+With the ClickToFocus policy, a window is focused and raised if you
+click on it.  This is what users of propietary non-unix operating
+systems expect.  The focusing click may or may not be passed to the
+window, depending on the value of \fBPassFocusClick\fP.
+
+With the DontFocus policy, the window is never focused.  A window with the
+focus policy set to DontFocus will be exluded from the alt-tab list (so this
+focus policy implies SkipAltTab).
+
+The default value of \fBFocusPolicy\fP is ClickToFocus.
+
+.B Rationale:
+The keyboard input should never be thrown away if there is some window
+which accepts keyboard input; thus the root window is never focused.
+If you need to clean your keycaps, you can unplug your keyboard or switch
+to a workspace with no windows.
+
+While many users are used to ClickToFocus, certain unix applications
+are much easier to use with sloppy focus (or vice-versa); thus, a window
+manager should allow the focus policy to be set per-window.
+
+All other window managers implement sloppy focus very poorly and
+make it difficult to use.  The implementation difficulties arise from
+distinguishing the user moving the mouse from a window resizing itself
+to be under the mouse or a window unmapping itself, leaving some other
+window under the mouse.  One of the primary reasons for writting XWM
+was to implement sloppy focus correctly.
+
 .TP
 .BI "NumberOfWorkspaces " (integer)
 Specifies the number of workspaces.  This option only has an effect in the

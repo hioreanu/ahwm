@@ -80,8 +80,15 @@ DIGIT [0-9]
 }
 
 DisplayTitleBar { return TOK_DISPLAYTITLEBAR; }
+SkipAltTab { return TOK_SKIP_ALT_TAB; }
+Omnipresent { return TOK_OMNIPRESENT; }
 DefaultWorkspace { return TOK_DEFAULTWORKSPACE; }
 NumberOfWorkspaces { return TOK_NUMBEROFWORKSPACES; }
+FocusPolicy { return TOK_FOCUS_POLICY; }
+
+SloppyFocus { return TOK_SLOPPY_FOCUS; }
+ClickToFocus { return TOK_CLICK_TO_FOCUS; }
+DontFocus { return TOK_DONT_FOCUS; }
 
 True { return TOK_TRUE; }
 False { return TOK_FALSE; }

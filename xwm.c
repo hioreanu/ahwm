@@ -309,9 +309,7 @@ int main(int argc, char **argv)
                resize_maximize, NULL);
 
     focus_init();
-    printf("Start parsing\n");
     prefs_init();
-    printf("Done parsing\n");
     scan_windows();
     
     xfd = ConnectionNumber(dpy);

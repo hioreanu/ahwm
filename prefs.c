@@ -43,16 +43,19 @@
 
 #include "prefs.h"
 #include "parser.h"
+#include "debug.h"
+#include "workspace.h"
 
 #define CHECK_BOOL(x) ((x)->type_type == BOOLEAN ? True : False)
 #define CHECK_STRING(x) ((x)->type_type == STRING ? True : False)
 #define CHECK_INT(x) ((x)->type_type == INTEGER ? True : False)
 
-/* FIXMENOW: need is_shaped as attribute of client_t */
-
 typedef struct _prefs {
     Bool titlebar;
+    Bool omnipresent;
+    Bool skip_alt_tab;
     int workspace;
+    int focus_policy;
 } prefs;
 
 static void get_int(type *typ, int *val);
@@ -77,7 +80,10 @@ static void prefs_apply_internal(client_t *client, line *block, prefs *p);
 static line *defaults, *contexts;
 int pref_no_workspaces = 7;
 Bool pref_display_titlebar = True;
+Bool pref_omnipresent = False;
+Bool pref_skip_alt_tab = False;
 int pref_default_workspace = 0;
+int pref_default_focus_policy = TYPE_SLOPPY_FOCUS;
 
 void prefs_init()
 {
@@ -99,7 +105,9 @@ void prefs_init()
                 buf, strerror(errno));
         return;
     }
+    debug("Start parsing\n");
     yyparse();
+    debug("Done parsing\n");
 
     preferences = type_check(preferences);
 
@@ -118,9 +126,17 @@ void prefs_init()
                 break;
             case OPTION:
                 switch (lp->line_value.option->option_name) {
-                    case TITLEBAR:
+                    case DISPLAYTITLEBAR: /* FIXMENOW:  not DISPLAYTITLEBAR??? */
                         get_bool(lp->line_value.option->option_value,
                                  &pref_display_titlebar);
+                        break;
+                    case OMNIPRESENT:
+                        get_bool(lp->line_value.option->option_value,
+                                 &pref_omnipresent);
+                        break;
+                    case SKIPALTTAB:
+                        get_bool(lp->line_value.option->option_value,
+                                 &pref_skip_alt_tab);
                         break;
                     case DEFAULTWORKSPACE:
                         get_int(lp->line_value.option->option_value,
@@ -129,6 +145,10 @@ void prefs_init()
                     case NUMBEROFWORKSPACES:
                         get_int(lp->line_value.option->option_value,
                                 &pref_no_workspaces);
+                        break;
+                    case FOCUSPOLICY:
+                        get_int(lp->line_value.option->option_value,
+                                &pref_default_focus_policy);
                         break;
                 }
                 break;
@@ -236,13 +256,39 @@ static Bool type_check_option(option *opt)
     switch (opt->option_name) {
         case DISPLAYTITLEBAR:
             if ( (retval = CHECK_BOOL(opt->option_value)) == False) {
-                fprintf(stderr, "XWM: error\n");
+                fprintf(stderr,
+                        "XWM:  DisplayTitlebar not given boolean value\n");
+            }
+            break;
+        case OMNIPRESENT:
+            if ( (retval = CHECK_BOOL(opt->option_value)) == False) {
+                fprintf(stderr,
+                        "XWM: Omnipresent not given boolean value\n");
+            }
+            break;
+        case SKIPALTTAB:
+            if ( (retval = CHECK_BOOL(opt->option_value)) == False) {
+                fprintf(stderr,
+                        "XWM: SkipAltTab not given boolean value\n");
             }
             break;
         case DEFAULTWORKSPACE:
             if ( (retval = CHECK_INT(opt->option_value)) == False) {
-                fprintf(stderr, "XWM: error\n");
+                fprintf(stderr,
+                        "XWM: DefaultWorkspace not given integer value\n");
             }
+            break;
+        case FOCUSPOLICY:
+            if (opt->option_value->type_type != FOCUS_ENUM) {
+                fprintf(stderr, "XWM:  Unknown type for FocusPolicy\n");
+                retval = False;
+            } else {
+                retval = True;
+            }
+            break;
+        default:
+            fprintf(stderr, "XWM: unknown option type found...\n");
+            retval = False;
             break;
     }
     return retval;
@@ -334,18 +380,20 @@ void prefs_apply(client_t *client)
 {
     prefs p;
 
-    printf("prefs_apply\n");
     p.titlebar = pref_display_titlebar;
+    p.omnipresent = pref_omnipresent;
+    p.skip_alt_tab = pref_skip_alt_tab;
     p.workspace = pref_default_workspace;
+    p.focus_policy = pref_default_focus_policy;
 
     prefs_apply_internal(client, contexts, &p);
 
     if (client->state == WithdrawnState) {
         client->workspace = p.workspace;
     }
-    printf("client '%s' (%s,%s) %s a titlebar\n",
+    debug(("client '%s' (%s,%s) %s a titlebar\n",
            client->name, client->class, client->instance,
-           p.titlebar ? "HAS" : "DOES NOT HAVE");
+           p.titlebar ? "HAS" : "DOES NOT HAVE"));
     if (p.titlebar == True) {
         if (!client->has_titlebar) {
             client->has_titlebar = 1;
@@ -356,6 +404,27 @@ void prefs_apply(client_t *client)
             client->has_titlebar = 0;
             if (client->frame != None) client_remove_titlebar(client);
         }
+    }
+    if (p.skip_alt_tab) {
+        client->skip_alt_tab = 1;
+    } else {
+        client->skip_alt_tab = 0;
+    }
+    if (p.omnipresent) {
+        client->omnipresent = 1;
+    } else {
+        client->omnipresent = 0;
+    }
+    switch (p.focus_policy) {
+        case TYPE_SLOPPY_FOCUS:
+            client->focus_policy = SloppyFocus;
+            break;
+        case TYPE_CLICK_TO_FOCUS:
+            client->focus_policy = ClickToFocus;
+            break;
+        case TYPE_DONT_FOCUS:
+            client->focus_policy = DontFocus;
+            break;
     }
 }
 
@@ -399,7 +468,7 @@ static void prefs_apply_internal(client_t *client, line *block, prefs *p)
 static void get_int(type *typ, int *val)
 {
     *val = 0;
-    if (typ->type_type == STRING) {
+    if (typ->type_type == INTEGER || typ->type_type == FOCUS_ENUM) {
         *val = typ->type_value.intval;
     }
 }
@@ -457,11 +526,16 @@ static Bool context_applies(client_t *client, context *cntxt)
         cntxt->context_selector = orig_selector;
     } else if (cntxt->context_selector & SEL_ISSHAPED) {
         get_bool(cntxt->context_value, &type_bool);
-        /* FIXMENOW */
         retval = client->is_shaped == (type_bool == True ? 1 : 0);
     } else if (cntxt->context_selector & SEL_INWORKSPACE) {
         get_int(cntxt->context_value, &type_int);
-        retval = client->workspace == (unsigned)type_int;
+        if (client->workspace == 0) {
+            retval = workspace_current == (unsigned)type_int;
+        } else if (client->omnipresent == 1) {
+            retval = True;
+        } else {
+            retval = client->workspace == (unsigned)type_int;
+        }
     } else if (cntxt->context_selector & SEL_WINDOWNAME) {
         get_string(cntxt->context_value, &type_string);
         retval = !(strcmp(client->name, type_string));
@@ -471,8 +545,8 @@ static Bool context_applies(client_t *client, context *cntxt)
         } else {
             get_string(cntxt->context_value, &type_string);
             retval = !(strcmp(client->class, type_string));
-            printf("Using window class (%s, %s), returning %d\n",
-                   client->class, type_string, retval);
+            debug(("Using window class (%s, %s), returning %d\n",
+                   client->class, type_string, retval));
         }
     } else if (cntxt->context_selector & SEL_WINDOWINSTANCE) {
         if (client->instance == NULL) {
@@ -499,10 +573,19 @@ static void option_apply(client_t *client, option *opt, prefs *p)
         case DISPLAYTITLEBAR:
             get_bool(opt->option_value, &p->titlebar);
             break;
+        case OMNIPRESENT:
+            get_bool(opt->option_value, &p->omnipresent);
+            break;
+        case SKIPALTTAB:
+            get_bool(opt->option_value, &p->skip_alt_tab);
+            break;
         case DEFAULTWORKSPACE:
             if (client->state == WithdrawnState) {
                 get_int(opt->option_value, &p->workspace);
             }
+            break;
+        case FOCUSPOLICY:
+            get_int(opt->option_value, &p->focus_policy);
             break;
     }
 }

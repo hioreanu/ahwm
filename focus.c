@@ -499,6 +499,7 @@ void focus_alt_tab(XEvent *xevent, void *v)
                     } else {
                         node = get_next(node);
                     }
+                    /* FIXME:  aren't we checking this twice? */
                     if (!(node->client->skip_alt_tab
                           || node->client->focus_policy == DontFocus))
                         focus_set_internal(node, event_timestamp, False);

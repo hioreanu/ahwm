@@ -43,6 +43,7 @@
 #include "xwm.h"
 #include "malloc.h"
 #include "debug.h"
+#include "focus.h"
 
 #ifndef MIN
 #define MIN(x,y) ((x) < (y) ? (x) : (y))
@@ -190,7 +191,7 @@ void move_client(XEvent *xevent, void *v)
         init_button = xevent->xbutton.button;
         have_mouse = 1;
     } else if (xevent->type == KeyPress) {
-        client = client_find(xevent->xkey.window);
+        client = focus_current;
         have_mouse = 0;
     } else {
         fprintf(stderr, "XWM: Error, move_client called incorrectly\n");
@@ -527,7 +528,7 @@ void resize_client(XEvent *xevent, void *v)
                               xevent->xbutton.y_root);
     } else if (xevent->type == KeyPress) {
         have_mouse = 0;
-        client = client_find(xevent->xkey.window);
+        client = focus_current;
         if (client != NULL) {
             x_start = client->x + client->width;
             y_start = client->y + client->height;
