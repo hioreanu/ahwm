@@ -85,8 +85,8 @@ int main(int argc, char **argv)
     xfd = ConnectionNumber(dpy);
     printf("xfd = %d\n", xfd);
     for (;;) {
-        event_get(xfd, &event);
-        event_dispatch(&event);
+        event_get(xfd, &event); /* event.c */
+        event_dispatch(&event); /* event.c */
     }
 }
 
