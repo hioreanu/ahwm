@@ -10,6 +10,7 @@
 #include "event.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <X11/keysym.h>
 
 #ifndef MIN
 #define MIN(x,y) ((x) < (y) ? (x) : (y))
@@ -55,7 +56,7 @@ typedef enum {
 static XEvent *compress_motion(XEvent *xevent);
 static void process_resize(client_t *client, int new_x, int new_y,
                            resize_direction_t direction,
-                           quadrant_t quadrant,
+                           resize_direction_t old_direction,
                            int *old_x, int *old_y,
                            position_size *orig,
                            resize_ordinal_t ordinal);
@@ -64,6 +65,10 @@ static void display_geometry(char *s, client_t *client);
 static void get_display_width_height(client_t *client, int *w, int *h);
 static void drafting_lines(client_t *client, resize_direction_t direction,
                            int x1, int y1, int x2, int y2);
+static void draw_arrowhead(int x, int y, resize_direction_t direction);
+static void xrefresh();
+static void cycle_resize_direction(resize_direction_t *current,
+                                   resize_direction_t *old);
 
 /*
  * windowmaker grabs the server while processing the motion events for
@@ -244,8 +249,7 @@ void mouse_move_client(XEvent *xevent)
     
 
 /*
- * this gets a bit hairy...similar to the move window code above but a
- * bit more complex
+ * WARNING:  this gets really, really ugly from here on
  */
 
 /*
@@ -259,10 +263,17 @@ void mouse_resize_client(XEvent *xevent)
     static client_t *client = NULL;
     static int x_start, y_start;
     static resize_direction_t resize_direction = UNKNOWN;
+    static resize_direction_t old_resize_direction = UNKNOWN;
     static quadrant_t quadrant = IV;
     static position_size orig;
+    static int keycode_Escape = 0, keycode_Shift_L, keycode_Shift_R;
     XEvent event1;
-    
+
+    if (keycode_Escape == 0) {
+        keycode_Escape = XKeysymToKeycode(dpy, XK_Escape);
+        keycode_Shift_L = XKeysymToKeycode(dpy, XK_Shift_L);
+        keycode_Shift_R = XKeysymToKeycode(dpy, XK_Shift_R);
+    }
     do {
         switch (xevent->type) {
             case EnterNotify:
@@ -313,8 +324,11 @@ void mouse_resize_client(XEvent *xevent)
                                      GrabModeAsync, GrabModeAsync, None,
                                      cursor_direction_map[resize_direction],
                                      CurrentTime);
+                        XGrabKeyboard(dpy, root_window, True,
+                                      GrabModeAsync, GrabModeAsync,
+                                      CurrentTime);
                         process_resize(client, x_start, y_start,
-                                       resize_direction, quadrant,
+                                       resize_direction, old_resize_direction,
                                        &x_start, &y_start, &orig, FIRST);
                         
                     } else {
@@ -327,7 +341,25 @@ void mouse_resize_client(XEvent *xevent)
 #endif /* DEBUG */
                 }
                 break;
-            
+
+            case KeyPress:
+                if (xevent->xkey.keycode == keycode_Escape) {
+                    goto reset;
+                } else if (xevent->xkey.keycode == keycode_Shift_L ||
+                           xevent->xkey.keycode == keycode_Shift_R) {
+                    cycle_resize_direction(&resize_direction,
+                                           &old_resize_direction);
+                    XChangeActivePointerGrab(dpy,
+                       PointerMotionMask | ButtonPressMask | ButtonReleaseMask,
+                       cursor_direction_map[resize_direction], CurrentTime);
+                    xrefresh();
+                    process_resize(client, x_start, y_start, resize_direction,
+                                   old_resize_direction, &x_start, &y_start,
+                                   &orig, FIRST);
+                } else {
+                    event_dispatch(xevent);
+                }
+                break;
             case MotionNotify:
                 xevent = compress_motion(xevent);
 
@@ -349,7 +381,8 @@ void mouse_resize_client(XEvent *xevent)
 #endif /* DEBUG */
                 process_resize(client, xevent->xbutton.x_root,
                                xevent->xbutton.y_root, resize_direction,
-                               quadrant, &x_start, &y_start, &orig, MIDDLE);
+                               old_resize_direction, &x_start, &y_start,
+                               &orig, MIDDLE);
                 break;
             case ButtonRelease:
                 if (client == NULL) {
@@ -358,7 +391,8 @@ void mouse_resize_client(XEvent *xevent)
                 }
                 process_resize(client, xevent->xmotion.x_root,
                                xevent->xmotion.y_root, resize_direction,
-                               quadrant, &x_start, &y_start, &orig, LAST);
+                               old_resize_direction, &x_start, &y_start,
+                               &orig, LAST);
                 goto done;
             
                 break;
@@ -379,7 +413,11 @@ void mouse_resize_client(XEvent *xevent)
     return;
     
  reset:
-    XClearWindow(dpy, root_window);
+    xrefresh();
+    client->x = orig.x;
+    client->y = orig.y;
+    client->width = orig.width;
+    client->height = orig.height;
 
  done:
 
@@ -388,7 +426,7 @@ void mouse_resize_client(XEvent *xevent)
                           client->width, client->height);
         XResizeWindow(dpy, client->window, client->width,
                       client->height - TITLE_HEIGHT);
-        if (client->name != NULL) free(client->name);
+        if (client->name != NULL) free(client->name); /* FIXME */
         client_set_name(client);
         client_paint_titlebar(client);
     }
@@ -401,6 +439,7 @@ void mouse_resize_client(XEvent *xevent)
     x_start = y_start = -1;
     resize_direction = UNKNOWN;
     XUngrabPointer(dpy, CurrentTime);
+    XUngrabKeyboard(dpy, CurrentTime);
 }
 
 void mouse_handle_event(XEvent *xevent)
@@ -420,6 +459,95 @@ void mouse_handle_event(XEvent *xevent)
         printf("\tIgnoring unknown mouse event\n");
 #endif /* DEBUG */
     }
+}
+
+/*
+ * SW -> SOUTH -> WEST -> SW -> ....
+ * SE -> SOUTH -> EAST -> SW -> ....
+ * NE -> NORTH -> EAST -> NE -> ....
+ * NW -> NORTH -> WEST -> NW -> ....
+ */
+
+static void cycle_resize_direction(resize_direction_t *current,
+                                   resize_direction_t *old)
+{
+    resize_direction_t tmp;
+    
+    switch (*current) {
+        case SW:
+            *old = SW;
+            *current = SOUTH;
+            break;
+        case NW:
+            *old = NW;
+            *current = NORTH;
+            break;
+        case NE:
+            *old = NE;
+            *current = NORTH;
+            break;
+        case SE:
+            *old = SE;
+            *current = SOUTH;
+            break;
+        case SOUTH:
+        case NORTH:
+            tmp = *current;
+            switch (*old) {
+                case NW:
+                case SW:
+                    *current = WEST;
+                    break;
+                case NE:
+                case SE:
+                default:
+                    *current = EAST;
+            }
+            *old = tmp;
+            break;
+        case EAST:
+            if (*old == NORTH)
+                *current = NE;
+            else
+                *current = SE;
+            *old = EAST;
+            break;
+        case WEST:
+            if (*old == NORTH)
+                *current = NW;
+            else
+                *current = SW;
+            *old = WEST;
+            break;
+        default:
+    }
+}
+
+/*
+ * works just like the program of the same name; we use this instead
+ * of an XClearWindow() as we may have drawn on a number of windows
+ * and this seems faster than walking the window tree and generating
+ * expose events
+ * 
+ * FIXME:  test speed compared to XQueryTree()
+ */
+
+static void xrefresh()
+{
+    XSetWindowAttributes xswa;
+    Window w;
+
+    xswa.override_redirect = True;
+    xswa.backing_store = NotUseful;
+    xswa.save_under = False;
+    w = XCreateWindow(dpy, root_window, 0, 0,
+                      DisplayWidth(dpy, scr), DisplayHeight(dpy, scr),
+                      0, DefaultDepth(dpy, scr), InputOutput,
+                      DefaultVisual(dpy, scr),
+                      CWOverrideRedirect | CWBackingStore | CWSaveUnder,
+                      &xswa);
+    XMapWindow(dpy, w);
+    XUnmapWindow(dpy, w);
 }
 
 /* compress motion events, idea taken from windowmaker */
@@ -448,9 +576,21 @@ static XEvent *compress_motion(XEvent *xevent)
     return xevent;
 }
 
+/*
+ * Does two things:
+ * 1. Examines the previous configuration and sees if we can resize
+ * now or if we need a few more points to resize because of the
+ * client's width and height increment hints
+ * 2. Visually displays information about the client's size
+ * 
+ * The ordinal argument must be FIRST if this is the first time the
+ * function is called for a particular resize, or LAST if this will be
+ * the last time the function is called for a resize.
+ */
+
 static void process_resize(client_t *client, int new_x, int new_y,
                            resize_direction_t direction,
-                           quadrant_t quadrant,
+                           resize_direction_t old_direction,
                            int *old_x, int *old_y,
                            position_size *orig, resize_ordinal_t ordinal)
 {
@@ -583,13 +723,18 @@ static void process_resize(client_t *client, int new_x, int new_y,
         if (ordinal != FIRST) {
             XDrawLine(dpy, root_window, root_invert_gc,
                       x, y, x + w, y);
-            if (direction == NORTH || direction == NW || direction == NE)
+            if ((direction == NW || direction == NE)
+                || ((old_direction == NORTH)
+                    && (direction == EAST || direction == WEST)))
                 drafting_lines(client, NORTH, x, y, x + w, y);
+            
         }
         if (ordinal != LAST) {
             XDrawLine(dpy, root_window, root_invert_gc, client->x,
                       client->y, client->x + client->width, client->y);
-            if (direction == NORTH || direction == NW || direction == NE)
+            if ((direction == NW || direction == NE)
+                || ((old_direction == NORTH)
+                    && (direction == EAST || direction == WEST)))
                 drafting_lines(client, NORTH, client->x, client->y,
                                client->x + client->width, client->y);
         }
@@ -600,7 +745,9 @@ static void process_resize(client_t *client, int new_x, int new_y,
         if (ordinal != FIRST) {
             XDrawLine(dpy, root_window, root_invert_gc,
                       x, y + h, x + w, y + h);
-            if (direction == SOUTH || direction == SW || direction == SE)
+            if ((direction == SW || direction == SE)
+                || ((old_direction == SOUTH)
+                    && (direction == WEST || direction == EAST)))
                 drafting_lines(client, SOUTH, x, y + h, x + w, y + h);
         }
         if (ordinal != LAST) {
@@ -608,7 +755,9 @@ static void process_resize(client_t *client, int new_x, int new_y,
                       client->x, client->y + client->height,
                       client->x + client->width,
                       client->y + client->height);
-            if (direction == SOUTH || direction == SW || direction == SE)
+            if ((direction == SW || direction == SE)
+                || ((old_direction == SOUTH)
+                    && (direction == WEST || direction == EAST)))
                 drafting_lines(client, SOUTH, client->x,
                                client->y + client->height,
                                client->x + client->width,
@@ -621,7 +770,9 @@ static void process_resize(client_t *client, int new_x, int new_y,
         if (ordinal != FIRST) {
             XDrawLine(dpy, root_window, root_invert_gc,
                       x, y, x, y + h);
-            if (direction == WEST || direction == NW || direction == SW)
+            if ((direction == NW || direction == SW)
+                || ((old_direction == NW || old_direction == SW)
+                    && (direction == NORTH || direction == SOUTH)))
                 drafting_lines(client, WEST, x, y, x, y + h);
                 
         }
@@ -629,7 +780,9 @@ static void process_resize(client_t *client, int new_x, int new_y,
             XDrawLine(dpy, root_window, root_invert_gc,
                       client->x, client->y, client->x,
                       client->y + client->height);
-            if (direction == WEST || direction == NW || direction == SW)
+            if ((direction == NW || direction == SW)
+                || ((old_direction == NW || old_direction == SW)
+                    && (direction == NORTH || direction == SOUTH)))
                 drafting_lines(client, WEST, client->x, client->y,
                                client->x, client->y + client->height);
         }
@@ -640,7 +793,9 @@ static void process_resize(client_t *client, int new_x, int new_y,
         if (ordinal != FIRST) {
             XDrawLine(dpy, root_window, root_invert_gc,
                       x + w, y, x + w, y + h);
-            if (direction == EAST || direction == NE || direction == SE)
+            if ((direction == NE || direction == SE)
+                || ((old_direction == NE || old_direction == SE)
+                    && (direction == NORTH || direction == SOUTH)))
                 drafting_lines(client, EAST, x + w, y, x + w, y + h);
         }
         if (ordinal != LAST) {
@@ -649,7 +804,9 @@ static void process_resize(client_t *client, int new_x, int new_y,
                       client->y,
                       client->x + client->width,
                       client->y + client->height);
-            if (direction == EAST || direction == NE || direction == SE)
+            if ((direction == NE || direction == SE)
+                || ((old_direction == NE || old_direction == SE)
+                    && (direction == NORTH || direction == SOUTH)))
                 drafting_lines(client, EAST, client->x + client->width,
                       client->y, client->x + client->width,
                       client->y + client->height);
@@ -662,6 +819,11 @@ static void process_resize(client_t *client, int new_x, int new_y,
     }
 
 }
+
+/*
+ * Get two integers which should be displayed to the user to indicate
+ * the width and height (think xterm)
+ */
 
 static void get_display_width_height(client_t *client, int *w, int *h)
 {
@@ -677,7 +839,15 @@ static void get_display_width_height(client_t *client, int *w, int *h)
     *h = (client->height - TITLE_HEIGHT) / h_inc;
 }
 
-#define DRAFTING_OFFSET 16
+/*
+ * Utility function for resize.  Draws some pretty little lines and
+ * stuff that I find really help when resizing.  The direction
+ * indicates for which side of the client this is to be done and the
+ * coordinates define a line which is the side we are to draw.  NB:
+ * the line defined by the coordinates need not be the same as the
+ * geometry in the client structure - we also call this function to
+ * draw over a previous display since we use the inverting GC.
+ */
 
 static void drafting_lines(client_t *client, resize_direction_t direction,
                            int x1, int y1, int x2, int y2)
@@ -738,6 +908,10 @@ static void drafting_lines(client_t *client, resize_direction_t direction,
                     x2 - x_room,
                     ((y2 + y1) / 2) + (y_room - 1),
                     label, strlen(label));
+        XDrawLine(dpy, root_window, root_invert_gc,
+                  x1 + x_room, y1, x1 - x_room, y1);
+        XDrawLine(dpy, root_window, root_invert_gc,
+                  x1 + x_room, y2, x1 - x_room, y2);
         draw_arrowhead(x1, y1, NORTH);
         draw_arrowhead(x2, y2, SOUTH);
     } else if (direction == EAST) {
@@ -753,6 +927,10 @@ static void drafting_lines(client_t *client, resize_direction_t direction,
                     x2 - x_room,
                     ((y2 + y1) / 2) + (y_room - 1),
                     label, strlen(label));
+        XDrawLine(dpy, root_window, root_invert_gc,
+                  x1 + x_room, y1, x1 - x_room, y1);
+        XDrawLine(dpy, root_window, root_invert_gc,
+                  x1 + x_room, y2, x1 - x_room, y2);
         draw_arrowhead(x1, y1, NORTH);
         draw_arrowhead(x2, y2, SOUTH);
     } else if (direction == NORTH) {
@@ -767,6 +945,10 @@ static void drafting_lines(client_t *client, resize_direction_t direction,
         XDrawString(dpy, root_window, root_invert_gc,
                     ((x2 + x1) / 2) - (x_room - 1),
                     y2 + y_room, label, strlen(label));
+        XDrawLine(dpy, root_window, root_invert_gc,
+                  x1, y1 + y_room, x1, y1 - y_room);
+        XDrawLine(dpy, root_window, root_invert_gc,
+                  x2, y2 + y_room, x2, y2 - y_room);
         draw_arrowhead(x1, y1, WEST);
         draw_arrowhead(x2, y2, EAST);
     } else if (direction == SOUTH) {
@@ -779,22 +961,30 @@ static void drafting_lines(client_t *client, resize_direction_t direction,
         XDrawString(dpy, root_window, root_invert_gc,
                     ((x2 + x1) / 2) - (x_room - 1),
                     y2 + y_room, label, strlen(label));
+        XDrawLine(dpy, root_window, root_invert_gc,
+                  x1, y1 + y_room, x1, y1 - y_room);
+        XDrawLine(dpy, root_window, root_invert_gc,
+                  x2, y2 + y_room, x2, y2 - y_room);
         draw_arrowhead(x1, y1, WEST);
         draw_arrowhead(x2, y2, EAST);
     }
 }
 
-/* took me a half hour to draw this thing in 'bitmap'
- * I suck at this artsy stuff */
+/*
+ * This draws an arrowhead pointing in the direction specified, and
+ * does not draw on top of the line already there.  I took a technical
+ * drawing class in high school - the arrowheads are supposed to be
+ * drawn at a 30 degree angle and are filled.  This also fills the
+ * given point since we just drew a line there (remember, all the
+ * drawing operations invert).
+ */
 /* we just draw a bunch of lines instead of using a pixmap, this is a
- * very small image */
-
-#define INVSQRT3 0.577350269189625764509148780502 /* = (1 / sqrt(3)) */
-#define SQRT3 1.732050807568877293527446341505
-#define ARROWHEAD_LENGTH 8
-
+ * very small image; using lines instead of specifying each point saves
+ * some time in this program, but it may put some more stress on the X
+ * server if it has to do the line computations in software. */
 static void draw_arrowhead(int x, int y, resize_direction_t direction)
 {
+    XDrawPoint(dpy, root_window, root_invert_gc, x, y);
     
     if (direction == WEST) {
         XDrawLine(dpy, root_window, root_invert_gc,
@@ -865,74 +1055,12 @@ static void draw_arrowhead(int x, int y, resize_direction_t direction)
         XDrawPoint(dpy, root_window, root_invert_gc,
                    x - 4, y - 8);
     }
-    
-#if 0
-    XPoint above[3];
-    XPoint below[3];
-    
-//    if (direction == NORTH) {
-        above[0].x = x + 1;
-        above[0].y = y + 1;
-        above[1].x = ARROWHEAD_LENGTH + 1;
-        above[1].y = 0;
-        above[2].x = 0;
-        above[2].y = -((ARROWHEAD_LENGTH + 1) / SQRT3);
-        below[0].x = x - 1;
-        below[0].y = y - 1;
-        below[1].x = ARROWHEAD_LENGTH + 1;
-        below[1].y = 0;
-        below[2].x = 0;
-        below[2].y = (ARROWHEAD_LENGTH + 1) / SQRT3;
-//    }
-    
-    
-    XFillPolygon(dpy, root_window, root_invert_gc,
-                 above, 3, Convex, CoordModePrevious);
-    XFillPolygon(dpy, root_window, root_invert_gc,
-                 below, 3, Convex, CoordModePrevious);
-    
-#endif
-#if 0
-#define ARROWHEAD_NO_LINES 3
-    int i;
-    
-    if (direction == WEST) {
-        for (i = 1; i < ARROWHEAD_NO_LINES + 1; i++) {
-            
-
-
-
-            
-            XDrawLine(dpy, root_window, root_invert_gc,
-                      x + i, y + i, x + ARROWHEAD_NO_LINES, y + i);
-            XDrawLine(dpy, root_window, root_invert_gc,
-                      x + i, y - i, x + ARROWHEAD_NO_LINES, y - i);
-        }
-    } else if (direction == EAST) {
-        for (i = 1; i < ARROWHEAD_NO_LINES + 1; i++) {
-            XDrawLine(dpy, root_window, root_invert_gc,
-                      x - ARROWHEAD_NO_LINES, y + i, x - i, y + i);
-            XDrawLine(dpy, root_window, root_invert_gc,
-                      x - ARROWHEAD_NO_LINES, y - i, x - i, y - i);
-        }
-    } else if (direction == NORTH) {
-        for (i = 1; i < ARROWHEAD_NO_LINES + 1; i++) {
-            XDrawLine(dpy, root_window, root_invert_gc,
-                      x + i, y + i, x + i, y + ARROWHEAD_NO_LINES);
-            XDrawLine(dpy, root_window, root_invert_gc,
-                      x - i, y + i, x - i, y + ARROWHEAD_NO_LINES);
-        }
-    } else if (direction == SOUTH) {
-        for (i = 1; i < ARROWHEAD_NO_LINES + 1; i++) {
-            XDrawLine(dpy, root_window, root_invert_gc,
-                      x + i, y - i, x + i, y - ARROWHEAD_NO_LINES);
-            XDrawLine(dpy, root_window, root_invert_gc,
-                      x - i, y - i, x - i, y - ARROWHEAD_NO_LINES);
-        }
-    }
-#undef ARROWHEAD_NO_LINES
-#endif
 }
+
+/*
+ * changes the client's titlebar display to the geometry prefixed by a
+ * given string
+ */
 
 static void display_geometry(char *s, client_t *client)
 {
@@ -950,6 +1078,10 @@ static void display_geometry(char *s, client_t *client)
              client->x, client->y, width, height, s, client->instance);
     client_paint_titlebar(client);
 }
+
+/*
+ * returns the quadrant of the client that x and y are in
+ */
 
 static quadrant_t get_quadrant(client_t *client, int x, int y)
 {
