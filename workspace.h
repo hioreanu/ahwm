@@ -22,6 +22,8 @@
 
 extern int workspace_current;
 
+extern char* workspace_colors[NO_WORKSPACES];
+
 /*
  * move a client to a workspace and make it the top-level window in
  * the new workspace; void * argument is cast to integer

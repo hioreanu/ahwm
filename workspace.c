@@ -11,9 +11,23 @@
 #include "focus.h"
 #include "event.h"
 
+char *workspace_colors[NO_WORKSPACES] = {
+    "#080808",
+    "#2F4F4F",
+    "#000050",
+    "#500000",
+    "#500050",
+    "#A08000",
+    "#000000"
+};
+
+static unsigned long workspace_pixels[NO_WORKSPACES] = { 0 };
+
 int workspace_current = 1;
 
 static void must_focus_this_client(client_t *client);
+static void alloc_workspace_colors();
+static void update_workspace_color();
 
 void workspace_goto(XEvent *xevent, void *v)
 {
@@ -41,6 +55,8 @@ void workspace_goto(XEvent *xevent, void *v)
         }
     }
     workspace_current = new_workspace;
+    update_workspace_color();
+    
     client = focus_stacks[workspace_current - 1];
     if (client != NULL) {
         tmp = client;
@@ -134,4 +150,33 @@ static void must_focus_this_client(client_t *client)
 
     client->frame_event_mask &= ~StructureNotifyMask;
     XSelectInput(dpy, client->frame, client->frame_event_mask);
+}
+
+static void alloc_workspace_colors()
+{
+    int i;
+    XColor usable, exact;
+
+    for (i = 0; i < NO_WORKSPACES; i++) {
+        if (XAllocNamedColor(dpy, DefaultColormap(dpy, scr), workspace_colors[i],
+                             &usable, &exact) == 0) {
+            fprintf(stderr, "XWM: Could not get color \"%s\"\n",
+                    workspace_colors[i]);
+        }
+        workspace_pixels[i] = usable.pixel;
+    }
+}
+
+static void update_workspace_color()
+{
+    static Bool initialized = False;
+    XSetWindowAttributes xswa;
+
+    if (!initialized) {
+        alloc_workspace_colors();
+        initialized = True;
+    }
+    xswa.background_pixel = workspace_pixels[workspace_current - 1];
+    XChangeWindowAttributes(dpy, root_window, CWBackPixel, &xswa);
+    XClearWindow(dpy, root_window);
 }

@@ -174,7 +174,14 @@ void move_client(XEvent *xevent, void *v)
      * cause any problems: */
     /* focus_set(client); */
     /* focus_ensure(); */
-    XGrabPointer(dpy, root_window, True,
+
+    /* here we grab the pointer for the client window; it also works
+     * OK if we grab the root window or our frame, but it introduces a
+     * problem:  the client receives some stray LeaveNotify, FocusOut,
+     * EnterNotify and FocusIn events; in particular, xterm doesn't
+     * know how to deal with them and it will never correctly deal
+     * with a FocusOut event after the move. */
+    XGrabPointer(dpy, client->window, True,
                  PointerMotionMask | ButtonReleaseMask | ButtonPressMask,
                  GrabModeAsync, GrabModeAsync, None,
                  cursor_moving, CurrentTime);
@@ -297,10 +304,8 @@ void move_client(XEvent *xevent, void *v)
                            xevent->xkey.keycode == keycode_Control_R) {
                     action = RESIZE;
                     break;
-                } else {
-                    /* can still use alt-tab, etc. while moving */
-                    event_dispatch(xevent);
                 }
+                /* disallow other windowmanager commands while moving */
                 break;
 
             case ButtonRelease:
@@ -473,7 +478,7 @@ void resize_client(XEvent *xevent, void *v)
     orig.width = client->width;
     orig.height = client->height;
     if (have_mouse) {
-        XGrabPointer(dpy, root_window, True,
+        XGrabPointer(dpy, client->window, True,
                      PointerMotionMask | ButtonPressMask
                      | ButtonReleaseMask,
                      GrabModeAsync, GrabModeAsync, None,
@@ -481,7 +486,7 @@ void resize_client(XEvent *xevent, void *v)
                      CurrentTime);
     } else {
         /* different cursor */        
-        XGrabPointer(dpy, root_window, True,
+        XGrabPointer(dpy, client->window, True,
                      PointerMotionMask | ButtonPressMask
                      | ButtonReleaseMask,
                      GrabModeAsync, GrabModeAsync, None,
@@ -506,8 +511,10 @@ void resize_client(XEvent *xevent, void *v)
         event_get(ConnectionNumber(dpy), &event1);
         xevent = &event1;
         switch (xevent->type) {
+            /* since we take over titlebar painting, also ignore Exposes */
             case EnterNotify:
             case LeaveNotify:
+            case Expose:
                 break;
 
             case ButtonPress:
@@ -657,10 +664,8 @@ void resize_client(XEvent *xevent, void *v)
                                    &x_start, &y_start, &orig, LAST);
                     action = MOVE;
                     break;
-                } else {
-                    /* can still use alt-tab while resizing */
-                    event_dispatch(xevent);
                 }
+                /* disallow other window manager commands while resizing */
                 break;
                 
             case MotionNotify:

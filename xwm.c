@@ -187,10 +187,30 @@ int main(int argc, char **argv)
                           workspace_client_moveto, (void *)1);
     keyboard_set_function("Control | Alt | 2", KEYBOARD_DEPRESS,
                           workspace_client_moveto, (void *)2);
+    keyboard_set_function("Control | Alt | 3", KEYBOARD_DEPRESS,
+                          workspace_client_moveto, (void *)3);
+    keyboard_set_function("Control | Alt | 4", KEYBOARD_DEPRESS,
+                          workspace_client_moveto, (void *)4);
+    keyboard_set_function("Control | Alt | 5", KEYBOARD_DEPRESS,
+                          workspace_client_moveto, (void *)5);
+    keyboard_set_function("Control | Alt | 6", KEYBOARD_DEPRESS,
+                          workspace_client_moveto, (void *)6);
+    keyboard_set_function("Control | Alt | 7", KEYBOARD_DEPRESS,
+                          workspace_client_moveto, (void *)7);
     keyboard_set_function("Alt | 1", KEYBOARD_DEPRESS,
                           workspace_goto, (void *)1);
     keyboard_set_function("Alt | 2", KEYBOARD_DEPRESS,
                           workspace_goto, (void *)2);
+    keyboard_set_function("Alt | 3", KEYBOARD_DEPRESS,
+                          workspace_goto, (void *)3);
+    keyboard_set_function("Alt | 4", KEYBOARD_DEPRESS,
+                          workspace_goto, (void *)4);
+    keyboard_set_function("Alt | 5", KEYBOARD_DEPRESS,
+                          workspace_goto, (void *)5);
+    keyboard_set_function("Alt | 6", KEYBOARD_DEPRESS,
+                          workspace_goto, (void *)6);
+    keyboard_set_function("Alt | 7", KEYBOARD_DEPRESS,
+                          workspace_goto, (void *)7);
     mouse_set_function("Alt | Button1", MOUSE_DEPRESS, MOUSE_FRAME,
                        move_client, NULL);
     mouse_set_function("Alt | Button3", MOUSE_DEPRESS, MOUSE_FRAME,
@@ -244,10 +264,11 @@ static void scan_windows()
 
     XQueryTree(dpy, root_window, &w1, &w2, &wins, &n);
     for (i = 0; i < n; i++) {
-        client = client_create(wins[i]);  /* client.c */
+        client = client_create(wins[i]); /* client.c */
         if (client != NULL && client->state == NormalState) {
             keyboard_grab_keys(client); /* keyboard.c */
             mouse_grab_buttons(client); /* mouse.c */
+            /* FIXME:  see what else event_maprequest does (focus?) */
         }
     }
     if (wins != NULL) XFree(wins);
@@ -255,11 +276,13 @@ static void scan_windows()
 
 void alt_tab(XEvent *e, void *arg)
 {
+    XUngrabKeyboard(dpy, event_timestamp);
     focus_next(event_timestamp);
 }
 
 void alt_shift_tab(XEvent *e, void *arg)
 {
+    XUngrabKeyboard(dpy, event_timestamp);
     focus_prev(event_timestamp);
 }
 
