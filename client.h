@@ -70,18 +70,29 @@ typedef struct _client_t {
      * because it is not in the current workspace.  We do
      * absolutely nothing with icons, but this is how other
      * window managers deal with workspaces, so we shouldn't
-     * confuse the client.
+     * confuse the client.  FIXME: not true
      * The state is 'NormalState' whenever the window is mapped.
      */
 
     /* clients are also managed as doubly linked lists */
     struct _client_t *next;
     struct _client_t *prev;
+
+    /* if some client has this client as the transient_for hint,
+     * then this client is a 'leader' (my nomenclature, nothing
+     * to do with window groups).  A leader has the 'transients'
+     * attribute set to one of its transient windows.  A transient
+     * window has the 'next_transient' attribute set the the next
+     * transient windows.  Note that a transient window may also
+     * be a leader. */
+
+    struct _client_t *transients;
+    struct _client_t *next_transient;
     
     /* mapped clients are managed as doubly linked lists in focus.c: */
     struct _client_t *next_focus;
     struct _client_t *prev_focus;
-} client_t;
+} client_t;                     /* 124 bytes on ILP-32 machines */
 
 /* the values for client->protocols, can be ORed together */
 
@@ -279,7 +290,18 @@ void client_sendmessage(client_t *client, Atom data0, Time timestamp,
                         long data2, long data3, long data4);
 
 /*
- * Map and raise a client and all of the client's transients
+ * Map and raise a client if client is in current workspace and
+ * client's state is NormalState
+ * 
+ * Also will map and raise all the client's transients, the client's
+ * transient_for and its transient_for, and so on until entire
+ * transience hierarchy which is in current workspace and is in
+ * NormalState is raised (it goes depth-first which probably won't
+ * look quite right with a huge transient window hierarchy, but then
+ * again, I've never seen a huge transient window hierarchy).
+ * 
+ * This will correctly set ignore_enternotify if the raising will
+ * generate an unwanted EnterNotify event.
  */
 
 void client_raise(client_t *client);

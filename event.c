@@ -285,7 +285,7 @@ static void event_enter(XCrossingEvent *xevent)
         if (client->ignore_enternotify == 1) {
             debug(("\tclient has ignore_enternotify\n"));
             client->ignore_enternotify = 0;
-        } else {
+        } else if (client->workspace == workspace_current) {
             debug(("\tSetting focus in response to EnterNotify\n"));
             focus_set(client, CurrentTime);
         }
@@ -370,7 +370,11 @@ static void event_destroy(XDestroyWindowEvent *xevent)
         focus_remove(client, event_timestamp);
         if (client->workspace == workspace_current) {
             under_mouse = query_stacking_order(client->frame);
-            if (under_mouse != NULL) under_mouse->ignore_enternotify = 1;
+            if (under_mouse != NULL) {
+                debug(("Setting ignore_enternotify for '%s' in event_destroy\n",
+                       under_mouse->name));
+                under_mouse->ignore_enternotify = 1;
+            }
         }
     }
     client_destroy(client);
@@ -407,6 +411,8 @@ static void event_unmap(XUnmapEvent *xevent)
     if (client == NULL) {
         under_mouse = query_stacking_order(None);
         if (under_mouse != NULL) {
+            debug(("Setting ignore_enternotify for '%s' in event_unmap\n",
+                   under_mouse->name));
             under_mouse->ignore_enternotify = 1;
             under_mouse->frame_event_mask |= LeaveWindowMask;
             XSelectInput(dpy, under_mouse->frame,
@@ -415,7 +421,8 @@ static void event_unmap(XUnmapEvent *xevent)
         return;
     }
 
-    if (xevent->window == client->frame) {
+    if (xevent->window == client->frame
+        && client->workspace == workspace_current) {
         ewmh_client_list_remove(client);
     }
 
@@ -445,7 +452,11 @@ static void event_unmap(XUnmapEvent *xevent)
         error_ignore(BadWindow, X_UnmapWindow); /* FIXME */
         if (client->workspace == workspace_current) {
             under_mouse = query_stacking_order(client->frame);
-            if (under_mouse != NULL) under_mouse->ignore_enternotify = 1;
+            if (under_mouse != NULL) {
+                debug(("Setting ignore_enternotify for '%s' in event_unmap\n",
+                       under_mouse->name));
+                under_mouse->ignore_enternotify = 1;
+            }
         }
     }
     client->state = WithdrawnState;
@@ -641,12 +652,17 @@ static void event_configurerequest(XConfigureRequestEvent *xevent)
                "client 0x%08X (%s) under pointer\n",
                (unsigned int)client, client->name,
                (unsigned int)under_mouse, under_mouse->name));
+        debug(("Setting ignore_enternotify for '%s' in configurerequest\n",
+               under_mouse->name));
         under_mouse->ignore_enternotify = 1;
     } else if (client->x <= x && client->x + client->width >= x
-               && client->y <= y && client->y + client->width >= y) {
+               && client->y <= y && client->y + client->width >= y
+               && client->state == NormalState) {
         debug(("\tClient 0x%08X (%s) resized itself to be under pointer\n",
                (unsigned int)client, client->name));
         client->ignore_enternotify = 1;
+        debug(("Setting ignore_enternotify for '%s' in configurerequest\n",
+               client->name));
     }
 
     /* FIXME:  this could also cause an EnterNotify */

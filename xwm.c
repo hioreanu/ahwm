@@ -4,6 +4,11 @@
  * copyright privileges.
  */
 
+/*
+ * If you're just starting here, you may want to read the header files
+ * before the implementation files when reading my code.
+ */
+
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 #include <X11/Xatom.h>
@@ -82,7 +87,8 @@ static int tmp_error_handler(Display *dpy, XErrorEvent *error)
  * 9.  Go into a select() loop waiting for events
  * 10. Dispatch events
  * 
- * FIXME:  Should also probably set some properties on the root window....
+ * FIXME:  move everything not defined in this file into various
+ * _init functions, document this in xwm.h
  */
 
 int main(int argc, char **argv)

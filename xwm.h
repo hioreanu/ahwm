@@ -10,25 +10,24 @@
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 
+/* the events we usually listen for on the root window */
 #define ROOT_EVENT_MASK PropertyChangeMask | SubstructureRedirectMask | \
                         SubstructureNotifyMask | KeyPressMask |         \
                         KeyReleaseMask
 
-/* these globals are used throughout - only one screen is supported */
-
-extern Display *dpy;
-extern int scr;
-extern int scr_height;
-extern int scr_width;
-extern unsigned long black;
-extern unsigned long white;
-extern Window root_window;
-extern GC root_white_fg_gc;
-extern GC root_black_fg_gc;
-extern GC root_invert_gc;
-extern GC extra_gc;
-extern XFontStruct *fontstruct;
-extern Atom WM_STATE;
+extern Display *dpy;            /* standard in any X program */
+extern int scr;                 /* only one screen supported */
+extern int scr_height;          /* from DisplayHeight() */
+extern int scr_width;           /* from DisplayWidth() */
+extern unsigned long black;     /* black pixel */
+extern unsigned long white;     /* white pixel */
+extern Window root_window;      /* root window (only one screen supported) */
+extern GC root_white_fg_gc;     /* a GC with white foreground */
+extern GC root_black_fg_gc;     /* GC with black foreground */
+extern GC root_invert_gc;       /* GC with GXxor as function */
+extern GC extra_gc;             /* GC which is changed */
+extern XFontStruct *fontstruct; /* our font */
+extern Atom WM_STATE;           /* various atoms used throughout */
 extern Atom WM_CHANGE_STATE;
 extern Atom WM_TAKE_FOCUS;
 extern Atom WM_SAVE_YOURSELF;

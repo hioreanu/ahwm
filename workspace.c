@@ -71,17 +71,19 @@ void workspace_goto(XEvent *xevent, void *v)
         for (client = tmp->prev_focus;
              client != tmp;
              client = client->prev_focus) {
-            client_raise(client); /* FIXME:  optimize */
+            client_raise(client);
         }
         client_raise(client);
     }
-    must_focus_this_client(focus_stacks[workspace_current - 1]);
+    focus_current = focus_stacks[workspace_current - 1];
+    focus_ensure(event_timestamp);
+//    must_focus_this_client(focus_stacks[workspace_current - 1]);
 }
 
 void workspace_client_moveto(XEvent *xevent, void *v)
 {
     int ws = (int)v;
-    client_t *client, *tmp;
+    client_t *client, *transient;
 
     client = client_find(event_window(xevent));
     if (client == NULL) {
@@ -102,31 +104,22 @@ void workspace_client_moveto(XEvent *xevent, void *v)
            (unsigned int)client, client->name, ws));
 #endif /* DEBUG */
 
-    /* we now move the client's transients and leader to the new
-     * workspace; we can't use client_foreach because we want
-     * the order of the transients in the focus list to remain
-     * somewhat intact as it moves to the new workspace */
+    /* we now move the client's transients which are in the same
+     * workspace as the client to the new workspace
+     * FIXME:  try to ensure the focus list remains somewhat
+     * intact as we move the transients */
 
-    if (client->transient_for != None) {
-        tmp = client_find(client->transient_for);
-        if (tmp != NULL) {
-            focus_remove(tmp, event_timestamp);
-            XUnmapWindow(dpy, tmp->frame);
-            tmp->workspace = ws;
-            focus_add(tmp, event_timestamp);
+    for (transient = client->transients;
+         transient != NULL;
+         transient = transient->next_transient) {
+        if (transient->workspace == client->workspace) {
+            focus_remove(transient, event_timestamp);
+            XUnmapWindow(dpy, transient->frame);
+            transient->workspace = ws;
+            focus_add(transient, event_timestamp);
         }
     }
-    tmp = focus_stacks[client->workspace - 1];
-    do {
-        if (tmp->transient_for == client->window) {
-            focus_remove(tmp, event_timestamp);
-            XUnmapWindow(dpy, tmp->frame);
-            client->workspace = ws;
-            focus_add(tmp, event_timestamp);
-        }
-        tmp = tmp->next_focus;
-    } while (tmp != focus_stacks[client->workspace - 1]);
-    
+
     focus_remove(client, event_timestamp);
     XUnmapWindow(dpy, client->frame);
     client->workspace = ws;
