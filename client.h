@@ -32,6 +32,18 @@
 /* height of the titlebar, should probably be configurable */
 #define TITLE_HEIGHT 15
 
+/* Options may be set by user or hints, or set unconditionally by
+ * user.  We need to differentiate how each option was set for each
+ * client because both hints and user prefs may change at any time
+ * (eg, client changes window name to something where user prefs say
+ * no window).
+ * Precedence rules:
+ * UnSet < UserSet < HintSet < UserOverridden
+ */
+typedef enum _option_setting {
+    UnSet = 0, UserSet, HintSet, UserOverridden
+} option_setting;
+
 /*
  * this is the information we store with each top-level window EXCEPT
  * for those windows which have override_redirect set (the ONLY thing
@@ -50,7 +62,8 @@
  * creation and it's a bit easier to listen for some events on our
  * frame rather than their app window.  We also reset the client's
  * border width to zero since I hate borders on windows.  The old
- * border width must be saved, however.
+ * border width must be saved, however (in case we reparent the window
+ * back to root).
  */
 
 typedef struct _client_t {
@@ -73,7 +86,7 @@ typedef struct _client_t {
     unsigned int workspace;     /* client's workspace, see workspace.h */
     unsigned int protocols;     /* WM_PROTOCOLS, see below (ICCCM, 4.1.2.7) */
     char *name;                 /* window's name (ICCCM, 4.1.2.1) */
-    /* will not be NULL; use free() */
+    /* will not be NULL; use Free() */
     char *instance;             /* window's instance (ICCCM, 4.1.2.5) */
     char *class;                /* window's class (ICCCM, 4.1.2.5) */
     /* both of the above may be NULL; use XFree() on them */
@@ -116,6 +129,7 @@ typedef struct _client_t {
 
     /* user preferences */
     /* FIXME: 2-bit fields not defined in C, test with autoconf */
+    
     enum { ClickToFocus, SloppyFocus, DontFocus } focus_policy : 2;
     enum { Fixed, Smart, Cascade, Mouse } map_policy : 2;
     enum { SkipCycle, RaiseImmediately,
@@ -126,8 +140,19 @@ typedef struct _client_t {
     unsigned int always_on_top : 1;
     unsigned int always_on_bottom : 1;
     unsigned int omnipresent : 1;
-    
-    /* unsigned int sticky : 1; */
+    unsigned int sticky : 1; /* FIXME: implement */
+
+    option_setting workspace_set : 2;
+    option_setting focus_policy_set : 2;
+    option_setting map_policy_set : 2;
+    option_setting cycle_behaviour_set : 2;
+    option_setting has_titlebar_set : 2;
+    option_setting is_shaped_set : 2;
+    option_setting pass_focus_click_set : 2;
+    option_setting always_on_top_set : 2;
+    option_setting always_on_bottom_set : 2;
+    option_setting omnipresent_set : 2;
+    option_setting sticky_set : 2;
 } client_t;                     /* 116 bytes on ILP-32 machines */
 
 /* the values for client->protocols, can be ORed together */
@@ -158,9 +183,10 @@ void client_init();
 client_t *client_create(Window);
 
 /*
- * Find the client structure for a given window.
- * The window argument is either the client window you passed to
- * client_create or the frame which that function creates.
+ * Find the client structure for a given window.  The window argument
+ * is either the client window you passed to client_create or the
+ * frame which that function creates, or the titlebar subwindow.
+ * 
  * Returns NULL on error.
  */
 
@@ -242,8 +268,12 @@ void client_inform_state(client_t *);
 void client_reparent(client_t *client);
 void client_unreparent(client_t *client);
 
-void client_add_titlebar(client_t *);
-void client_remove_titlebar(client_t *);
+/*
+ * Add or remove the client's titlebar
+ */
+
+void client_add_titlebar(client_t *client);
+void client_remove_titlebar(client_t *client);
 
 /*
  * Sets the position_size argument to the position and size that a

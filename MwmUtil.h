@@ -36,14 +36,15 @@
  * I've never used a Motif application that uses Motif hints, so I'm
  * by no means an expert on this stuff.  This seems to work with all
  * of the (non-motif) motif-hint-using applications I've seen, and
- * that's all I care about.
+ * that's all I care about.  This is particularly simple stuff (albeit
+ * undocumented), so I don't see where I can screw this up.
  * 
  * This isn't integrated into mwm.c to make it easier for you to snarf
  * this code for your own window manager.
  */
 
 #ifndef MWMUTIL_H
-#define MWMUTIl_H
+#define MWMUTIL_H
 
 /*
  * "_MOTIF_WM_HINTS" the X atom/property used for Motif hints.  Access
@@ -61,8 +62,7 @@
  *                        (unsigned char **)&hints) != Sucess) {
  *      ...error...
  * }
- * if (actual != _motif_wm_hints
- *     || actual_fmt != 32) {
+ * if (actual != _motif_wm_hints || actual_fmt != 32) {
  *     ...error...
  * }
  * ...do something with "hints"...
@@ -96,8 +96,8 @@
  * I have no idea what the difference between (1) and (3) would be.
  * 
  * STATUS, the fifth member, seems to be used for those "tear-off"
- * windows in some way.  Perhaps it is a way to recognize those
- * windows.  Only the first bit seems defined to do anything.  Further
+ * menus in some way.  Perhaps it is a way to recognize those windows.
+ * Only the first bit seems defined to do anything.  Further
  * investigation required.
  */
 

@@ -77,6 +77,8 @@ void client_init()
     title_context = XUniqueContext();
 }
 
+/* FIXME: candidate for optimization, move stuff into event_maprequest */
+/* no matter what, still must listen for destroy messages to prevent leak */
 client_t *client_create(Window w)
 {
     client_t *client;
@@ -109,10 +111,22 @@ client_t *client_create(Window w)
     client->orig_border_width = xwa.border_width;
     client->reparented = 0;
     client->ignore_unmapnotify = 0;
+    client->color_index = 0;
     client->pass_focus_click = 1;
     client->focus_policy = SloppyFocus;
     client->cycle_behaviour = RaiseImmediately;
-    client->color_index = 0;
+
+    client->workspace_set = UnSet;
+    client->focus_policy_set = UnSet;
+    client->map_policy_set = UnSet;
+    client->cycle_behaviour_set = UnSet;
+    client->has_titlebar_set = UnSet;
+    client->is_shaped_set = UnSet;
+    client->pass_focus_click_set = UnSet;
+    client->always_on_top_set = UnSet;
+    client->always_on_bottom_set = UnSet;
+    client->omnipresent_set = UnSet;
+    client->sticky_set = UnSet;
     
     /* God, this sucks.  I want the border width to be zero on all
      * clients, so I need to change the client's border width at some

@@ -77,7 +77,10 @@ void mwm_apply(client_t *client)
         (!(hints->decorations & MWM_DECORATIONS_TITLEBAR))) {
         debug(("Removing titlebar of %s because of Motif hints\n",
                client->name));
-        client_remove_titlebar(client);
+        if (client->has_titlebar_set <= HintSet) {
+            client_remove_titlebar(client);
+            client->has_titlebar_set = HintSet;
+        }
     }
     
     /* FIXME:  could also interpret disabling the "move" menu

@@ -502,7 +502,6 @@ static Bool type_check_function(function *fn)
 void prefs_apply(client_t *client)
 {
     prefs p;
-    position_size ps;
 
     /* ADDOPT 9 */
     p.titlebar = pref_display_titlebar;
@@ -521,95 +520,133 @@ void prefs_apply(client_t *client)
     prefs_apply_internal(client, contexts, &p);
 
     if (client->state == WithdrawnState) {
-        client->workspace = p.workspace;
+        if (client->workspace_set <= UserSet) {
+            client->workspace = p.workspace;
+            client->workspace_set = UserSet;
+        }
     }
     debug(("client '%s' (%s,%s) %s a titlebar\n",
            client->name, client->class, client->instance,
            p.titlebar ? "HAS" : "DOES NOT HAVE"));
-    if (p.titlebar == True) {
-        if (!client->has_titlebar) {
-            client->has_titlebar = 1;
-            if (client->frame != None) client_add_titlebar(client);
-        }
-    } else {
-        if (client->has_titlebar) {
-            client->has_titlebar = 0;
-            if (client->frame != None) client_remove_titlebar(client);
-        }
-    }
-    switch (p.cycle_behaviour) {
-        case TYPE_SKIP_CYCLE:
-            client->cycle_behaviour = SkipCycle;
-            break;
-        case TYPE_RAISE_IMMEDIATELY:
-            client->cycle_behaviour = RaiseImmediately;
-            break;
-        case TYPE_RAISE_ON_CYCLE_FINISH:
-            client->cycle_behaviour = RaiseOnCycleFinish;
-            break;
-        case TYPE_DONT_RAISE:
-            client->cycle_behaviour = DontRaise;
-            break;
-    }
-    if (p.omnipresent) {
-        client->omnipresent = 1;
-    } else {
-        client->omnipresent = 0;
-    }
-    switch (p.focus_policy) {
-        case TYPE_SLOPPY_FOCUS:
-            if (client->focus_policy == ClickToFocus) {
-                focus_policy_from_click(client);
+    if (client->has_titlebar_set <= UserSet) {
+        if (p.titlebar == True) {
+            if (!client->has_titlebar) {
+                client->has_titlebar = 1;
+                if (client->frame != None) {
+                    client_add_titlebar(client);
+                    client->has_titlebar_set = UserSet;
+                }
             }
-            client->focus_policy = SloppyFocus;
-            break;
-        case TYPE_CLICK_TO_FOCUS:
-            if (client->focus_policy != ClickToFocus) {
-                focus_policy_to_click(client);
+        } else {
+            if (client->has_titlebar) {
+                client->has_titlebar = 0;
+                if (client->frame != None) {
+                    client_remove_titlebar(client);
+                    client->has_titlebar_set = UserSet;
+                }
             }
-            client->focus_policy = ClickToFocus;
-            break;
-        case TYPE_DONT_FOCUS:
-            if (client->focus_policy == ClickToFocus) {
-                focus_policy_from_click(client);
+        }
+    }
+    if (client->cycle_behaviour_set <= UserSet) {
+        switch (p.cycle_behaviour) {
+            case TYPE_SKIP_CYCLE:
+                client->cycle_behaviour = SkipCycle;
+                client->cycle_behaviour_set = UserSet;
+                break;
+            case TYPE_RAISE_IMMEDIATELY:
+                client->cycle_behaviour = RaiseImmediately;
+                client->cycle_behaviour_set = UserSet;
+                break;
+            case TYPE_RAISE_ON_CYCLE_FINISH:
+                client->cycle_behaviour = RaiseOnCycleFinish;
+                client->cycle_behaviour_set = UserSet;
+                break;
+            case TYPE_DONT_RAISE:
+                client->cycle_behaviour = DontRaise;
+                client->cycle_behaviour_set = UserSet;
+                break;
+        }
+    }
+    if (client->omnipresent_set <= UserSet) {
+        if (p.omnipresent) {
+            client->omnipresent = 1;
+            client->omnipresent_set = UserSet;
+        } else {
+            client->omnipresent = 0;
+            client->omnipresent_set = UserSet;
+        }
+    }
+    if (client->focus_policy_set <= UserSet) {
+        switch (p.focus_policy) {
+            case TYPE_SLOPPY_FOCUS:
+                if (client->focus_policy == ClickToFocus) {
+                    focus_policy_from_click(client);
+                }
+                client->focus_policy = SloppyFocus;
+                client->focus_policy_set = UserSet;
+                break;
+            case TYPE_CLICK_TO_FOCUS:
+                if (client->focus_policy != ClickToFocus) {
+                    focus_policy_to_click(client);
+                }
+                client->focus_policy = ClickToFocus;
+                client->focus_policy_set = UserSet;
+                break;
+            case TYPE_DONT_FOCUS:
+                if (client->focus_policy == ClickToFocus) {
+                    focus_policy_from_click(client);
+                }
+                client->focus_policy = DontFocus;
+                client->focus_policy_set = UserSet;
+                break;
+        }
+    }
+    if (client->always_on_top_set <= UserSet) {
+        if (p.always_on_top) {
+            if (client->always_on_top == 0) {
+                client->always_on_top = 1;
+                client->always_on_top_set = UserSet;
+                /* moves to top of always-on-top windows: */
+                stacking_remove(client);
+                stacking_add(client);
             }
-            client->focus_policy = DontFocus;
-            break;
-    }
-    if (p.always_on_top) {
-        if (client->always_on_top == 0) {
-            client->always_on_top = 1;
-            /* moves to top of always-on-top windows: */
-            stacking_remove(client);
-            stacking_add(client);
-        }
-    } else {
-        if (client->always_on_top == 1) {
-            client->always_on_top = 0;
-            /* moves to top of not always-on-top windows: */
-            stacking_remove(client);
-            stacking_add(client);
+        } else {
+            if (client->always_on_top == 1) {
+                client->always_on_top = 0;
+                client->always_on_top_set = UserSet;
+                /* moves to top of not always-on-top windows: */
+                stacking_remove(client);
+                stacking_add(client);
+            }
         }
     }
-    if (p.always_on_bottom) {
-        if (client->always_on_bottom == 0) {
-            client->always_on_bottom = 1;
-            /* moves to top of always-on-bottom windows: */
-            stacking_remove(client);
-            stacking_add(client);
-        }
-    } else {
-        if (client->always_on_bottom == 1) {
-            client->always_on_bottom = 0;
-            /* moves to top of not always-on-bottom windows: */
-            stacking_remove(client);
-            stacking_add(client);
+    if (client->always_on_bottom_set <= UserSet) {
+        if (p.always_on_bottom) {
+            if (client->always_on_bottom == 0) {
+                client->always_on_bottom = 1;
+                client->always_on_bottom_set = UserSet;
+                /* moves to top of always-on-bottom windows: */
+                stacking_remove(client);
+                stacking_add(client);
+            }
+        } else {
+            if (client->always_on_bottom == 1) {
+                client->always_on_bottom = 0;
+                client->always_on_bottom_set = UserSet;
+                /* moves to top of not always-on-bottom windows: */
+                stacking_remove(client);
+                stacking_add(client);
+            }
         }
     }
-    if (p.pass_focus_click) {
-        client->pass_focus_click = 1;
-    } else {
-        client->pass_focus_click = 0;
+    if (client->pass_focus_click <= UserSet) {
+        if (p.pass_focus_click) {
+            client->pass_focus_click = 1;
+            client->pass_focus_click_set = UserSet;
+        } else {
+            client->pass_focus_click = 0;
+            client->pass_focus_click_set = UserSet;
+        }
     }
 
     paint_calculate_colors(client, p.titlebar_color,
@@ -618,10 +655,6 @@ void prefs_apply(client_t *client)
                            p.titlebar_text_focused_color);
     
     /* ADDOPT 10 */
-    /* For adding an option, at this point, do something with the
-     * client window, or set a flag in client_t and ensure
-     * this flag is used whenever needed */
-
 }
 
 static void prefs_apply_internal(client_t *client, line *block, prefs *p)
