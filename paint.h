@@ -52,6 +52,10 @@
 
 #include "client.h"
 
+/*
+ * The largest "ascent" member from the font.  Set by xwm.c.
+ */
+
 extern int paint_ascent;
 
 /*
