@@ -23,15 +23,16 @@ void event_dispatch(XEvent *event);
 
 /*
  * Parse an event structure and get the "window" member.  Returns None
- * if don't know about the format of the event.
+ * if don't know about the format of the event (all events defined by
+ * Xlib have a window member).
  */
 
 Window event_window(XEvent *event);
 
 /*
  * Parse an event structure for a timestamp.  Returns CurrentTime if
- * the event doesn't have a timestamp or don't know the format of the
- * event.
+ * the event doesn't have a timestamp or we don't know the format of
+ * the event.
  */
 
 Time event_timestamp(XEvent *event);

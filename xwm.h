@@ -31,4 +31,9 @@ extern Atom WM_SAVE_YOURSELF;
 extern Atom WM_DELETE_WINDOW;
 extern Atom WM_PROTOCOLS;
 
+#ifdef SHAPE
+extern int shape_supported;
+extern int shape_event_base;
+#endif
+
 #endif /* XWM_H */

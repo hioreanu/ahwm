@@ -21,6 +21,10 @@
 #include "xev.h"
 #include "error.h"
 
+#ifdef SHAPE
+#include <X11/extensions/shape.h>
+#endif /* SHAPE */
+
 static void event_enter_leave(XCrossingEvent *);
 static void event_create(XCreateWindowEvent *);
 static void event_destroy(XDestroyWindowEvent *);
@@ -33,6 +37,10 @@ static void event_clientmessage(XClientMessageEvent *);
 static void event_circulaterequest(XCirculateRequestEvent *);
 static void event_expose(XExposeEvent *);
 static void event_focus(XFocusChangeEvent *);
+
+#ifdef SHAPE
+static void event_shape(XShapeEvent *);
+#endif /* SHAPE */
 
 /*
  * FIXME:  every window manager I've seen does this by sitting a
@@ -219,6 +227,13 @@ void event_dispatch(XEvent *event)
 /*        case MappingNotify: */ /* TODO */
             
         default:
+
+#ifdef SHAPE
+            if (shape_supported &&
+                event->type == shape_event_base + ShapeNotify) {
+                event_shape((XShapeEvent *)event);
+            }
+#endif /* SHAPE */
 #ifdef DEBUG
             printf("\tIgnoring event\n");
 #endif /* DEBUG */
@@ -231,11 +246,14 @@ void event_dispatch(XEvent *event)
  * XKeyEvent(3))
  */
 
+/*
+ * Focus and raise if possible
+ */
+
 static void event_enter_leave(XCrossingEvent *xevent)
 {
     client_t *client;
     
-    /* have no idea when other 'modes' will be generated, just be safe */
     if (xevent->mode != NotifyNormal)
         return;
 
@@ -246,15 +264,15 @@ static void event_enter_leave(XCrossingEvent *xevent)
     if (xevent->detail == NotifyInferior) return;
 
     client = client_find(xevent->window);
-#ifdef DEBUG
-    client_print("Enter/Leave:", client);
-    printf("\tmode = %d, detail = %d\n", xevent->mode, xevent->detail);
-#endif /* DEBUG */
     if (client != NULL && focus_canfocus(client)) {
         focus_set(client);      /* focus.c */
         focus_ensure(event_timestamp((XEvent *)xevent));
     }
 }
+
+/*
+ * create client structure, basically manage the window
+ */
 
 static void event_create(XCreateWindowEvent *xevent)
 {
@@ -274,6 +292,10 @@ static void event_create(XCreateWindowEvent *xevent)
 #endif /* DEBUG */
     if (client == NULL) return;
 }
+
+/*
+ * remove client structure
+ */
 
 static void event_destroy(XDestroyWindowEvent *xevent)
 {
@@ -346,6 +368,10 @@ static void event_unmap(XUnmapEvent *xevent)
     focus_ensure(event_timestamp((XEvent *)xevent));
 }
 
+/*
+ * Map the client and the frame, update WM_STATE on the client window
+ */
+
 static void event_maprequest(XMapRequestEvent *xevent)
 {
     client_t *client;
@@ -390,6 +416,11 @@ static void event_maprequest(XMapRequestEvent *xevent)
     }
     client_inform_state(client);
 }
+
+/*
+ * update our idea of client's geometry, massage request
+ * according to client's gravity if it has a title bar
+ */
 
 static void event_configurerequest(XConfigureRequestEvent *xevent)
 {
@@ -506,7 +537,7 @@ static void event_property(XPropertyEvent *xevent)
 
 static void event_colormap(XColormapEvent *xevent)
 {
-    /* deal with this later */
+    /* FIXME: deal with this later */
 }
 
 static void event_clientmessage(XClientMessageEvent *xevent)
@@ -514,6 +545,7 @@ static void event_clientmessage(XClientMessageEvent *xevent)
     client_t *client;
     
     if (xevent->message_type == WM_CHANGE_STATE) {
+        /* ICCCM 4.1.4 */
         client = client_find(xevent->window);
         if (xevent->format == 32 && xevent->data.l[0] == IconicState) {
             XUnmapWindow(dpy, client->frame);
@@ -559,9 +591,37 @@ static void event_focus(XFocusChangeEvent *xevent)
     }
 }
 
-/* all events defined by Xlib have common first few members,
+#ifdef SHAPE
+static void event_shape(XShapeEvent *xevent)
+{
+    XRectangle *rectangles;
+    int n_rects, junk;
+
+    if (XShapeGetRectangles(dpy, xevent->window, ShapeBounding,
+                            &n_rects, &junk) == NULL)
+        return;
+    XFree(rectangles);
+    if (n_rects <= 1)
+        return;
+    if (client->titlebar != None) {
+        XUnmapWindow(client->titlebar);
+        XDestroyWindow(client->titlebar);
+        client->titlebar = None;
+    }
+        
+        
+    
+
+
+    
+}
+#endif /* SHAPE */
+
+/* 
+ * all events defined by Xlib have common first few members,
  * so just use an arbitrary event to get the window if this
- * is an event defined by Xlib */
+ * is an event defined by Xlib.
+ */
 Window event_window(XEvent *event)
 {
     if (event->type > 1 && event->type < LASTEvent) {
@@ -572,7 +632,7 @@ Window event_window(XEvent *event)
 }
 
 /* not all events have a timestamp, some have it in the same place */
-/* FIXME: verify, read all the fucking manual pages */
+/* FIXME: verify, read all the manual pages */
 Time event_timestamp(XEvent *event)
 {
     switch (event->type) {

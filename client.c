@@ -12,6 +12,10 @@
 #include <X11/Xutil.h>
 #include <X11/Xproto.h>
 
+#ifdef SHAPE
+#include <X11/extensions/shape.h>
+#endif
+
 #include "client.h"
 #include "workspace.h"
 #include "keyboard.h"
@@ -68,15 +72,18 @@ client_t *client_create(Window w)
     XSelectInput(dpy, client->window, client->window_event_mask);
 
 #ifdef SHAPE
+    /* if we have a shaped window, don't add a titlebar */
     if (shape_supported) {
         int tmp;
         unsigned int tmp2;
         int shaped;
 
         XShapeSelectInput(dpy, client->window, ShapeNotifyMask);
-        XShapeQueryExtents(dpy, client->window, &shaped, tmp, tmp,
-                           tmp2, tmp, tmp, tmp, tmp2, tmp2);
+        XShapeQueryExtents(dpy, client->window, &shaped, &tmp, &tmp,
+                           &tmp2, &tmp2, &tmp, &tmp, &tmp, &tmp2, &tmp2);
         has_titlebar = !shaped;
+        if (shaped) printf("SHAPED\n");
+        else printf("NOT SHAPED\n");
     }
 #endif /* SHAPE */
     

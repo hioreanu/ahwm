@@ -18,6 +18,10 @@
 #include "error.h"
 #include "kill.h"
 
+#ifdef SHAPE
+#include <X11/extensions/shape.h>
+#endif
+
 Display *dpy;
 int scr;
 int scr_height;
@@ -35,6 +39,11 @@ Atom WM_TAKE_FOCUS;
 Atom WM_SAVE_YOURSELF;
 Atom WM_DELETE_WINDOW;
 Atom WM_PROTOCOLS;
+
+#ifdef SHAPE
+int shape_supported;
+int shape_event_base;
+#endif
 
 void alt_tab(XEvent *);
 void alt_shift_tab(XEvent *);
@@ -68,7 +77,7 @@ static int tmp_error_handler(Display *dpy, XErrorEvent *error)
 int main(int argc, char **argv)
 {
     XEvent    event;
-    int       xfd;
+    int       xfd, junk;
     XGCValues xgcv;
 
 #ifdef DEBUG
@@ -184,6 +193,10 @@ int main(int argc, char **argv)
     WM_SAVE_YOURSELF = XInternAtom(dpy, "WM_SAVE_YOURSELF", False);
     WM_DELETE_WINDOW = XInternAtom(dpy, "WM_DELETE_WINDOW", False);
     WM_PROTOCOLS = XInternAtom(dpy, "WM_PROTOCOLS", False);
+
+#ifdef SHAPE
+    shape_supported = XShapeQueryExtension(dpy, &shape_event_base, &junk);
+#endif
     
     scan_windows();
 
