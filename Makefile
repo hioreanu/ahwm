@@ -36,12 +36,15 @@ event.o: error.h
 focus.o: focus.h client.h xwm.h workspace.h
 keyboard-test.o: keyboard.h client.h xwm.h
 keyboard.o: keyboard.h client.h xwm.h
-mouse.o: mouse.h move-resize.h xwm.h cursor.h
+kill.o: kill.h client.h xwm.h event.h
+mouse.o: mouse.h client.h xwm.h move-resize.h cursor.h
 move-resize.o: move-resize.h client.h xwm.h cursor.h event.h
 workspace.o: workspace.h client.h xwm.h
 xwm.o: xwm.h event.h client.h keyboard.h focus.h cursor.h mouse.h
-xwm.o: move-resize.h error.h
+xwm.o: move-resize.h error.h kill.h
 client.o: xwm.h
 focus.o: client.h xwm.h
 keyboard.o: client.h xwm.h
+kill.o: client.h xwm.h
+mouse.o: client.h xwm.h
 workspace.o: client.h xwm.h
