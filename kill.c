@@ -16,6 +16,7 @@ void kill_nicely(XEvent *xevent, void *v)
     client = client_find(xevent->xbutton.window);
     if (client == NULL) {
         fprintf(stderr, "XWM: Unable to kill client, client not found\n");
+        return;
     }
     if (client->protocols & PROTO_DELETE_WINDOW) {
         debug(("\tPolitely requesting window to die\n"));
@@ -34,6 +35,7 @@ void kill_with_extreme_prejudice(XEvent *xevent, void *v)
     client = client_find(xevent->xbutton.window);
     if (client == NULL) {
         fprintf(stderr, "XWM: Unable to kill client, client not found\n");
+        return;
     }
     debug(("Commiting windicide\n"));
     XKillClient(dpy, client->window);
