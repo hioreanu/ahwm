@@ -82,12 +82,17 @@ int main(int argc, char **argv)
     
     scan_windows();
 
+    focus_none();
+    
     xfd = ConnectionNumber(dpy);
-    printf("xfd = %d\n", xfd);
+    fcntl(xfd, F_SETFD, FD_CLOEXEC);
+
+    XSync(dpy, 0);
     for (;;) {
         event_get(xfd, &event); /* event.c */
         event_dispatch(&event); /* event.c */
     }
+    return 0;
 }
 
 /*
@@ -113,11 +118,6 @@ static void scan_windows()
 
     XFree(wins);
 }
-
-/*
- * fcntl(ConnectionNumber(dpy), F_SETFD, FD_CLOEXEC)
- * 
- */
 
 /*
  * ctwm:
