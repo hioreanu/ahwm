@@ -4,6 +4,7 @@
  * copyright privileges.
  */
 
+#include <X11/Xatom.h>
 #include <sys/types.h>
 #include <sys/time.h>
 #include <stdio.h>
@@ -338,7 +339,40 @@ static void event_configurerequest(XConfigureRequestEvent *xevent)
 
 static void event_property(XPropertyEvent *xevent)
 {
+    client_t *client;
 
+    client = client_find(xevent->window);
+    if (client == NULL) return;
+    switch (xevent->atom) {
+        case XA_WM_NAME:
+#ifdef DEBUG
+            printf("\tWM_NAME, changing client->name\n");
+#endif /* DEBUG */
+            free(client->name);
+            client_set_name(client);
+            break;
+        case XA_WM_CLASS:
+#ifdef DEBUG
+            printf("\tWM_CLASS, changing client->[class, instance]\n");
+#endif /* DEBUG */
+            if (client->class != None) XFree(client->class);
+            if (client->instance != None) XFree(client->instance);
+            client_set_instance_class(client);
+            break;
+        case XA_WM_HINTS:
+#ifdef DEBUG
+            printf("\tWM_HINTS, changing client->xwmh\n");
+#endif /* DEBUG */
+            if (client->xwmh != None) XFree(client->xwmh);
+            client_set_xwmh(client);
+            break;
+        case XA_WM_NORMAL_HINTS:
+#ifdef DEBUG
+            printf("\tWM_NORMAL_HINTS, changing client->xsh\n");
+#endif /* DEBUG */
+            if (client->xsh != None) XFree(client->xsh);
+            client_set_xsh(client);
+    }
 }
 
 static void event_colormap(XColormapEvent *xevent)
