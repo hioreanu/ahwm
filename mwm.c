@@ -47,6 +47,7 @@ void mwm_apply(client_t *client)
     unsigned long bytes_after_return, nitems;
     mwm_hints *hints;
 
+    hints = NULL;
     if (XGetWindowProperty(dpy, client->window, _MOTIF_WM_HINTS, 0,
                            sizeof(mwm_hints), False, _MOTIF_WM_HINTS,
                            &actual, &fmt, &nitems, &bytes_after_return,
@@ -55,10 +56,10 @@ void mwm_apply(client_t *client)
         return;
     }
 
-    if (actual != _MOTIF_WM_HINTS ||
-        fmt != 32) {
+    if (actual != _MOTIF_WM_HINTS || fmt != 32) {
         debug(("Actual = %d, _MOTIF_WM_HINTS = %d, fmt = %d\n",
                actual, _MOTIF_WM_HINTS, fmt));
+        if (hints != NULL) XFree(hints);
         return;
     }
     
@@ -75,6 +76,7 @@ void mwm_apply(client_t *client)
 
     if ((hints->flags & MWM_FLAGS_DECORATIONS) &&
         (!(hints->decorations & MWM_DECORATIONS_TITLEBAR))) {
+        
         debug(("Removing titlebar of %s because of Motif hints\n",
                client->name));
         if (client->has_titlebar_set <= HintSet) {

@@ -158,10 +158,11 @@ Bool ewmh_handle_clientmessage(XClientMessageEvent *xevent);
 
 void ewmh_init()
 {
-    long *l;
-    int i;
+    long *l, *l2, bytes_after_return, nitems;
+    int i, fmt;
     XSetWindowAttributes xswa;
     Atom supported[NO_SUPPORTED_HINTS];
+    Atom actual;
     char workspace_name[32];
 
     l = malloc(4 * nworkspaces * sizeof(long));
@@ -346,14 +347,6 @@ void ewmh_init()
     XChangeProperty(dpy, root_window, _NET_WORKAREA,
                     XA_CARDINAL, 32, PropModeReplace,
                     (unsigned char *)l, nworkspaces * 4);
-    l[0] = 0;
-    /* FIXMENOW: get this from root window if possible, set immediately */
-    XChangeProperty(dpy, root_window, _NET_CURRENT_DESKTOP,
-                    XA_CARDINAL, 32, PropModeReplace,
-                    (unsigned char *)l, 1);
-    XChangeProperty(dpy, root_window, _WIN_WORKSPACE,
-                    XA_CARDINAL, 32, PropModeReplace,
-                    (unsigned char *)l, 1);
     /* We don't really have a system for naming workspaces, so I'll
      * just name them "Workspace 1", etc. so the workspace names will
      * appear in pagers.  I would like to keep any workspace names
@@ -376,6 +369,35 @@ void ewmh_init()
                         i == 0 ? PropModeReplace : PropModeAppend,
                         workspace_name, strlen(workspace_name) + 1);
     }
+    /*
+     * This function is called whenever AHWM is started.  We try to
+     * read _NET_CURRENT_DESKTOP to see if we are taking over for
+     * another EWMH-compliant window manager (or perhaps we even
+     * restarted ourselves).
+     */
+    if (XGetWindowProperty(dpy, root_window, _NET_CURRENT_DESKTOP, 0, 1,
+                           False, XA_CARDINAL, &actual, &fmt, &nitems,
+                           &bytes_after_return,
+                           (unsigned char **)&l2) == Success) {
+        if (l2 != NULL) {
+            if (nitems == 1 && fmt == 32 && actual == XA_CARDINAL &&
+                *l2 > 0 && *l2 + 1 <= nworkspaces) {
+                
+                workspace_current = *l2 + 1;
+            }
+            XFree(l2);
+        }
+    }
+    
+    l[0] = workspace_current - 1;
+    /* FIXMENOW: get this from root window if possible, set immediately */
+    XChangeProperty(dpy, root_window, _NET_CURRENT_DESKTOP,
+                    XA_CARDINAL, 32, PropModeReplace,
+                    (unsigned char *)l, 1);
+    XChangeProperty(dpy, root_window, _WIN_WORKSPACE,
+                    XA_CARDINAL, 32, PropModeReplace,
+                    (unsigned char *)l, 1);
+    free(l);
 }
 
 /*
@@ -383,10 +405,12 @@ void ewmh_init()
  * setting properties on the root window.
  * 
  * Some properties on the client window must be kept updated by the
- * window manager.  For these properties, the way a client can change
- * the property is by sending a ClientMessage.  However, the client
- * may simply set the property directly before the client maps the
- * window or after the client unmaps the window.
+ * window manager, and we can't have both the client and the window
+ * manager writing to this property at the same time.  For these
+ * properties, the way a client can change the property is by sending
+ * a ClientMessage.  However, the client may simply set the property
+ * directly before the client maps the window or after the client
+ * unmaps the window.
  * 
  * Some other properties on the client window are not kept updated by
  * the window manager.  For these properties, the client can change
@@ -405,7 +429,8 @@ void ewmh_wm_state_apply(client_t *client)
     int max_v, max_h;
 
     if (client->state != WithdrawnState) return;
-    
+
+    states = NULL;
     if (XGetWindowProperty(dpy, client->window, _NET_WM_STATE, 0,
                            sizeof(Atom), False, XA_ATOM,
                            &actual, &fmt, &nitems, &bytes_after_return,
@@ -416,6 +441,7 @@ void ewmh_wm_state_apply(client_t *client)
 
     if (nitems == 0 || fmt != 32 || actual != XA_ATOM) {
         debug(("nitems = %d, fmt = %d\n", nitems, fmt));
+        if (states != NULL) XFree(states);
         return;
     }
 
@@ -437,6 +463,7 @@ void ewmh_wm_state_apply(client_t *client)
     } else if (max_v) {
         resize_maximize_client(client, MAX_VERT, MAX_MAXED);
     }
+    if (states != NULL) XFree(states);
 }
 
 /* _WIN_HINTS is only changed by the application.  Thus, the
@@ -448,6 +475,7 @@ void ewmh_win_hints_apply(client_t *client)
     int fmt;
     unsigned long *hint, bytes_after_return, nitems;
 
+    hint = NULL;
     if (XGetWindowProperty(dpy, client->window, _WIN_HINTS, 0,
                            sizeof(Atom), False, XA_CARDINAL,
                            &actual, &fmt, &nitems, &bytes_after_return,
@@ -457,6 +485,7 @@ void ewmh_win_hints_apply(client_t *client)
     }
     if (nitems == 0 || fmt != 32 || actual != XA_CARDINAL) {
         debug(("nitems = %d, fmt = %d\n", nitems, fmt));
+        if (hint != NULL) XFree(hint);
         return;
     }
     if (*hint & WIN_HINTS_SKIP_FOCUS) {
@@ -465,6 +494,7 @@ void ewmh_win_hints_apply(client_t *client)
     if (*hint & WIN_HINTS_FOCUS_ON_CLICK) {
         click_to_focus(client);
     }
+    if (hint != NULL) XFree(hint);
 }
 
 void ewmh_win_state_apply(client_t *client)
@@ -474,7 +504,8 @@ void ewmh_win_state_apply(client_t *client)
     unsigned long *hint, bytes_after_return, nitems;
 
     if (client->state != WithdrawnState) return;
-    
+
+    hint = NULL;
     if (XGetWindowProperty(dpy, client->window, _WIN_STATE, 0,
                            sizeof(Atom), False, XA_CARDINAL,
                            &actual, &fmt, &nitems, &bytes_after_return,
@@ -484,6 +515,7 @@ void ewmh_win_state_apply(client_t *client)
     }
     if (nitems == 0 || fmt != 32 || actual != XA_CARDINAL) {
         debug(("nitems = %d, fmt = %d\n", nitems, fmt));
+        if (hint != NULL) XFree(hint);
         return;
     }
     
@@ -502,6 +534,7 @@ void ewmh_win_state_apply(client_t *client)
     if (*hint & WIN_STATE_FIXED_POSITION) {
         sticky(client);
     }
+    if (hint != NULL) XFree(hint);
 }
 
 void ewmh_win_workspace_apply(client_t *client)
@@ -511,7 +544,8 @@ void ewmh_win_workspace_apply(client_t *client)
     unsigned long *hint, bytes_after_return, nitems;
 
     if (client->state != WithdrawnState) return;
-    
+
+    hint = NULL;
     if (XGetWindowProperty(dpy, client->window, _WIN_WORKSPACE, 0,
                            sizeof(Atom), False, XA_CARDINAL,
                            &actual, &fmt, &nitems, &bytes_after_return,
@@ -521,13 +555,16 @@ void ewmh_win_workspace_apply(client_t *client)
     }
     if (nitems == 0 || fmt != 32 || actual != XA_CARDINAL) {
         debug(("nitems = %d, fmt = %d\n", nitems, fmt));
+        if (hint != NULL) XFree(hint);
         return;
     }
     if (client->workspace_set <= HintSet) {
         client->workspace = (*hint) + 1;
         client->workspace_set = HintSet;
         ewmh_desktop_update(client);
+        prefs_apply(client);
     }
+    if (hint != NULL) XFree(hint);
 }
 
 void ewmh_win_layer_apply(client_t *client)
@@ -537,7 +574,8 @@ void ewmh_win_layer_apply(client_t *client)
     unsigned long *hint, bytes_after_return, nitems;
 
     if (client->state != WithdrawnState) return;
-    
+
+    hint = NULL;
     if (XGetWindowProperty(dpy, client->window, _WIN_LAYER, 0,
                            sizeof(Atom), False, XA_CARDINAL,
                            &actual, &fmt, &nitems, &bytes_after_return,
@@ -547,6 +585,7 @@ void ewmh_win_layer_apply(client_t *client)
     }
     if (nitems == 0 || fmt != 32 || actual != XA_CARDINAL) {
         debug(("nitems = %d, fmt = %d\n", nitems, fmt));
+        if (hint != NULL) XFree(hint);
         return;
     }
     if (*hint == 0) {
@@ -560,6 +599,7 @@ void ewmh_win_layer_apply(client_t *client)
     } else if (*hint > 4) {
         on_top(client);
     }
+    if (hint != NULL) XFree(hint);
 }
 
 /* client changes at any time using XChangeProperty() */
@@ -575,7 +615,8 @@ void ewmh_wm_desktop_apply(client_t *client)
     unsigned long *ws, bytes_after_return, nitems;
 
     if (client->state != WithdrawnState) return;
-    
+
+    ws = NULL;
     if (XGetWindowProperty(dpy, client->window, _NET_WM_DESKTOP, 0,
                            sizeof(Atom), False, XA_CARDINAL,
                            &actual, &fmt, &nitems, &bytes_after_return,
@@ -585,6 +626,7 @@ void ewmh_wm_desktop_apply(client_t *client)
     }
     if (nitems == 0 || fmt != 32 || actual != XA_CARDINAL) {
         debug(("nitems = %d, fmt = %d\n", nitems, fmt));
+        if (ws != NULL) XFree(ws);
         return;
     }
     if (*ws == 0xFFFFFFFF) {
@@ -592,13 +634,16 @@ void ewmh_wm_desktop_apply(client_t *client)
             client->omnipresent = 1;
             client->omnipresent_set = HintSet;
         }
+        if (ws != NULL) XFree(ws);
         return;
     }
     if (client->workspace_set <= HintSet) {
         client->workspace = *ws + 1;
         client->workspace_set = HintSet;
         ewmh_desktop_update(client);
+        prefs_apply(client);
     }
+    if (ws != NULL) XFree(ws);
 }
 
 /*
@@ -613,6 +658,7 @@ void ewmh_window_type_apply(client_t *client)
     int fmt, i;
     unsigned long bytes_after_return, nitems;
 
+    types = NULL;
     if (XGetWindowProperty(dpy, client->window, _NET_WM_WINDOW_TYPE, 0,
                            sizeof(Atom), False, XA_ATOM,
                            &actual, &fmt, &nitems, &bytes_after_return,
@@ -637,6 +683,7 @@ void ewmh_window_type_apply(client_t *client)
             ewmh_to_toolbar(client);
         }
     }
+    if (types != NULL) XFree(types);
 }
 
 static void no_titlebar(client_t *client)

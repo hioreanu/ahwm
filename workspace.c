@@ -90,8 +90,7 @@ void workspace_goto(unsigned int new_workspace)
      * sometimes it is possible to see the actual unmappings as
      * they happen, especially when the server is stressed or
      * the windows have contrasting colors; therefore we map a
-     * temporary window to cover up our actions.
-     * Little things like this make a big difference. */
+     * temporary window to cover up our actions. */
     xswa.override_redirect = True;
     xswa.background_pixmap = ParentRelative;
     stacking_hiding_window = XCreateWindow(dpy, root_window, 0, 0,
