@@ -1149,7 +1149,7 @@ static int no_config(char *ahwmrc_path)
                 strerror(errno));
         return 0;
     }
-    for (i = 0; i < DEFAULT_AHWMRC_NLINES; i++) {
+    for (i = 0; i < sizeof(default_ahwmrc) / sizeof(char *); i++) {
         fprintf(yyin, "%s\n", default_ahwmrc[i]);
     }
     fseek(yyin, 0, SEEK_SET);
