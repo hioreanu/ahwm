@@ -109,8 +109,12 @@ Menu { return TOK_MENU; }
 
 BindKey { return TOK_BINDKEY; }
 BindButton { return TOK_BINDBUTTON; }
+BindDrag { return TOK_BINDDRAG; }
+BindKeyRelease { return TOK_BINDKEYRELEASE; }
 UnBindKey { return TOK_UNBINDKEY; }
 UnBindButton { return TOK_UNBINDBUTTON; }
+UnBindDrag { return TOK_UNBINDDRAG; }
+UnBindKeyRelease { return TOK_UNBINDKEYRELEASE; }
 
 Root { return TOK_ROOT; }
 Frame { return TOK_FRAME; }

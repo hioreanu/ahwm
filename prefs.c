@@ -115,9 +115,9 @@ void prefs_init()
                 buf, strerror(errno));
         return;
     }
-    debug("Start parsing\n");
+    debug(("Start parsing\n"));
     yyparse();
-    debug("Done parsing\n");
+    debug(("Done parsing\n"));
 
     preferences = type_check(preferences);
 
@@ -640,7 +640,7 @@ key_fn fn_table[] = {
 /* 6  */    run_program,
 /* 7  */    NULL, /* focus function, only for mouse binding */
 /* 8  */    resize_maximize,
-/* 9  */    xwm_nop,
+/* 9  */    keyboard_ignore,
 /* 10 */    keyboard_quote,
 /* 11 */    move_client,
 /* 12 */    resize_client,
@@ -652,48 +652,31 @@ key_fn fn_table[] = {
 /* 18 */    NULL, /* refresh */
 };
 
-/* FIXE: consolidate into next function */
-static void get_binding_vals(line *lp, char **ks, key_fn *fn,
-                             void **arg, int *location)
+static void globally_bind(line *lp)
 {
     keybinding *kb;
     mousebinding *mb;
-    
+    key_fn fn;
+
     if (lp->line_type == KEYBINDING) {
         kb = lp->line_value.keybinding;
-        *ks = kb->keybinding_string;
-        printf("function_type = %d\n", kb->keybinding_function->function_type);
-        *fn = fn_table[kb->keybinding_function->function_type];
-        *arg = NULL; /* FIXME: punt for now */
-        *location = MOUSE_NOWHERE;
+        fn = fn_table[kb->keybinding_function->function_type];
+        if (fn != NULL) {
+            keyboard_bind(kb->keybinding_string,
+                          kb->keybinding_depress,
+                          fn,
+                          kb->keybinding_function->function_args);
+        }
     } else if (lp->line_type == MOUSEBINDING) {
         mb = lp->line_value.mousebinding;
-        *ks = mb->mousebinding_string;
-        *fn = fn_table[mb->mousebinding_function->function_type];
-        *location = mb->mousebinding_location;
-        *arg = NULL; /* FIXME */
-    }
-}
-
-/*
- * FIXME:  bindable functions as written take only one argument;
- * multiple args packed into struct.  Need to write conversion
- * routines to take parser-gened 'arglist' and put that into some
- * structure.  Gets ugly.
- */
-static void globally_bind(line *lp)
-{
-    char *keystring;
-    key_fn fn;
-    void *arg;
-    int location;
-
-    get_binding_vals(lp, &keystring, &fn, &arg, &location);
-    if (lp->line_type == KEYBINDING && fn != NULL) {
-        printf("Binding '%s'\n", keystring);
-        keyboard_bind(keystring, KEYBOARD_RELEASE, fn, arg);
-    } else if (lp->line_type == MOUSEBINDING && fn != NULL) {
-        mouse_bind(keystring, MOUSE_RELEASE, location, fn, arg);
+        fn = fn_table[mb->mousebinding_function->function_type];
+        if (fn != NULL) {
+            mouse_bind(mb->mousebinding_string,
+                       mb->mousebinding_depress,
+                       mb->mousebinding_location,
+                       fn,
+                       mb->mousebinding_function->function_args);
+        }
     }
 }
 
@@ -701,10 +684,10 @@ static void globally_unbind(line *lp)
 {
     if (lp->line_type == KEYUNBINDING) {
         keyboard_unbind(lp->line_value.keyunbinding->keyunbinding_string,
-                        KEYBOARD_RELEASE);
+                        lp->line_value.keyunbinding->keyunbinding_depress);
     } else if (lp->line_type == MOUSEUNBINDING) {
         mouse_unbind(lp->line_value.mouseunbinding->mouseunbinding_string,
-                     MOUSE_RELEASE,
+                     lp->line_value.mouseunbinding->mouseunbinding_depress,
                      lp->line_value.mouseunbinding->mouseunbinding_location);
     }
 }

@@ -123,7 +123,7 @@ static void resize_display_geometry(client_t *client, int x, int y,
 static void resist(client_t *client, int *oldx, int *oldy, int x, int y);
 
 /* FIXME: use maximum height, width */
-void resize_maximize(XEvent *xevent, void *v)
+void resize_maximize(XEvent *xevent, arglist *ignored)
 {
     int h_inc, w_inc, h_base, w_base;
     client_t *client;
@@ -172,7 +172,7 @@ void resize_maximize(XEvent *xevent, void *v)
  * called recursively and all simultaneously-running invocations need
  * to keep some of the same state (the resize code is much worse).
  */
-void move_client(XEvent *xevent, void *v)
+void move_client(XEvent *xevent, arglist *ignored)
 {
     client_t *client = NULL;
     int x_start, y_start;       /* only used for mouse move */
@@ -406,7 +406,7 @@ void move_client(XEvent *xevent, void *v)
             event1.type = KeyPress;
             event1.xkey.window = client->window;
         }
-        resize_client(&event1, v);
+        resize_client(&event1, ignored);
     }
 }
 
@@ -504,7 +504,7 @@ static void move_constrain(client_t *client)
  * WARNING:  this gets really, really ugly from here on
  */
 
-void resize_client(XEvent *xevent, void *v)
+void resize_client(XEvent *xevent, arglist *ignored)
 {
     client_t *client = NULL;
     int x_start, y_start, have_mouse, delta;
@@ -824,7 +824,7 @@ void resize_client(XEvent *xevent, void *v)
             event1.type = KeyPress;
             event1.xkey.window = client->window;
         }
-        move_client(&event1, v);
+        move_client(&event1, ignored);
     }
 }
 
@@ -936,6 +936,7 @@ static void xrefresh()
 }
 
 /* compress motion events, idea taken from windowmaker */
+/* this makes a very noticeable difference even on fast machines */
 static void compress_motion(XEvent *xevent)
 {
     XEvent ev1, ev2, *newer, *older;

@@ -77,8 +77,12 @@
 
 %token TOK_BINDKEY
 %token TOK_BINDBUTTON
+%token TOK_BINDDRAG
+%token TOK_BINDKEYRELEASE
 %token TOK_UNBINDKEY
 %token TOK_UNBINDBUTTON
+%token TOK_UNBINDDRAG
+%token TOK_UNBINDKEYRELEASE
 
 %token TOK_ROOT
 %token TOK_FRAME
@@ -218,8 +222,6 @@ type: boolean
           if (typ != NULL) {
               typ->type_type = STRING;
               typ->type_value.stringval = make_string($1);
-//              typ->type_value.stringval = strdup($1+1);
-//              typ->type_value.stringval[strlen($1+1)-1] = '\0';
           }
           $$ = typ;
       }
@@ -282,6 +284,18 @@ keybinding: TOK_BINDKEY TOK_STRING function
                 if (kb != NULL) {
                     kb->keybinding_string = make_string($2);
                     kb->keybinding_function = $3;
+                    kb->keybinding_depress = KEYBOARD_DEPRESS;
+                }
+                $$ = kb;
+            }
+            | TOK_BINDKEYRELEASE TOK_STRING function
+            {
+                keybinding *kb;
+                kb = malloc(sizeof(keybinding));
+                if (kb != NULL) {
+                    kb->keybinding_string = make_string($2);
+                    kb->keybinding_function = $3;
+                    kb->keybinding_depress = KEYBOARD_RELEASE;
                 }
                 $$ = kb;
             }
@@ -294,18 +308,44 @@ mousebinding: TOK_BINDBUTTON location TOK_STRING function
                       mb->mousebinding_string = make_string($3);
                       mb->mousebinding_location = $2;
                       mb->mousebinding_function = $4;
+                      mb->mousebinding_depress = MOUSE_RELEASE;
                   }
                   $$ = mb;
               }
+              | TOK_BINDDRAG location TOK_STRING function
+              {
+                  mousebinding *mb;
+                  mb = malloc(sizeof(mousebinding));
+                  if (mb != NULL) {
+                      mb->mousebinding_string = make_string($3);
+                      mb->mousebinding_location = $2;
+                      mb->mousebinding_function = $4;
+                      mb->mousebinding_depress = MOUSE_DEPRESS;
+                  }
+                  $$ = mb;
+              }
+              
 keyunbinding: TOK_UNBINDKEY TOK_STRING
               {
                   keyunbinding *kub;
                   kub = malloc(sizeof(keyunbinding));
                   if (kub != NULL) {
                       kub->keyunbinding_string = make_string($2);
+                      kub->keyunbinding_depress = 1;
                   }
                   $$ = kub;
               }
+              | TOK_UNBINDKEYRELEASE TOK_STRING
+              {
+                  keyunbinding *kub;
+                  kub = malloc(sizeof(keyunbinding));
+                  if (kub != NULL) {
+                      kub->keyunbinding_string = make_string($2);
+                      kub->keyunbinding_depress = 0;
+                  }
+                  $$ = kub;
+              }
+
 mouseunbinding: TOK_UNBINDBUTTON location TOK_STRING
                 {
                     mouseunbinding *mub;
@@ -313,6 +353,18 @@ mouseunbinding: TOK_UNBINDBUTTON location TOK_STRING
                     if (mub != NULL) {
                         mub->mouseunbinding_string = make_string($3);
                         mub->mouseunbinding_location = $2;
+                        mub->mouseunbinding_depress = 0;
+                    }
+                    $$ = mub;
+                }
+                | TOK_UNBINDDRAG location TOK_STRING
+                {
+                    mouseunbinding *mub;
+                    mub = malloc(sizeof(mouseunbinding));
+                    if (mub != NULL) {
+                        mub->mouseunbinding_string = make_string($3);
+                        mub->mouseunbinding_location = $2;
+                        mub->mouseunbinding_depress = 1;
                     }
                     $$ = mub;
                 }

@@ -61,11 +61,13 @@ static char *workspace_colors[NO_WORKSPACES] = {
 
 static void alloc_workspace_colors();
 
-void workspace_goto_bindable(XEvent *e, void *v)
+void workspace_goto_bindable(XEvent *e, arglist *args)
 {
-    unsigned int new_workspace = (int)v; /* this is always safe */
-
-    workspace_goto(new_workspace);
+    if (args != NULL && args->arglist_arg->type_type == INTEGER) {
+        workspace_goto(args->arglist_arg->type_value.intval);
+    } else {
+        fprintf(stderr, "XWM: type error\n");
+    }
 }
 
 static Bool unmap(client_t *client, void *v)
@@ -172,12 +174,18 @@ void move_with_transients(client_t *client, unsigned int ws)
     focus_add(client, event_timestamp);
 }
 
-void workspace_client_moveto_bindable(XEvent *xevent, void *v)
+void workspace_client_moveto_bindable(XEvent *xevent, arglist *args)
 {
-    unsigned int ws = (int)v;
+    unsigned int ws;
     client_t *client;
 
     client = client_find(event_window(xevent));
+    if (args != NULL && args->arglist_arg->type_type == INTEGER) {
+        ws = args->arglist_arg->type_value.intval;
+    } else {
+        fprintf(stderr, "XWM: type error\n"); /* FIXME */
+        return;
+    }
     if (client == NULL) {
         fprintf(stderr,
                 "XWM: can't move client to workspace %d, can't find client\n",

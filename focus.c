@@ -465,7 +465,7 @@ static void focus_change_current(client_t *new, Time timestamp,
  * behaviour).
  */
 
-void focus_alt_tab(XEvent *xevent, void *v)
+void focus_alt_tab(XEvent *xevent, arglist *ignored)
 {
     focus_node *orig_focus;
     focus_node *node;

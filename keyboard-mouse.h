@@ -36,6 +36,7 @@
 
 #include <X11/Xlib.h>
 #include "client.h"
+#include "prefs.h"
 
 /*
  * Modifier masks which may be arbitrarily mapped by the user
@@ -57,16 +58,21 @@ extern unsigned int AllLocksMask;
 void keyboard_init();
 
 
-/* Functions which are called in response to mouse and keyboard events: */
+/*
+ * Functions which are called in response to mouse and keyboard events
+ * all take this form.  See prefs.h for the definition of the arglist
+ * type.  Each bindable function must do its own
+ * type-checking/type-mangling.
+ */
 
-typedef void (*key_fn)(XEvent *, void *);
+typedef void (*key_fn)(XEvent *, arglist *);
 typedef key_fn mouse_fn;
 
 /*
  * An example function of the above type which does nothing
  */
 
-void keyboard_ignore(XEvent *, void *);
+void keyboard_ignore(XEvent *e, arglist *ignored);
 extern mouse_fn mouse_ignore;
 
 /*
@@ -79,7 +85,7 @@ extern mouse_fn mouse_ignore;
  * client doesn't care about or can't see.
  */
 
-void keyboard_quote(XEvent *, void *);
+void keyboard_quote(XEvent *e, arglist *ignored);
 extern mouse_fn mouse_quote;
 
 /*
@@ -101,7 +107,7 @@ extern mouse_fn mouse_quote;
  * events when the option is on.
  */
 
-void keyboard_replay(XKeyEvent *);
+void keyboard_replay(XKeyEvent *e);
 
 /*
  * This function parallels keyboard_replay() - it tries to send the
@@ -110,7 +116,7 @@ void keyboard_replay(XKeyEvent *);
  * event.
  */
 
-void mouse_replay(XButtonEvent *);
+void mouse_replay(XButtonEvent *e);
 
 /*
  * Bind a key to a function.  KEYCODE and MODIFIERS are the Keycode
@@ -122,7 +128,7 @@ void mouse_replay(XButtonEvent *);
  */
 
 void keyboard_bind_ex(unsigned int keycode, unsigned int modifiers,
-                      int depress, key_fn fn, void *arg);
+                      int depress, key_fn fn, arglist *args);
 
 #define KEYBOARD_DEPRESS KeyPress
 #define KEYBOARD_RELEASE KeyRelease
@@ -140,7 +146,7 @@ void keyboard_bind_ex(unsigned int keycode, unsigned int modifiers,
  */
 
 void mouse_bind_ex(unsigned int button, unsigned int modifiers,
-                   int depress, int location, mouse_fn fn, void *arg);
+                   int depress, int location, mouse_fn fn, arglist *args);
 
 #define MOUSE_DEPRESS ButtonPress
 #define MOUSE_RELEASE ButtonRelease
@@ -216,7 +222,7 @@ void mouse_bind_ex(unsigned int button, unsigned int modifiers,
  */
 
 void keyboard_bind(char *keystring, int depress,
-                   key_fn fn, void *arg);
+                   key_fn fn, arglist *args);
 
 /*
  * This works very similar to keyboard_bind except the grammar
@@ -236,7 +242,7 @@ void keyboard_bind(char *keystring, int depress,
  */
 
 void mouse_bind(char *mousestring, int depress,
-                int location, mouse_fn fn, void *arg);
+                int location, mouse_fn fn, arglist *args);
 
 /*
  * these functions allow one to unbind all key or mouse event that
@@ -288,7 +294,7 @@ Bool keyboard_handle_event(XKeyEvent *xevent);
  * returns True if handled the event, False if ignored it
  */
 
-Bool mouse_handle_event(XEvent *);
+Bool mouse_handle_event(XEvent *e);
 
 /* FIXME:  there should be a function to unmap keys and buttons if we
  * really want this to be dynamic */

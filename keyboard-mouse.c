@@ -52,24 +52,24 @@
 #define MIN(x,y) ((x) < (y) ? (x) : (y))
 #endif
 
-typedef struct _keybinding {
+typedef struct _boundkey {
     unsigned int keycode;
     unsigned int modifiers;
     int depress;
     key_fn function;
-    void *arg;
-    struct _keybinding *next;
-} keybinding;
+    arglist *args;
+    struct _boundkey *next;
+} boundkey;
 
-typedef struct _mousebinding {
+typedef struct _boundbutton {
     unsigned int button;
     unsigned int modifiers;
     int depress;
     int location;
     mouse_fn function;
-    void *arg;
-    struct _mousebinding *next;
-} mousebinding;
+    arglist *args;
+    struct _boundbutton *next;
+} boundbutton;
 
 unsigned int MetaMask, SuperMask, HyperMask, AltMask, ModeMask;
 unsigned int AllLocksMask;
@@ -83,8 +83,8 @@ mouse_fn mouse_quote = keyboard_quote;
  */
 static Bool keyboard_is_lock[8] = { False };
 /* the mouse and keyboard bindings */
-static keybinding *keybindings = NULL;
-static mousebinding *mousebindings = NULL;
+static boundkey *boundkeys = NULL;
+static boundbutton *boundbuttons = NULL;
 /* combinations of modifier keys to ignore */
 static unsigned int *modifier_combinations = NULL;
 static int n_modifier_combinations;
@@ -211,36 +211,36 @@ void keyboard_init()
     }
 }
 
-void keyboard_ignore(XEvent *e, void *v)
+void keyboard_ignore(XEvent *e, arglist *ignored)
 {
     return;
 }
 
 void keyboard_bind_ex(unsigned int keycode, unsigned int modifiers,
-                      int depress, key_fn fn, void *arg)
+                      int depress, key_fn fn, arglist *arg)
 {
-    keybinding *newbinding;
+    boundkey *newbinding;
 
-    newbinding = Malloc(sizeof(keybinding));
+    newbinding = Malloc(sizeof(boundkey));
     if (newbinding == NULL) {
         fprintf(stderr, "XWM: Cannot bind key, out of memory\n");
         return;
     }
-    newbinding->next = keybindings;
+    newbinding->next = boundkeys;
     newbinding->keycode = keycode;
     newbinding->modifiers = modifiers;
     newbinding->depress = depress;
     newbinding->function = fn;
-    newbinding->arg = arg;
-    keybindings = newbinding;
+    newbinding->args = arg;
+    boundkeys = newbinding;
 }
 
 void mouse_bind_ex(unsigned int button, unsigned int modifiers,
-                   int depress, int location, mouse_fn fn, void *arg)
+                   int depress, int location, mouse_fn fn, arglist *arg)
 {
-    mousebinding *newbinding;
+    boundbutton *newbinding;
 
-    newbinding = Malloc(sizeof(mousebinding));
+    newbinding = Malloc(sizeof(boundbutton));
     if (newbinding == NULL) {
         fprintf(stderr, "XWM: Cannot bind mouse button, out of memory\n");
         return;
@@ -250,23 +250,23 @@ void mouse_bind_ex(unsigned int button, unsigned int modifiers,
     newbinding->depress = depress;
     newbinding->location = location;
     newbinding->function = fn;
-    newbinding->arg = arg;
-    newbinding->next = mousebindings;
-    mousebindings = newbinding;
+    newbinding->args = arg;
+    newbinding->next = boundbuttons;
+    boundbuttons = newbinding;
 }
 
 void keyboard_unbind_ex(unsigned int keycode, unsigned int modifiers,
                         int depress) 
 {
-    keybinding *kb, *tmp;
+    boundkey *kb, *tmp;
 
     tmp = NULL;
-    for (kb = keybindings; kb != NULL; kb = kb->next) {
+    for (kb = boundkeys; kb != NULL; kb = kb->next) {
         if (kb->keycode == keycode
             && kb->modifiers == modifiers
             && kb->depress == depress) {
             if (tmp == NULL) {
-                keybindings = keybindings->next;
+                boundkeys = boundkeys->next;
                 free(kb);
             } else {
                 tmp->next = kb->next;
@@ -280,16 +280,16 @@ void keyboard_unbind_ex(unsigned int keycode, unsigned int modifiers,
 void mouse_unbind_ex(unsigned int button, unsigned int modifiers,
                      int depress, int location)
 {
-    mousebinding *mb, *tmp;
+    boundbutton *mb, *tmp;
 
     tmp = NULL;
-    for (mb = mousebindings; mb != NULL; mb = mb->next) {
+    for (mb = boundbuttons; mb != NULL; mb = mb->next) {
         if (mb->button == button
             && mb->modifiers == modifiers
             && mb->depress == depress
             && mb->location == location) {
             if (tmp == NULL) {
-                mousebindings = mousebindings->next;
+                boundbuttons = boundbuttons->next;
                 free(mb);
             } else {
                 tmp->next = mb->next;
@@ -303,7 +303,7 @@ void mouse_unbind_ex(unsigned int button, unsigned int modifiers,
 /* FIXME: should also apply the bindings to all active clients */
 
 void keyboard_bind(char *keystring, int depress,
-                   key_fn fn, void *arg)
+                   key_fn fn, arglist *arg)
 {
     unsigned int keycode;
     unsigned int modifiers;
@@ -316,7 +316,7 @@ void keyboard_bind(char *keystring, int depress,
 }
 
 void mouse_bind(char *mousestring, int depress,
-                int location, mouse_fn fn, void *arg)
+                int location, mouse_fn fn, arglist *arg)
 {
     unsigned int button;
     unsigned int modifiers;
@@ -357,10 +357,10 @@ void mouse_unbind(char *mousestring, int depress, int location)
 
 void keyboard_grab_keys(Window w)
 {
-    keybinding *kb;
+    boundkey *kb;
     int i;
 
-    for (kb = keybindings; kb != NULL; kb = kb->next) {
+    for (kb = boundkeys; kb != NULL; kb = kb->next) {
         XGrabKey(dpy, kb->keycode, kb->modifiers, w, True,
                  GrabModeAsync, GrabModeAsync);
         for (i = 0; i < n_modifier_combinations; i++) {
@@ -373,11 +373,11 @@ void keyboard_grab_keys(Window w)
 
 void mouse_grab_buttons(client_t *client)
 {
-    mousebinding *mb;
+    boundbutton *mb;
     unsigned int mask;
     int i;
     
-    for (mb = mousebindings; mb != NULL; mb = mb->next) {
+    for (mb = boundbuttons; mb != NULL; mb = mb->next) {
         mask = ButtonPressMask | ButtonReleaseMask;
         if (mb->location & MOUSE_FRAME) {
             XGrabButton(dpy, mb->button, mb->modifiers, client->frame,
@@ -404,7 +404,7 @@ void mouse_grab_buttons(client_t *client)
     }
 }
 
-void keyboard_quote(XEvent *e, void *v)
+void keyboard_quote(XEvent *e, arglist *ignored)
 {
     XSetWindowAttributes xswa;
 
@@ -488,7 +488,7 @@ void mouse_replay(XButtonEvent *e)
 
 Bool keyboard_handle_event(XKeyEvent *xevent)
 {
-    keybinding *kb;
+    boundkey *kb;
     int code;
 
 #ifdef DEBUG
@@ -502,14 +502,14 @@ Bool keyboard_handle_event(XKeyEvent *xevent)
 
     code = xevent->keycode;
 
-    for (kb = keybindings; kb != NULL; kb = kb->next) {
+    for (kb = boundkeys; kb != NULL; kb = kb->next) {
         if (kb->keycode == code
             && kb->modifiers == (xevent->state & (~AllLocksMask))
             && kb->depress == xevent->type) {
             if (quoting) {
                 unquote((XEvent *)xevent);
             } else {
-                (*kb->function)((XEvent *)xevent, kb->arg);
+                (*kb->function)((XEvent *)xevent, kb->args);
             }
             return True;
         }
@@ -531,7 +531,7 @@ Bool keyboard_handle_event(XKeyEvent *xevent)
 
 Bool mouse_handle_event(XEvent *xevent)
 {
-    mousebinding *mb;
+    boundbutton *mb;
     unsigned int button, state;
     int location;
     client_t *client;
@@ -553,7 +553,7 @@ Bool mouse_handle_event(XEvent *xevent)
         }
     }
     
-    for (mb = mousebindings; mb != NULL; mb = mb->next) {
+    for (mb = boundbuttons; mb != NULL; mb = mb->next) {
         if (button == mb->button
             && state == mb->modifiers
             && (location & mb->location)) {
@@ -566,7 +566,7 @@ Bool mouse_handle_event(XEvent *xevent)
                             && xevent->type == ButtonRelease
                             && in_window(xevent, xevent->xbutton.window))) {
                         debug(("Calling function\n"));
-                        (*mb->function)(xevent, mb->arg);
+                        (*mb->function)(xevent, mb->args);
                     } else {
                         debug(("Not calling function\n"));
                     }

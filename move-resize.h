@@ -30,6 +30,8 @@
 
 #include <X11/Xlib.h>
 
+#include "prefs.h"
+
 /* one if moving/resizing, zero otherwise */
 extern int moving, sizing;
 
@@ -71,8 +73,8 @@ extern int moving, sizing;
  * * argument is ignored.
  */
 
-void move_client(XEvent *xevent, void *v);
-void resize_client(XEvent *xevent, void *v);
+void move_client(XEvent *xevent, arglist *ignored);
+void resize_client(XEvent *xevent, arglist *ignored);
 
 /*
  * Toggle maximization state; if client->prev_width == -1 or
@@ -82,6 +84,6 @@ void resize_client(XEvent *xevent, void *v);
  * toggles the maximization state.  The void * argument is ignored.
  */
 
-void resize_maximize(XEvent *xevent, void *v);
+void resize_maximize(XEvent *xevent, arglist *ignored);
 
 #endif /* MOVE_RESIZE_H */

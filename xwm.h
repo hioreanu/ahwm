@@ -80,8 +80,8 @@ char *strdup(char *s);
 #endif
 
 /* FIXME:  wrong place */
-void run_program(XEvent *e, void *v);
-void xwm_quit(XEvent *e, void *v);
-void xwm_nop(XEvent *e, void *v);
+struct _arglist;
+void run_program(XEvent *e, struct _arglist *args);
+void xwm_quit(XEvent *e, struct _arglist *ignored);
 
 #endif /* XWM_H */

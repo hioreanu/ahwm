@@ -85,7 +85,6 @@ int shape_supported;
 int shape_event_base;
 #endif
 
-void run_program(XEvent *e, void *arg);
 #ifdef DEBUG
 void mark(XEvent *e, void *arg);
 #endif
@@ -296,22 +295,22 @@ int main(int argc, char **argv)
                   workspace_goto_bindable, (void *)7);
     keyboard_bind("Control | Alt | Shift | q", KEYBOARD_RELEASE,
                   keyboard_quote, NULL);
-#endif
-    mouse_bind("Alt | Button1", MOUSE_DEPRESS, MOUSE_FRAME,
-               move_client, NULL);
-    mouse_bind("Alt | Button3", MOUSE_DEPRESS, MOUSE_FRAME,
-               resize_client, NULL);
-    mouse_bind("Button1", MOUSE_DEPRESS, MOUSE_TITLEBAR,
-               move_client, NULL);
     mouse_bind("Button2", MOUSE_RELEASE, MOUSE_TITLEBAR,
                kill_nicely, NULL);
     mouse_bind("Control | Button2", MOUSE_RELEASE, MOUSE_TITLEBAR,
                kill_with_extreme_prejudice, NULL);
     mouse_bind("Button3", MOUSE_RELEASE, MOUSE_TITLEBAR,
                resize_maximize, NULL);
+    mouse_bind("Alt | Button1", MOUSE_DEPRESS, MOUSE_FRAME,
+               move_client, NULL);
+    mouse_bind("Alt | Button3", MOUSE_DEPRESS, MOUSE_FRAME,
+               resize_client, NULL);
+    mouse_bind("Button1", MOUSE_DEPRESS, MOUSE_TITLEBAR,
+               move_client, NULL);
+#endif
 
-    focus_init();
     prefs_init();
+    focus_init();
     scan_windows();
     
     xfd = ConnectionNumber(dpy);
@@ -375,37 +374,41 @@ static void scan_windows()
 
 /* standard double fork trick, don't leave zombies */
 /* FIXME:  this should move out of xwm.c perhaps misc.c */
-void run_program(XEvent *e, void *arg)
+void run_program(XEvent *e, struct _arglist *args)
 {
     pid_t pid;
+    char *progname;
+    struct _arglist *p;
 
     fflush(stdout);
     fflush(stderr);
-    if ( (pid = fork()) == 0) {
-        close(ConnectionNumber(dpy));
-        if (fork() == 0) {
-            execl("/bin/sh", "/bin/sh", "-c", arg, NULL);
+    for (p = args; p != NULL; p = p->arglist_next) {
+        if (p->arglist_arg->type_type != STRING) {
+            fprintf(stderr, "XWM: type error\n"); /* FIXME */
+            continue;
         }
-        exit(0);
-    } else if (pid > 0) {
-        wait(NULL);
-    } else {
-        perror("XWM: fork");
+        progname = p->arglist_arg->type_value.stringval;
+        if ( (pid = fork()) == 0) {
+            close(ConnectionNumber(dpy));
+            if (fork() == 0) {
+                execl("/bin/sh", "/bin/sh", "-c", progname, NULL);
+            }
+            exit(0);
+        } else if (pid > 0) {
+            wait(NULL);
+        } else {
+            perror("XWM: fork");
+        }
     }
 }
 
-void xwm_quit(XEvent *e, void *arg)
+void xwm_quit(XEvent *e, struct _arglist *ignored)
 {
 #ifdef DEBUG
     printf("XWM: xwm_quit called, quitting\n");
     fflush(stdout);
 #endif
     exit(0);
-}
-
-void xwm_nop(XEvent *e, void *arg)
-{
-    /* just eat event */
 }
 
 #ifdef DEBUG

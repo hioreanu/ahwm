@@ -31,7 +31,7 @@
 #include "event.h"
 #include "debug.h"
 
-void kill_nicely(XEvent *xevent, void *v)
+void kill_nicely(XEvent *xevent, arglist *ignored)
 {
     client_t *client;
 
@@ -46,11 +46,11 @@ void kill_nicely(XEvent *xevent, void *v)
                            0, 0, 0);
     } else {
         debug(("\tWindow isn't civilized, exterminating it\n"));
-        kill_with_extreme_prejudice(xevent, v);
+        kill_with_extreme_prejudice(xevent, ignored);
     }
 }
     
-void kill_with_extreme_prejudice(XEvent *xevent, void *v)
+void kill_with_extreme_prejudice(XEvent *xevent, arglist *ignored)
 {
     client_t *client;
 

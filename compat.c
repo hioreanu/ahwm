@@ -38,7 +38,7 @@ char *strerror(int errnum)
 {
     static char *errtext = "unknown error";
 
-    if (errnum < sys_nerr)
+    if (errnum < sys_nerr && errnum >= 0)
         return sys_errlist[errnum];
     return errtext;
 }

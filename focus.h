@@ -118,6 +118,6 @@ void focus_workspace_changed(Time);
  * to a client window by sending a synthetic event.
  */
 
-void focus_alt_tab(XEvent *, void *);
+void focus_alt_tab(XEvent *e, arglist *ignored);
 
 #endif /* FOCUS_H */

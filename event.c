@@ -138,6 +138,7 @@ void event_dispatch(XEvent *event)
 {
 #ifdef DEBUG
     static char *xevent_names[] = {
+        /* event name */        /* Do we handle it? */
         "Zero",                 /* NO */
         "One",                  /* NO */
         "KeyPress",             /* YES */

@@ -107,22 +107,26 @@ struct _option {
 
 struct _keybinding {
     char *keybinding_string;
+    int keybinding_depress;
     function *keybinding_function;
 };
 
 struct _mousebinding {
     char *mousebinding_string;
+    int mousebinding_depress;
     int mousebinding_location;
     function *mousebinding_function;
 };
 
 struct _keyunbinding {
     char *keyunbinding_string;
+    int keyunbinding_depress;
 };
 
 struct _mouseunbinding {
     char *mouseunbinding_string;
     int mouseunbinding_location;
+    int mouseunbinding_depress;
 };
 
 struct _function {

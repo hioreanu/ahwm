@@ -29,6 +29,7 @@
 #include "config.h"
 
 #include "client.h"
+#include "prefs.h"
 
 /* 
  * Workspaces are counted starting from one, not zero.  They are
@@ -58,7 +59,7 @@ extern unsigned long workspace_highlight[NO_WORKSPACES];
 void workspace_client_moveto(client_t *client, unsigned int ws);
 
 /* same as above for binding */
-void workspace_client_moveto_bindable(XEvent *e, void *workspace);
+void workspace_client_moveto_bindable(XEvent *e, arglist *args);
 
 /*
  * make a workspace the current workspace
@@ -67,7 +68,7 @@ void workspace_client_moveto_bindable(XEvent *e, void *workspace);
 void workspace_goto(unsigned int ws);
 
 /* same as above for binding */
-void workspace_goto_bindable(XEvent *e, void *workspace);
+void workspace_goto_bindable(XEvent *e, arglist *args);
 
 /*
  * update the color on a workspace, allocate colors if needed
