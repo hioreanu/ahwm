@@ -416,6 +416,7 @@ void resize_client(XEvent *xevent)
                                 x_start = client->x + client->width;
                                 y_start = client->y + client->height;
                                 break;
+                            default: /* shuts up compiler warning */
                         }
                     }
                     xrefresh();

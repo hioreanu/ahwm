@@ -14,6 +14,7 @@
  * The default Xlib error handler (the one which pretty-prints the
  * error and calls exit(1)), defined in error.c, initialized in xwm.c
  */
+
 extern int (*error_default_handler)(Display *, XErrorEvent *);
 
 /*

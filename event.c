@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <errno.h>
+#include <stdlib.h>
 #include "xwm.h"
 #include "event.h"
 #include "client.h"
@@ -68,48 +69,46 @@ void event_get(int xfd, XEvent *event)
 }
 
 /* Line 571 of my Xlib.h */
-/* check out line 966 of Xlib.h for a very cool example of a good use
- * for the 'union' in C */
-/* windowmaker: src/event.c:237 */
+/* file:/home/ach/xlib/events/processing-overview.html */
 void event_dispatch(XEvent *event)
 {
 #ifdef DEBUG
     static char *xevent_names[] = {
-        "Zero",
-        "One",
-        "KeyPress",
-        "KeyRelease",
-        "ButtonPress",
-        "ButtonRelease",
-        "MotionNotify",
-        "EnterNotify",
-        "LeaveNotify",
-        "FocusIn",
-        "FocusOut",
-        "KeymapNotify",
-        "Expose",
-        "GraphicsExpose",
-        "NoExpose",
-        "VisibilityNotify",
-        "CreateNotify",
-        "DestroyNotify",
-        "UnmapNotify",
-        "MapNotify",
-        "MapRequest",
-        "ReparentNotify",
-        "ConfigureNotify",
-        "ConfigureRequest",
-        "GravityNotify",
-        "ResizeRequest",
-        "CirculateNotify",
-        "CirculateRequest",
-        "PropertyNotify",
-        "SelectionClear",
-        "SelectionRequest",
-        "SelectionNotify",
-        "ColormapNotify",
-        "ClientMessage",
-        "MappingNotify",
+        "Zero",                 /* NO */
+        "One",                  /* NO */
+        "KeyPress",             /* YES */
+        "KeyRelease",           /* YES */
+        "ButtonPress",          /* YES */
+        "ButtonRelease",        /* YES */
+        "MotionNotify",         /* special case */
+        "EnterNotify",          /* YES */
+        "LeaveNotify",          /* YES */
+        "FocusIn",              /* TODO */
+        "FocusOut",             /* TODO */
+        "KeymapNotify",         /* TODO */
+        "Expose",               /* YES */
+        "GraphicsExpose",       /* NO? */
+        "NoExpose",             /* NO? */
+        "VisibilityNotify",     /* TODO */
+        "CreateNotify",         /* YES */
+        "DestroyNotify",        /* YES */
+        "UnmapNotify",          /* YES */
+        "MapNotify",            /* TODO */
+        "MapRequest",           /* YES */
+        "ReparentNotify",       /* TODO */
+        "ConfigureNotify",      /* TODO */
+        "ConfigureRequest",     /* YES */
+        "GravityNotify",        /* TODO */
+        "ResizeRequest",        /* TODO */
+        "CirculateNotify",      /* TODO */
+        "CirculateRequest",     /* YES */
+        "PropertyNotify",       /* YES */
+        "SelectionClear",       /* NO */
+        "SelectionRequest",     /* NO */
+        "SelectionNotify",      /* NO */
+        "ColormapNotify",       /* TODO */
+        "ClientMessage",        /* YES */
+        "MappingNotify",        /* TODO */
     };
 
     printf("----------------------------------------");
@@ -124,55 +123,96 @@ void event_dispatch(XEvent *event)
 
     /* check the event number, jump to appropriate function */
     switch(event->type) {
-        case KeyPress:
-        /* case KeyRelease: */
-            keyboard_process(&event->xkey); /* keyboard.c */
+        case 0:                 /* can't happen */
+        case 1:
+            fprintf(stderr, "XWM: received unusual event type %d\n",
+                    event->type);
             break;
-        case ButtonPress:
-        case ButtonRelease:
-        case MotionNotify:
-            mouse_handle_event(event); /* mouse.c */
+            
+        case KeyPress:          /* XGrabKeys in keyboard.c */
+        case KeyRelease:        /* XGrabKeys in keyboard.c */
+            keyboard_process(&event->xkey);
             break;
-        case EnterNotify:
-/*        case LeaveNotify: */
+            
+        case ButtonPress:       /* XGrabButton in mouse.c */
+        case ButtonRelease:     /* XGrabButton in mouse.c */
+            mouse_handle_event(event);
+            break;
+            
+        case MotionNotify:      /* can't happen */
+            fprintf(stderr, "XWM: received MotionNotify in wrong place\n");
+            break;
+            
+        case EnterNotify:       /* frame EnterWindowMask, client.c */
             event_enter_leave(&event->xcrossing);
             break;
-        case CreateNotify:
+            
+/*        case LeaveNotify: */  /* ignored */
+/*        case FocusIn: */      /* TODO */
+/*        case FocusOut: */     /* TODO */
+/*        case KeymapNotify: */ /* TODO */
+            
+        case Expose:            /* frame ExposureMask, client.c */
+            event_expose(&event->xexpose);
+            break;
+            
+/*        case GraphicsExpose: */ /* ignored */
+/*        case NoExpose: */     /* ignored */
+/*        case VisibilityNotify: */ /* TODO */
+            
+        case CreateNotify:      /* root SubstructureNotifyMask, xwm.c */
             event_create(&event->xcreatewindow);
             break;
-        case DestroyNotify:
+            
+        case DestroyNotify:     /* client StructureNotifyMask, client.c */
             event_destroy(&event->xdestroywindow);
             break;
-        case UnmapNotify:
+            
+        case UnmapNotify:       /* client StructureNotifyMask, client.c */
             event_unmap(&event->xunmap);
             break;
-        /* MapNotify */
-        case MapRequest:
+            
+/*        case MapNotify: */    /* TODO */
+            
+        case MapRequest:        /* frame SubstructureRedirectMask, client.c */
             event_maprequest(&event->xmaprequest);
             break;
-        /* ReparentNotify */
-        /* ConfigureNotify */
-        case ConfigureRequest:
+            
+/*        case ReparentNotify: */ /* TODO */
+/*        case ConfigureNotify: */ /* TODO */
+            
+        case ConfigureRequest:  /* frame SubstructureRedirectmask, client.c */
             event_configurerequest(&event->xconfigurerequest);
             break;
-        case PropertyNotify:
+            
+/*        case GravityNotify: */ /* TOOD */
+/*        case ResizeRequest: */ /* TODO */
+/*        case CirculateNotify: */ /* TODO */
+            
+        case CirculateRequest:  /* frame SubstructureRedirectMask, client.c */
+            event_circulaterequest(&event->xcirculaterequest);
+            break;
+            
+        case PropertyNotify:    /* client PropertyChangeMask, client.c */
             event_property(&event->xproperty);
             break;
+
+/*        case SelectionClear: */ /* ignored */
+/*        case SelectionRequest: */ /* ignored */
+/*        case SelectionNotify: */ /* ignored */
+
 #if 0
-        case ColormapNotify:
+        case ColormapNotify:    /* TODO */
             event_colormap(&event->xcolormap);
             break;
 #endif
-        case ClientMessage:
+            
+        case ClientMessage:     /* client in charge of this */
             event_clientmessage(&event->xclient);
             break;
-        case CirculateRequest:
-            event_circulaterequest(&event->xcirculaterequest);
-            break;
-        case Expose:
-            event_expose(&event->xexpose);
-            break;
-        /* MappingNotify */
+            
+/*        case MappingNotify: */ /* TODO */
+            
         default:
 #ifdef DEBUG
             printf("\tIgnoring event\n");
@@ -331,12 +371,9 @@ static void event_maprequest(XMapRequestEvent *xevent)
         XMapWindow(xevent->display, client->window);
         if (client->frame != None) {
             XMapWindow(xevent->display, client->frame);
-            keyboard_grab_keys(client->frame);
-            mouse_grab_buttons(client->frame);
-        } else {
-            keyboard_grab_keys(client->window);
-            mouse_grab_buttons(client->window);
         }
+        keyboard_grab_keys(client);
+        mouse_grab_buttons(client);
         focus_set(client);
         focus_ensure();
     }

@@ -20,7 +20,7 @@ typedef void (*key_fn)(XEvent *);
 void keyboard_ignore(XEvent *);
 
 /*
- * Bind a key to a function.  KEYCODE and MODS are the Keycode and
+ * Bind a key to a function.  KEYCODE and MODIFIERS are the Keycode and
  * Modifiers to bind; DEPRESS is KEYBOARD_DEPRESS, KEYBOARD_RELEASE or
  * a logical OR of both, indicating whether to call the function on
  * key press, release or at both times; FN is the function to be
@@ -28,11 +28,11 @@ void keyboard_ignore(XEvent *);
  * assigned, the most recent is used.
  */
 
-void keyboard_set_function_ex(int keycode, unsigned int mods,
+void keyboard_set_function_ex(unsigned int keycode, unsigned int modifiers,
                               int depress, key_fn fn);
 
-#define KEYBOARD_DEPRESS KeyPress
-#define KEYBOARD_RELEASE KeyRelease
+#define KEYBOARD_DEPRESS KeyPressMask
+#define KEYBOARD_RELEASE KeyReleaseMask
 
 /*
  * Function to convert a string which describes a keyboard binding to
@@ -103,11 +103,11 @@ void keyboard_set_function_ex(int keycode, unsigned int mods,
  * "Meta | a" is usually (not always) equivalent to "Mod1 | a"
  */
 
-int keyboard_string_to_keycode(char *keystring, int *keycode,
-                               unsigned int *modifiers);
+int keyboard_parse_string(char *keystring, unsigned int *keycode,
+                          unsigned int *modifiers);
 
 /*
- * Utility function which calls keyboard_string_to_keycode() and then
+ * Utility function which calls keyboard_parse_string() and then
  * keyboard_set_function_ex()
  */
 
@@ -115,11 +115,11 @@ void keyboard_set_function(char *keystring, int depress, key_fn fn);
 
 /*
  * Do a "soft" grab on all the keys that are of interest to us - this
- * should be called once when the window is created (before the client
+ * should be called once when the window is mapped (before the client
  * has a chance to call XGrabKeys on the newly-created window).
  */
 
-void keyboard_grab_keys(Window);
+void keyboard_grab_keys(client_t *client);
 
 /* 
  * process a key event

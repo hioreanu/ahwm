@@ -18,21 +18,21 @@
 #endif
 
 typedef struct _keybinding {
-    int keycode;
+    unsigned int keycode;
     unsigned int modifiers;
     int depress;
     key_fn function;
     struct _keybinding *next;
 } keybinding;
 
-keybinding *bindings = NULL;
+static keybinding *bindings = NULL;
 
 void keyboard_ignore(XEvent *e)
 {
     return;
 }
 
-void keyboard_set_function_ex(int keycode, unsigned int modifiers,
+void keyboard_set_function_ex(unsigned int keycode, unsigned int modifiers,
                               int depress, key_fn fn)
 {
     keybinding *newbinding;
@@ -54,26 +54,22 @@ void keyboard_set_function_ex(int keycode, unsigned int modifiers,
 
 void keyboard_set_function(char *keystring, int depress, key_fn fn)
 {
-    int keycode;
+    unsigned int keycode;
     unsigned int modifiers;
 
-    if (keyboard_string_to_keycode(keystring, &keycode, &modifiers) != 1) {
+    if (keyboard_parse_string(keystring, &keycode, &modifiers) != 1) {
         fprintf(stderr, "XWM: Cannot bind key, bad keystring '%s'\n", keystring);
         return;
     }
     keyboard_set_function_ex(keycode, modifiers, depress, fn);
 }
 
-void keyboard_grab_keys(Window w)
+void keyboard_grab_keys(client_t *client)
 {
     keybinding *kb;
 
-#ifdef DEBUG
-    printf("\tGrabbing keys of window 0x%08X\n", (unsigned int)w);
-#endif /* DEBUG */
-    
     for (kb = bindings; kb != NULL; kb = kb->next) {
-        XGrabKey(dpy, kb->keycode, kb->modifiers, w, True,
+        XGrabKey(dpy, (int)kb->keycode, kb->modifiers, client->frame, True,
                  GrabModeAsync, GrabModeAsync);
     }
 }
@@ -82,7 +78,6 @@ void keyboard_process(XKeyEvent *xevent)
 {
     keybinding *kb;
     int code;
-    client_t *client;
 
 #ifdef DEBUG
     KeySym ks;
@@ -110,12 +105,12 @@ void keyboard_process(XKeyEvent *xevent)
  * This is simple enough that we don't need to bring in lex (or, God
  * forbid, yacc).  Looks ugly, mostly just string manipulation.
  */
-int keyboard_string_to_keycode(char *keystring, int *keycode_ret,
-                               unsigned int *modifiers_ret)
+int keyboard_parse_string(char *keystring, unsigned int *keycode_ret,
+                          unsigned int *modifiers_ret)
 {
     char buf[512];
     char *cp1, *cp2;
-    int keycode;
+    unsigned int keycode;
     unsigned int modifiers, tmp_modifier;
     KeySym ks;
 

@@ -198,13 +198,8 @@ static void scan_windows()
     for (i = 0; i < n; i++) {
         client = client_create(wins[i]);  /* client.c */
         if (client != NULL && client->state == NormalState) {
-            if (client->frame != None) {
-                keyboard_grab_keys(client->frame); /* keyboard.c */
-                mouse_grab_buttons(client->frame); /* mouse.c */
-            } else {
-                keyboard_grab_keys(wins[i]); /* keyboard.c */
-                mouse_grab_buttons(wins[i]); /* mouse.c */
-            }
+            keyboard_grab_keys(client); /* keyboard.c */
+            mouse_grab_buttons(client); /* mouse.c */
         }
     }
     XFree(wins);
