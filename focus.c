@@ -7,44 +7,62 @@
 #include "focus.h"
 #include "workspace.h"
 
-client_t *focus_current = None;
+client_t *focus_current = NULL;
 
-typedef struct _focus_stack_t {
-    client_t *client;
-    struct _focus_stack_t *next;
-} focus_stack_t;
+client_t *focus_stacks[NO_WORKSPACES] = { NULL };
 
-focus_stack_t *focus_stacks[NO_WORKSPACES];
+/* 
+ * invariant:
+ * 
+ * focus_current == focus_stacks[workspace_current - 1]
+ * 
+ * This should hold whenever we enter or leave the window manager.
+ * Call focus_ensure() whenever leaving the window manager and the
+ * invariant may not hold to update 'focus_current'.
+ */
 
-void focus_lost()
+void focus_add(client_t *client)
 {
-    /* walk the focus list or stack or something else clever */
+    client_t *old;
+
+    focus_remove(client_t *client);
+    old = focus_stacks[client->workspace - 1];
+    if (old == NULL) {
+        client->next = client;
+        client->prev = client;
+    } else {
+        client->next = old;
+        client->prev = old->prev;
+        old->prev->next = client;
+        old->prev = client;
+    }
+    focus_stacks[client->workspace - 1] = client;
 }
 
-void focus_none()
+void focus_remove(client_t *client)
 {
-    focus_current = None;
-    XSetInputFocus(dpy, None, RevertToNone, CurrentTime);
+    client_t *stack, *orig;
+
+    orig = focus_stacks[client->workspace - 1];
+    stack = orig;
+    if (stack == NULL) return;
+    do {
+        if (stack == client) {
+            focus_stacks[client->workspace - 1] = client->next;
+            focus_stacks[client->workspace - 1]->prev = client->prev;
+            client->prev->next = focus_stacks[client->workspace - 1];
+            if (focus_stacks[client->workspace - 1] == client)
+                focus_stacks[client->workspace - 1] = NULL;
+            return;
+        }
+        stack = stack->next;
+    } while (stack != orig);
 }
 
 void focus_set(client_t *client)
 {
-    client->prevfocus = focus_current;
-    focus_current = client;
-    XSetInputFocus(dpy, client->window, RevertToNone, CurrentTime);
-}
-
-int focus_settoplevel(client_t *client)
-{
-    focus_stack_t *oldstack, *newstack;
-
-    oldstack = focus_stacks[client->workspace - 1];
-    newstack = malloc(sizeof(focus_stack_t));
-    if (newstack == NULL) return -1;
-    newstack->next = oldstack;
-    newstack->client = client;
-    focus_stacks[client->workspace - 1] = newstack;
-    return 0;
+    focus_remove(client);
+    focus_add(client);
 }
 
 int focus_canfocus(client_t *client)
@@ -61,4 +79,18 @@ int focus_canfocus(client_t *client)
 
     /* Window Maker does a bunch of stuff with KDE here */
     /* ICC/client-to-windowmanager/wm-hints.html */
+}
+
+void focus_ensure()
+{
+    if (focus_current == focus_stacks[workspace_current - 1])
+        return;
+    focus_current = focus_stacks[workspace_current - 1];
+    XSetInputFocus(dpy,
+                   focus_current->window,
+                   (focus_current->prev ?
+                    focus_current->prev->window :
+                    RevertToNone),
+                   CurrentTime);
+    XMapRaised(dpy, focus_current->window);
 }
