@@ -41,17 +41,13 @@ typedef enum {
     NW = 0, NE, SE, SW, NORTH, SOUTH, EAST, WEST, UNKNOWN
 } resize_direction_t;
 
-/*
- * One of the four quadrants of a window like in plane geometry
- */
-
-typedef enum {
-    I = 1, II, III, IV
-} quadrant_t;
-
 typedef enum {
     FIRST, MIDDLE, LAST
 } resize_ordinal_t;
+
+static int keycode_Escape = 0, keycode_Shift_L, keycode_Shift_R;
+static int keycode_Return, keycode_Up, keycode_Down, keycode_Left;
+static int keycode_Right, keycode_j, keycode_k, keycode_l, keycode_h;
 
 static XEvent *compress_motion(XEvent *xevent);
 static void process_resize(client_t *client, int new_x, int new_y,
@@ -60,7 +56,7 @@ static void process_resize(client_t *client, int new_x, int new_y,
                            int *old_x, int *old_y,
                            position_size *orig,
                            resize_ordinal_t ordinal);
-static quadrant_t get_quadrant(client_t *client, int x, int y);
+static resize_direction_t get_direction(client_t *client, int x, int y);
 static void display_geometry(char *s, client_t *client);
 static void get_display_width_height(client_t *client, int *w, int *h);
 static void drafting_lines(client_t *client, resize_direction_t direction,
@@ -69,6 +65,8 @@ static void draw_arrowhead(int x, int y, resize_direction_t direction);
 static void xrefresh();
 static void cycle_resize_direction(resize_direction_t *current,
                                    resize_direction_t *old);
+static void warp_pointer(client_t *client, resize_direction_t direction);
+static void set_keys();
 
 /*
  * windowmaker grabs the server while processing the motion events for
@@ -94,8 +92,10 @@ void mouse_grab_buttons(Window w)
 }
 
 /*
- * this takes over the event loop and grabs the pointer until the move
- * is complete
+ * This takes over the event loop and grabs the pointer until the move
+ * is complete; we keep most of the data 'static' as this may get
+ * called recursively and all simultaneously-running invocations need
+ * to keep some of the same state (the resize code is much worse).
  */
 void mouse_move_client(XEvent *xevent)
 {
@@ -103,12 +103,14 @@ void mouse_move_client(XEvent *xevent)
     static int x_start, y_start;
     XEvent event1;
 
+    if (keycode_Escape == 0) set_keys();
+    
     do {
         switch (xevent->type) {
             case EnterNotify:
             case LeaveNotify:
                 /* we have a separate event loop here because we want
-                 * to gobble up all enternotify and leavenotify events
+                 * to gobble up all EnterNotify and LeaveNotify events
                  * while moving or resizing the window */
                 break;
             case ButtonPress:
@@ -141,6 +143,9 @@ void mouse_move_client(XEvent *xevent)
                                      | ButtonReleaseMask,
                                      GrabModeAsync, GrabModeAsync, None,
                                      cursor_moving, CurrentTime);
+                        XGrabKeyboard(dpy, root_window, True,
+                                      GrabModeAsync, GrabModeAsync,
+                                      CurrentTime);
                         display_geometry("Moving", client);
                     } else {
                         /* error - we were called from somewhere else
@@ -182,6 +187,30 @@ void mouse_move_client(XEvent *xevent)
                 display_geometry("Moving", client);
 
                 break;
+                
+            case KeyPress:
+                if (xevent->xkey.keycode == keycode_Up ||
+                           xevent->xkey.keycode == keycode_k) {
+                    XWarpPointer(dpy, None, None, 0, 0, 0, 0, 0, -1);
+                } else if (xevent->xkey.keycode == keycode_Down ||
+                           xevent->xkey.keycode == keycode_j) {
+                    XWarpPointer(dpy, None, None, 0, 0, 0, 0, 0, 1);
+                } else if (xevent->xkey.keycode == keycode_Left ||
+                           xevent->xkey.keycode == keycode_h) {
+                    XWarpPointer(dpy, None, None, 0, 0, 0, 0, -1, 0);
+                } else if (xevent->xkey.keycode == keycode_Right ||
+                           xevent->xkey.keycode == keycode_l) {
+                    XWarpPointer(dpy, None, None, 0, 0, 0, 0, 1, 0);
+                } else if (xevent->xkey.keycode == keycode_Return) {
+                    goto reset;
+                /* ignore Escape, can't think of a good reason one would
+                 * want to quit a move operation */
+                } else {
+                    /* can still use alt-tab while moving */
+                    event_dispatch(xevent);
+                }
+                break;
+
             case ButtonRelease:
                 if (client) {
                     client->x += xevent->xbutton.x_root - x_start;
@@ -190,6 +219,7 @@ void mouse_move_client(XEvent *xevent)
                 goto reset;
             
                 break;
+                
             default:
 #ifdef DEBUG
                 printf("\tStart recursive event processing\n");
@@ -245,6 +275,7 @@ void mouse_move_client(XEvent *xevent)
     client = NULL;
     x_start = y_start = -1;
     XUngrabPointer(dpy, CurrentTime);
+    XUngrabKeyboard(dpy, CurrentTime);
 }
     
 
@@ -254,8 +285,10 @@ void mouse_move_client(XEvent *xevent)
 
 /*
  * escape ends the resize, does not resize client window
+ * enter ends the resize, resizes client window
  * shift constrains resize to y->x->x+y->y->....
  * shift with button press constrains to x or y
+ * left, right, up, down, h, j, k and l work as expected
  */
 
 void mouse_resize_client(XEvent *xevent)
@@ -264,16 +297,11 @@ void mouse_resize_client(XEvent *xevent)
     static int x_start, y_start;
     static resize_direction_t resize_direction = UNKNOWN;
     static resize_direction_t old_resize_direction = UNKNOWN;
-    static quadrant_t quadrant = IV;
     static position_size orig;
-    static int keycode_Escape = 0, keycode_Shift_L, keycode_Shift_R;
     XEvent event1;
 
-    if (keycode_Escape == 0) {
-        keycode_Escape = XKeysymToKeycode(dpy, XK_Escape);
-        keycode_Shift_L = XKeysymToKeycode(dpy, XK_Shift_L);
-        keycode_Shift_R = XKeysymToKeycode(dpy, XK_Shift_R);
-    }
+    if (keycode_Escape == 0) set_keys();
+
     do {
         switch (xevent->type) {
             case EnterNotify:
@@ -295,22 +323,9 @@ void mouse_resize_client(XEvent *xevent)
                         }
                         x_start = xevent->xbutton.x_root;
                         y_start = xevent->xbutton.y_root;
-                        quadrant = get_quadrant(client, xevent->xbutton.x_root,
-                                                xevent->xbutton.y_root);
-                        switch (quadrant) {
-                            case I:
-                                resize_direction = NE;
-                                break;
-                            case II:
-                                resize_direction = NW;
-                                break;
-                            case III:
-                                resize_direction = SW;
-                                break;
-                            case IV:
-                                resize_direction = SE;
-                                break;
-                        }
+                        resize_direction =
+                            get_direction(client, xevent->xbutton.x_root,
+                                          xevent->xbutton.y_root);
                         orig.x = client->x;
                         orig.y = client->y;
                         orig.width = client->width;
@@ -345,6 +360,12 @@ void mouse_resize_client(XEvent *xevent)
             case KeyPress:
                 if (xevent->xkey.keycode == keycode_Escape) {
                     goto reset;
+                } else if (xevent->xkey.keycode == keycode_Return) {
+                    process_resize(client, xevent->xkey.x_root,
+                                   xevent->xkey.y_root, resize_direction,
+                                   old_resize_direction, &x_start, &y_start,
+                                   &orig, LAST);
+                    goto done;
                 } else if (xevent->xkey.keycode == keycode_Shift_L ||
                            xevent->xkey.keycode == keycode_Shift_R) {
                     cycle_resize_direction(&resize_direction,
@@ -356,7 +377,24 @@ void mouse_resize_client(XEvent *xevent)
                     process_resize(client, x_start, y_start, resize_direction,
                                    old_resize_direction, &x_start, &y_start,
                                    &orig, FIRST);
+                } else if (xevent->xkey.keycode == keycode_Up ||
+                           xevent->xkey.keycode == keycode_k) {
+                    if (resize_direction != EAST && resize_direction != WEST)
+                        warp_pointer(client, NORTH);
+                } else if (xevent->xkey.keycode == keycode_Down ||
+                           xevent->xkey.keycode == keycode_j) {
+                    if (resize_direction != EAST && resize_direction != WEST)
+                        warp_pointer(client, SOUTH);
+                } else if (xevent->xkey.keycode == keycode_Left ||
+                           xevent->xkey.keycode == keycode_h) {
+                    if (resize_direction != NORTH && resize_direction != SOUTH)
+                        warp_pointer(client, WEST);
+                } else if (xevent->xkey.keycode == keycode_Right ||
+                           xevent->xkey.keycode == keycode_l) {
+                    if (resize_direction != NORTH && resize_direction != SOUTH)
+                        warp_pointer(client, EAST);
                 } else {
+                    /* can still use alt-tab while resizing */
                     event_dispatch(xevent);
                 }
                 break;
@@ -1079,23 +1117,70 @@ static void display_geometry(char *s, client_t *client)
     client_paint_titlebar(client);
 }
 
+static void set_keys()
+{
+    keycode_Escape = XKeysymToKeycode(dpy, XK_Escape);
+    keycode_Shift_L = XKeysymToKeycode(dpy, XK_Shift_L);
+    keycode_Shift_R = XKeysymToKeycode(dpy, XK_Shift_R);
+    keycode_Return = XKeysymToKeycode(dpy, XK_Return);
+    keycode_Up = XKeysymToKeycode(dpy, XK_Up);
+    keycode_Down = XKeysymToKeycode(dpy, XK_Down);
+    keycode_Left = XKeysymToKeycode(dpy, XK_Left);
+    keycode_Right = XKeysymToKeycode(dpy, XK_Right);
+    keycode_j = XKeysymToKeycode(dpy, XK_j);
+    keycode_k = XKeysymToKeycode(dpy, XK_k);
+    keycode_l = XKeysymToKeycode(dpy, XK_l);
+    keycode_h = XKeysymToKeycode(dpy, XK_h);
+}
+
 /*
- * returns the quadrant of the client that x and y are in
+ * warps the pointer in the direction specified (one of {NORTH, SOUTH,
+ * EAST, WEST}) by an amount that should cause a resize
  */
 
-static quadrant_t get_quadrant(client_t *client, int x, int y)
+static void warp_pointer(client_t *client, resize_direction_t direction)
+{
+    int multiplier;
+
+    if (direction == NORTH || direction == WEST)
+        multiplier = -1;
+    else
+        multiplier = 1;
+    if (direction == NORTH || direction == SOUTH) {
+        if (client->xsh != NULL &&
+            client->xsh->flags & PResizeInc)
+            XWarpPointer(dpy, None, None, 0, 0, 0, 0, 0,
+                         multiplier * (client->xsh->height_inc));
+        else
+            XWarpPointer(dpy, None, None, 0, 0, 0, 0, 0, multiplier);
+    } else {
+        if (client->xsh != NULL &&
+            client->xsh->flags & PResizeInc)
+            XWarpPointer(dpy, None, None, 0, 0, 0, 0,
+                         multiplier * (client->xsh->width_inc), 0);
+        else
+            XWarpPointer(dpy, None, None, 0, 0, 0, 0, multiplier, 0);
+    }
+}
+
+/*
+ * returns the direction in which to resize client from initial x and
+ * y of mouse click
+ */
+
+static resize_direction_t get_direction(client_t *client, int x, int y)
 {
     if (x < client->x + (client->width / 2)) {
         if (y < client->y + (client->height / 2)) {
-            return II;
+            return NW;
         } else {
-            return III;
+            return SW;
         }
     } else {
         if (y < client->y + (client->height / 2)) {
-            return I;
+            return NE;
         } else {
-            return IV;
+            return SE;
         }
     }
 }
