@@ -34,7 +34,7 @@
 /* the events we usually listen for on the root window */
 #define ROOT_EVENT_MASK PropertyChangeMask | SubstructureRedirectMask | \
                         SubstructureNotifyMask | KeyPressMask |         \
-                        KeyReleaseMask
+                        KeyReleaseMask | ButtonPressMask | ButtonReleaseMask
 
 extern Display *dpy;            /* standard in any X program */
 extern int scr;                 /* only one screen supported */

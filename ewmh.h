@@ -74,4 +74,7 @@ void ewmh_desktop_update(client_t *client);
 /* update _NET_ACTIVE_WINDOW according to 'focus_current' */
 void ewmh_active_window_update();
 
+/* proxy click for GNOME */
+void ewmh_proxy_buttonevent(XEvent *e);
+
 #endif /* EWMH_H */

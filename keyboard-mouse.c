@@ -696,6 +696,10 @@ Bool mouse_handle_event(XEvent *xevent)
         debug(("Ungrabbing pointer 3\n"));
         XUngrabPointer(dpy, xevent->xbutton.time);
     }
+    if (xevent->xbutton.window == root_window) {
+        ewmh_proxy_buttonevent(xevent);
+        return True;
+    }
     if (set_focus) return True;
     else return False;
 }

@@ -45,15 +45,15 @@
  * 
  * - use _NET_WORKAREA for move/resize/placement
  * - _NET_WM_STRUT:  recalculate _NET_WORKAREA
- * - proxy clicks for GNOME
+ * - _NET_WM_PING, _NET_WM_PID
  * - some properties must be updated on window if set by ahwm:
  *   x _NET_WM_DESKTOP
  *   x _WIN_WORKSPACE
  *   - _NET_WM_STATE
  *   - _WIN_STATE
  *   - _WIN_LAYER
- * - kicker has a KEEP_ON_TOP WM_STATE not mentioned in EWMH 1.1
- * - _NET_WM_PING, _NET_WM_PID
+ * x kicker has a KEEP_ON_TOP WM_STATE not mentioned in EWMH 1.1
+ * x proxy clicks for GNOME
  * x figure out if _NET_CLIENT_LIST[_STACKING] has windows on all workspaces
  * x _NET_WM_MOVERESIZE, should be easy
  * x honor _NET_WM_DESKTOP, also omnipresence
@@ -138,12 +138,13 @@ static Atom _NET_WM_STATE_MAXIMIZED_VERT, _NET_WM_STATE_MAXIMIZED_HORZ;
 static Atom _NET_WM_STATE_SHADED, _NET_WM_STATE_SKIP_TASKBAR;
 static Atom _NET_WM_STATE_SKIP_PAGER, _NET_WM_STATE_REMOVE;
 static Atom _NET_WM_STATE_ADD, _NET_WM_STATE_TOGGLE;
-static Atom _NET_WM_PING;
+static Atom _NET_WM_PING, _NET_WM_STATE_STAYS_ON_TOP;
 
 static Atom _WIN_SUPPORTING_WM_CHECK, _WIN_PROTOCOLS, _WIN_LAYER;
 static Atom _WIN_HINTS, _WIN_APP_STATE, _WIN_EXPANDED_SIZE, _WIN_ICONS;
 static Atom _WIN_WORKSPACE, _WIN_WORKSPACE_COUNT, _WIN_STATE;
 static Atom _WIN_WORKSPACE_NAMES, _WIN_CLIENT_LIST, _WIN_SUPPORTED;
+static Atom _WIN_DESKTOP_BUTTON_PROXY;
 
 Atom _NET_WM_STRUT, _NET_WM_STATE, _NET_WM_WINDOW_TYPE, _NET_WM_DESKTOP;
 
@@ -252,6 +253,10 @@ void ewmh_init()
     _WIN_WORKSPACE_NAMES = XInternAtom(dpy, "_WIN_WORKSPACE_NAMES", False);
     _WIN_CLIENT_LIST = XInternAtom(dpy, "_WIN_CLIENT_LIST", False);
     _WIN_SUPPORTED = XInternAtom(dpy, "_WIN_SUPPORTED", False);
+    _WIN_DESKTOP_BUTTON_PROXY =
+        XInternAtom(dpy, "_WIN_DESKTOP_BUTTON_PROXY", False);
+    _NET_WM_STATE_STAYS_ON_TOP =
+        XInternAtom(dpy, "_NET_WM_STATE_STAYS_ON_TOP", False);
 
     supported[0] = _NET_SUPPORTED;
     supported[1] = _NET_CLIENT_LIST;
@@ -331,6 +336,12 @@ void ewmh_init()
     XChangeProperty(dpy, ewmh_window, _NET_WM_NAME,
                     UTF8_STRING, 8, PropModeReplace,
                     (unsigned char *)"XWM", 4);
+    XChangeProperty(dpy, root_window, _WIN_DESKTOP_BUTTON_PROXY,
+                    XA_CARDINAL, 32, PropModeReplace,
+                    (unsigned char *)&ewmh_window, 1);
+    XChangeProperty(dpy, ewmh_window, _WIN_DESKTOP_BUTTON_PROXY,
+                    XA_CARDINAL, 32, PropModeReplace,
+                    (unsigned char *)&ewmh_window, 1);
     l[0] = nworkspaces;
     XChangeProperty(dpy, root_window, _NET_NUMBER_OF_DESKTOPS,
                     XA_CARDINAL, 32, PropModeReplace,
@@ -402,7 +413,6 @@ void ewmh_init()
     }
     
     l[0] = workspace_current - 1;
-    /* FIXMENOW: get this from root window if possible, set immediately */
     XChangeProperty(dpy, root_window, _NET_CURRENT_DESKTOP,
                     XA_CARDINAL, 32, PropModeReplace,
                     (unsigned char *)l, 1);
@@ -465,6 +475,8 @@ void ewmh_wm_state_apply(client_t *client)
             max_h = 1;
         } else if (states[i] == _NET_WM_STATE_MAXIMIZED_VERT) {
             max_v = 1;
+        } else if (states[i] == _NET_WM_STATE_STAYS_ON_TOP) {
+            on_top(client);
         }
     }
     if (max_h && max_v) {
@@ -938,15 +950,25 @@ Bool ewmh_handle_clientmessage(XClientMessageEvent *xevent)
             if (client->sticky_set <= HintSet) {
                 client->sticky_set = HintSet;
                 if (data == 2) {
-                    if (client->sticky) {
-                        client->sticky = 0;
-                    } else {
-                        client->sticky = 1;
-                    }
+                    client->sticky = client->sticky ? 0 : 1;
                 } else if (data == 1) {
                     client->sticky = 1;
                 } else if (data == 0) {
                     client->sticky = 0;
+                }
+            }
+        }
+        if (data2 == _NET_WM_STATE_STAYS_ON_TOP ||
+            data3 == _NET_WM_STATE_STAYS_ON_TOP) {
+
+            if (client->always_on_top_set <= HintSet) {
+                client->always_on_top_set = HintSet;
+                if (data == 2) {
+                    client->always_on_top = client->always_on_top ? 0 : 1;
+                } else if (data == 1) {
+                    client->always_on_top = 1;
+                } else if (data == 0) {
+                    client->always_on_top = 0;
                 }
             }
         }
@@ -1089,6 +1111,12 @@ void ewmh_desktop_update(client_t *client)
     XChangeProperty(dpy, client->window, _WIN_WORKSPACE,
                     XA_CARDINAL, 32, PropModeReplace,
                     (unsigned char *)&i, 1);
+}
+
+void ewmh_proxy_buttonevent(XEvent *e)
+{
+    XUngrabPointer(dpy, CurrentTime);
+    XSendEvent(dpy, ewmh_window, False, SubstructureNotifyMask, e);
 }
 
 static Window *ewmh_client_list = NULL;

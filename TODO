@@ -1,8 +1,6 @@
 TODO before release:
 - _NET_WORKAREA and STRUT
-- proxy clicks for GNOME
 - keep _WM_STATE, _WIN_LAYER updated
-- ask about KEEP_ON_TOP WM_STATE
 - implement "ping" protocol
 - transient for self means something?  Directory property window in konq
 - use XInternAtoms for ewmh.c
@@ -141,6 +139,8 @@ Finished, no longer TODO:
 - set workspace_current from _NET_CURRENT_DESKTOP, for restarting
 - remove titlebars on normal exit, for restarting
 - save focus stacks in some property for restarting
+- proxy clicks for GNOME
+- ask about KEEP_ON_TOP WM_STATE
 
 Abandoned, no longer TODO:
 - "stop" focus, detect when pointer stops in a window (no timeout) -

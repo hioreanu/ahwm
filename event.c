@@ -859,7 +859,15 @@ static void event_map(XMapEvent *xevent)
     if (client != NULL
         && client->window == xevent->window
         && client == focus_current) {
-        debug(("\tCalling XSetInputFocus\n"));
+
+        if (client->xwmh != NULL &&
+            client->xwmh->flags & InputHint &&
+            client->xwmh->input == False) {
+
+            debug(("\tNot calling XSetInputFocus\n"));
+            return;
+        }
+        debug(("\tCalling XSetInputFocus on %s \n", client->name));
         XSetInputFocus(dpy, client->window, RevertToPointerRoot, CurrentTime);
     } else {
         debug(("\tNot calling XSetInputFocus\n"));
