@@ -37,6 +37,9 @@ unsigned int MetaMask, SuperMask, HyperMask, AltMask, ModeMask;
 
 unsigned int AllLocksMask;
 
+Bool quoting = False;
+Time last_quote_time;
+
 static keybinding *bindings = NULL;
 static unsigned int *modifier_combinations = NULL;
 
@@ -297,9 +300,6 @@ void keyboard_grab_keys(client_t *client)
     }
 }
 
-Bool quoting = False;
-static Time last_quote_time;
-
 void keyboard_quote(XEvent *e, void *v)
 {
     XSetWindowAttributes xswa;
@@ -312,53 +312,85 @@ void keyboard_quote(XEvent *e, void *v)
     last_quote_time = e->xkey.time;
 }
 
-Window under_pointer()
+static void get_event_child_windows(Window *event, Window *child,
+                                    unsigned int mask)
 {
-    Window child, junk1, new;
+    Window junk1, new;
     int junk2;
     unsigned int junk3;
+    XWindowAttributes xwa;
 
-    if (XQueryPointer(dpy, root_window, &junk1, &child,
-                      &junk2, &junk2, &junk2, &junk2, &junk3) == 0) {
-        debug(("XQueryPointer returns zero\n"));
-        return None;
+    *event = *child = None;
+    XGetInputFocus(dpy, &new, &junk2);
+    if (XGetWindowAttributes(dpy, new, &xwa) == 0) {
+        debug(("\tXGetWindowAttributes fails, returning\n"));
+        return;
     }
-    debug(("Child is 0x%08X\n", child));
-    if (child != focus_current->frame) {
-        debug(("child is not focus_current\n"));
-        return None;
-    }
-
+    if (!(xwa.all_event_masks & mask)) {
+        debug(("\tWindow 0x%08X does not accept events\n", new));
+        new = focus_current->window;
+    } 
+    *event = new;
+    
     for (;;) {
-        if (XQueryPointer(dpy, child, &junk1, &new,
+        if (XQueryPointer(dpy, new, &junk1, &new,
                           &junk2, &junk2, &junk2, &junk2, &junk3) == 0) {
             debug(("XQueryPointer returns zero\n"));
-            return None;
+            return;
         }
+        if (XGetWindowAttributes(dpy, new, &xwa) == 0) {
+            debug(("XGetWindowAttributes fails, returning\n"));
+            return;
+        }
+        if (client_find(new) != NULL) return;
+        *child = new;
         debug(("New is 0x%08X\n", new));
-        if (new == None || new == child) return child;
-        child = new;
+        if (new == None || new == *child) return;
     }
 }
 
-/* FIXME:  use XGetInputFocus */
+void keyboard_replay(XKeyEvent *e)
+{
+    Window event, child, junk;
+    int x, y;
+    unsigned int mask;
+
+    if (e->type == KeyPress) {
+        mask = KeyPressMask;
+    } else if (e->type == KeyRelease) {
+        mask = KeyReleaseMask;
+    } else {
+        debug(("\tNot replaying unknown event type %d\n", e->type));
+        return;
+    }
+
+    get_event_child_windows(&event, &child, mask);
+    if (event == None) return;
+    if (child != event) e->subwindow = child;
+    else e->subwindow = None;
+    e->time = event_timestamp;
+    if (e->time == CurrentTime) {
+        e->time = last_quote_time;
+    }
+    if (XTranslateCoordinates(dpy, e->window, event,
+                              e->x, e->y, &x, &y, &junk) != 0) {
+        e->x = x;
+        e->y = y;
+    }
+    e->window = event;
+    debug(("Sending keyboard event\n"));
+    XSendEvent(dpy, event, True, mask, (XEvent *)e);
+}
+
 void keyboard_unquote(XKeyEvent *e)
 {
     XSetWindowAttributes xswa;
-    Window child;
     
-    debug(("\tUnquoting\n"));
     quoting = False;
     xswa.background_pixel = workspace_pixels[workspace_current - 1];
     XChangeWindowAttributes(dpy, root_window, CWBackPixel, &xswa);
     XClearWindow(dpy, root_window);
-    child = under_pointer();
-    if (child != focus_current->window) e->subwindow = child;
-    else e->subwindow = None;
-    e->time = last_quote_time;
-    e->window = focus_current->window;
-    XSendEvent(dpy, InputFocus, True,
-               KeyPressMask, (XEvent *)e);
+    keyboard_replay(e);
 }
 
 void keyboard_process(XKeyEvent *xevent)
@@ -370,24 +402,23 @@ void keyboard_process(XKeyEvent *xevent)
     KeySym ks;
 
     ks = XKeycodeToKeysym(dpy, xevent->keycode, 0);
-    printf("\twindow 0x%08X, keycode %d, state %d, keystring %s\n",
+    printf("\tWindow 0x%08X, keycode %d, state %d, keystring %s\n",
            (unsigned int)xevent->window, xevent->keycode,
            xevent->state, XKeysymToString(ks));
 #endif /* DEBUG */
-    
 
     code = xevent->keycode;
     
-    if (quoting) {
-        keyboard_unquote(xevent);
-        return;
-    }
 
     for (kb = bindings; kb != NULL; kb = kb->next) {
         if (kb->keycode == code) {
             if (kb->modifiers == (xevent->state & (~AllLocksMask))
                 && (kb->depress == xevent->type)) {
-                (*kb->function)((XEvent *)xevent, kb->arg);
+                if (quoting) {
+                    keyboard_unquote((XKeyEvent *)xevent);
+                } else {
+                    (*kb->function)((XEvent *)xevent, kb->arg);
+                }
                 return;
             }
         }

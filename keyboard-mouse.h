@@ -44,7 +44,7 @@ void keyboard_init();
  * 
  * For example, if the user has XK_Caps_Lock generating the 'lock'
  * modifier, XK_Num_Lock generating the 'Mod3' modifier and
- * XK_Num_Lock generating 'Mod4', and the argument passed in is
+ * XK_Scroll_Lock generating 'Mod4', and the argument passed in is
  * 'Mod1Mask', this will return:
  * 
  * Mod1Mask | LockMask
@@ -115,7 +115,28 @@ void keyboard_quote(XEvent *, void *);
 
 /* these go with the above function and are used by the mouse module */
 extern Bool quoting;
-void keyboard_unquote(XKeyEvent *);
+extern Time last_quote_time;
+
+/*
+ * When we 'unquote' and event, this function is called.  This will
+ * read some parts of the given event and write out some other parts
+ * and then try to send the event to the window which would have
+ * received it using XSendEvent().  The sent event SHOULD be identical
+ * to a real event except that it will have the synthetic flag.  This
+ * can be used to replay any arbitrary keyboard event which was
+ * grabbed on accident.
+ * 
+ * The argument is modified.
+ * 
+ * NB:  my version of xterm has an option allowSendEvents, which by
+ * default will make xterm ignore all generated events (including the
+ * sythetic event we will send it).  Thus, this will probably not work
+ * for most people's xterms.  Specifically, xterm will ignore all
+ * synthetic ButtonPress, ButtonRelease, KeyPress and KeyRelease
+ * events when the option is on.
+ */
+
+void keyboard_replay(XKeyEvent *);
 
 /*
  * Bind a key to a function.  KEYCODE and MODIFIERS are the Keycode
@@ -174,16 +195,10 @@ void keyboard_set_function_ex(unsigned int keycode, unsigned int modifiers,
  * 
  * The symbols from group (2) above which are marked "nonstandard" are
  * not well-defined; there is a complex relationship between them
- * which I am completely ignoring.  I'm assumming 'Alt' and 'Meta'
- * mean Mod1, Super means Mod3 and Hyper means Mod4 since that's how
- * my keyboard is set up right now.
- * None of my keyboards have numlock or capslock keys, so I'm not
- * going to deal with them (and if these keys annoy you, unmap them
- * with xmodmap, your application should have remappable keybindings
- * or a software function to emulate capslock).
- * You can see what keysyms your modifier keys generate with 'xev'
- * and you can see what modifier bits they correspond to using
- * 'xmodmap -pm'
+ * which is defined by ICCCM and this takes into account.  You can see
+ * what keysyms and keycodes your keys generate with 'xev'; you can
+ * see what modifier bits they correspond to using 'xmodmap -pm'; you
+ * can see the keycode to keysym binding using 'xmodmap -pk'.
  * 
  * The grammar (informally) is as follows:
  * 
@@ -199,6 +214,9 @@ void keyboard_set_function_ex(unsigned int keycode, unsigned int modifiers,
  * "Alt | TAB " is NOT ok
  * "Shift | a" should behave the same as "A"
  * "Meta | a" is usually (not always) equivalent to "Mod1 | a"
+ * 
+ * FIXME:  lowercase alphabetic keys so we don't have to deal with
+ * ICCCM crap
  */
 
 int keyboard_parse_string(char *keystring, unsigned int *keycode,

@@ -46,32 +46,120 @@ void mouse_ignore(XEvent *xevent, void *v)
 void mouse_grab_buttons(client_t *client)
 {
     mousebinding *mb;
-    unsigned int *combs;
+    unsigned int *combs, mask;
     int i, n;
-
+    
     for (mb = bindings; mb != NULL; mb = mb->next) {
         combs = keyboard_modifier_combinations(mb->modifiers, &n);
+//        mask = (mb->depress==ButtonPress?ButtonPressMask:ButtonReleaseMask);
+        mask = ButtonPressMask | ButtonReleaseMask;
         if (mb->location & MOUSE_FRAME) {
             XGrabButton(dpy, mb->button, mb->modifiers, client->frame,
-                        True, mb->depress, GrabModeSync, GrabModeAsync,
+                        True, mask, GrabModeSync, GrabModeAsync,
                         None, cursor_normal);
             for (i = 0; i < n; i++) {
                 XGrabButton(dpy, mb->button, combs[i], client->frame,
-                            True, mb->depress, GrabModeSync, GrabModeAsync,
+                            True, mask, GrabModeSync, GrabModeAsync,
                             None, cursor_normal);
             }
         }
         if (mb->location & MOUSE_TITLEBAR && client->titlebar != None) {
             XGrabButton(dpy, mb->button, mb->modifiers, client->titlebar,
-                        True, mb->depress, GrabModeSync, GrabModeAsync,
+                        True, mask, GrabModeSync, GrabModeAsync,
                         None, cursor_normal);
             for (i = 0; i < n; i++) {
                 XGrabButton(dpy, mb->button, combs[i], client->titlebar,
-                            True, mb->depress, GrabModeSync, GrabModeAsync,
+                            True, mask, GrabModeSync, GrabModeAsync,
                             None, cursor_normal);
             }
         }
     }
+}
+
+static void get_event_child_windows(Window *event, Window *child,
+                                    unsigned int mask)
+{
+    Window junk1, new;
+    int junk2;
+    unsigned int junk3;
+    client_t *client;
+    XWindowAttributes xwa;
+
+    *event = *child = None;
+    /* get frame window */
+    if (XQueryPointer(dpy, root_window, &junk1, &new,
+                      &junk2, &junk2, &junk2, &junk2, &junk3) == 0) {
+        debug(("\tXQueryPointer returns zero\n"));
+        return;
+    }
+    /* get client window or frame window */
+    if (XQueryPointer(dpy, new, &junk1, &new,
+                      &junk2, &junk2, &junk2, &junk2, &junk3) == 0) {
+        debug(("\tXQueryPointer returns zero\n"));
+        return;
+    }
+    client = client_find(new);
+    if (client == NULL) {
+        debug(("\tPointer is not over a client, not replaying event\n"));
+        return;
+    }
+    if (new == client->titlebar) {
+        debug(("\tPointer is over titlebar, not replaying event\n"));
+        return;
+    }
+    
+    for (;;) {
+        if (XGetWindowAttributes(dpy, new, &xwa) == 0) {
+            debug(("\tXGetWindowAttributes fails, returning\n"));
+            return;
+        }
+        *child = new;
+        if (xwa.all_event_masks & mask) *event = new;
+        if (XQueryPointer(dpy, new, &junk1, &new,
+                          &junk2, &junk2, &junk2, &junk2, &junk3) == 0) {
+            debug(("\tXQueryPointer returns zero\n"));
+            return;
+        }
+        debug(("\tNew is 0x%08X\n", new));
+        if (new == None || new == *child) return;
+    }
+}
+
+/* I'm not entirely sure that this works exactly correctly, but I
+ * haven't yet seen any application which doesn't accept the synthetic
+ * click. */
+void mouse_replay(XButtonEvent *e)
+{
+    Window child, event, junk;
+    int x, y;
+    unsigned int mask;
+
+    if (e->type == ButtonPress) {
+        mask = ButtonPressMask;
+    } else if (e->type == ButtonRelease) {
+        mask = ButtonReleaseMask;
+    } else {
+        debug(("\tNot replaying unknown event type %d\n", e->type));
+        return;
+    }
+    get_event_child_windows(&event, &child, mask);
+    if (event == None) {
+        debug(("\tNot replaying event, Event = None\n"));
+        return;
+    }
+    if (XTranslateCoordinates(dpy, e->window, event,
+                              e->x, e->y, &x, &y, &junk) != 0) {
+        e->x = x;
+        e->y = y;
+    }
+    e->window = event;
+    if (child != event) e->subwindow = child;
+    else e->subwindow = None;
+    e->time = event_timestamp;
+    if (e->time == CurrentTime) {
+        e->time = last_quote_time;
+    }
+    XSendEvent(dpy, e->window, True, mask, (XEvent *)e);
 }
 
 static void mouse_unquote(XButtonEvent *e)
@@ -83,10 +171,30 @@ static void mouse_unquote(XButtonEvent *e)
     xswa.background_pixel = workspace_pixels[workspace_current - 1];
     XChangeWindowAttributes(dpy, root_window, CWBackPixel, &xswa);
     XClearWindow(dpy, root_window);
-    e->time = event_timestamp;
-    XSendEvent(dpy, PointerWindow, True,
-               NoEventMask, (XEvent *)e);
+    mouse_replay(e);
 }
+
+static Bool in_window(XEvent *xevent, Window w)
+{
+    XWindowAttributes xwa;
+
+    if (XGetWindowAttributes(dpy, w, &xwa) == 0) return False;
+    if (xevent->xbutton.x >= xwa.x
+        && xevent->xbutton.y >= xwa.y
+        && xevent->xbutton.x <= xwa.x + xwa.width
+        && xevent->xbutton.y <= xwa.y + xwa.height)
+        return True;
+    return False;
+}
+
+/*
+ * This gets a little bit messy because we can't really "grab" a
+ * ButtonRelease event like we can grab a KeyRelease event -
+ * XGrabButton and XGrabKeys work differently (and this is not
+ * immediately obvious from the documentation, BTW).  To get a
+ * ButtonRelease, we grab the pointer on the corresponding
+ * ButtonPress.
+ */
 
 #define ANYBUTTONMASK (Button1Mask | Button2Mask | Button3Mask \
                        | Button4Mask | Button5Mask)
@@ -95,26 +203,44 @@ void mouse_handle_event(XEvent *xevent)
 {
     mousebinding *mb;
     unsigned int button, state;
+    static int grabbed_button = 0;
 
     button = xevent->xbutton.button;
     state = xevent->xbutton.state & (~(ANYBUTTONMASK | AllLocksMask));
-
-    if (quoting) {
-        XUngrabPointer(dpy, CurrentTime);
-        keyboard_unquote(xevent);
-        return;
-    }
+    debug(("MOUSE event, button = %d, state = 0x%08X\n", button, state));
     
     for (mb = bindings; mb != NULL; mb = mb->next) {
         if (button == mb->button) {
             if (state == mb->modifiers &&
-                (mb->location & get_location(xevent->xbutton.window)) &&
-                (xevent->type == mb->depress)) {
-                (*mb->function)(xevent, mb->arg);
-                XUngrabPointer(dpy, CurrentTime);
+                (mb->location & get_location(xevent->xbutton.window))) {
+                if (xevent->type == mb->depress) {
+                    if (quoting) {
+                        mouse_unquote((XButtonEvent *)xevent);
+                    } else {
+                        if (grabbed_button == 0
+                            || (grabbed_button == xevent->xbutton.button
+                                && xevent->type == ButtonRelease
+                                && in_window(xevent, xevent->xbutton.window)))
+                            (*mb->function)(xevent, mb->arg);
+                    }
+                    XUngrabPointer(dpy, CurrentTime);
+                    grabbed_button = 0;
+                } else {
+                    XGrabPointer(dpy, xevent->xbutton.window, False,
+                                 ButtonReleaseMask | ButtonPressMask,
+                                 GrabModeAsync, GrabModeAsync, None,
+                                 None, CurrentTime);
+                    grabbed_button = button;
+                }
                 return;
             }
         }
+    }
+    if (grabbed_button != 0
+        && xevent->type == ButtonRelease
+        && xevent->xbutton.button == grabbed_button) {
+        XUngrabPointer(dpy, CurrentTime);
+        grabbed_button = 0;
     }
 }
 
@@ -139,11 +265,25 @@ void mouse_set_function_ex(unsigned int button, unsigned int modifiers,
                            int depress, int location, mouse_fn fn, void *arg)
 {
     mousebinding *newbinding;
+    /* for binding to ButtonRelease, where the modifier mask changes */
+    static unsigned int table[] = {
+        0,                      /* No button */
+        Button1Mask,            /* Button1 */
+        Button2Mask,            /* Button2 */
+        Button3Mask,            /* Button3 */
+        Button4Mask,            /* Button4 */
+        Button5Mask,            /* Button5 */
+    };
 
     newbinding = Malloc(sizeof(mousebinding));
     if (newbinding == NULL) {
         fprintf(stderr, "XWM: Cannot bind mouse button, out of memory\n");
         return;
+    }
+    if (depress == MOUSE_RELEASE) {
+        debug(("MODIFYING the modifiers, 0x%08X\n", modifiers));
+//        modifiers |= table[button];
+        debug(("MODIFYING the modifiers, 0x%08X\n", modifiers));
     }
     newbinding->button = button;
     newbinding->modifiers = modifiers;

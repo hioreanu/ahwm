@@ -28,6 +28,24 @@ typedef void (*mouse_fn)(XEvent *, void *);
 void mouse_ignore(XEvent *, void *);
 
 /*
+ * This function parallels keyboard_replay() - it tries to send the
+ * given event to a client using XSendEvent().  Works in all cases
+ * I've seen but may not have the exact same semantics as a 'real'
+ * event.
+ * 
+ * The argument is modified.
+ * 
+ * NB:  my version of xterm has an option allowSendEvents, which by
+ * default will make xterm ignore all generated events (including the
+ * sythetic event we will send it).  Thus, this will probably not work
+ * for most people's xterms.  Specifically, xterm will ignore all
+ * synthetic ButtonPress, ButtonRelease, KeyPress and KeyRelease
+ * events when the option is on.
+ */
+
+void mouse_replay(XButtonEvent *);
+
+/*
  * Set a function to be called in response to a mouse button event,
  * very similar to keyboard_set_function_ex().  The "location"
  * argument denotes where we are to listen for the mouse event - NB
@@ -86,15 +104,19 @@ int mouse_parse_string(char *mousestring, unsigned int *button,
  * NB:  while you should call keyboard_grab_keys() on every window
  * (including those with override_redirect), you should NOT grab the
  * mouse buttons of any window with override_redirect.  This does not
- * check for override_redirect.
+ * check for override_redirect.  Shouldn't make a big difference
+ * really as most override_redirect windows will grab the keyboard and
+ * mouse.
  */
 
 void mouse_grab_buttons(client_t *client);
 
 /*
  * Whenever a mouse event is received it should be passed to this
- * function; this includes XButtonEvent and XMotionNotify, etc.  The
- * pointer will NOT be grabbed when this function returns.
+ * function; this includes XButtonEvent, etc, except for XMotionEvent,
+ * which is dealt with as a special case within the event loops of the
+ * functions that care about mouse motion.  The pointer will NOT be
+ * grabbed when this function returns.
  */
 
 void mouse_handle_event(XEvent *);

@@ -760,7 +760,7 @@ void client_sendmessage(client_t *client, Atom data0, Time timestamp,
  * of transient windows (a window may have any number of transients
  * but it will only have one or zero windows for which it is
  * transient).  In order to raise a window, we must raise the entire
- * tree, ensuring that the each node along the path up from the window
+ * tree, ensuring that each node along the path up from the window
  * requested to the root must be raised among all nodes at the same
  * height in the tree.  We also don't want to raise a window more than
  * once because that may generate multiple EnterNotify events on that
