@@ -183,7 +183,7 @@ void move_client(XEvent *xevent, void *v)
 
     action = CONTINUE;
     while (action == CONTINUE) {
-        XNextEvent(dpy, &event1);
+        event_get(ConnectionNumber(dpy), &event1);
         xevent = &event1;
         
         switch (xevent->type) {
@@ -502,7 +502,7 @@ void resize_client(XEvent *xevent, void *v)
 
     action = CONTINUE;
     while (action == CONTINUE) {
-        XNextEvent(dpy, &event1);
+        event_get(ConnectionNumber(dpy), &event1);
         xevent = &event1;
         switch (xevent->type) {
             case EnterNotify:
@@ -1051,13 +1051,13 @@ static void process_resize(client_t *client, int new_x, int new_y,
      */
 
     if (ordinal != FIRST && client->titlebar != None) {
-        snprintf(buf, 64, "%dx%d+%d+%d [Resizing]", x, y, w, h);
+        snprintf(buf, 64, "%dx%d+%d+%d [Resizing]", w, h, x, y);
         XDrawString(dpy, client->titlebar, root_invert_gc, 2,
                     TITLE_HEIGHT - 4, buf, strlen(buf));
     }
     if (ordinal != LAST && client->titlebar != None) {
-        snprintf(buf, 64, "%dx%d+%d+%d [Resizing]", client->x,
-                 client->y, client->width, client->height);
+        snprintf(buf, 64, "%dx%d+%d+%d [Resizing]", client->width,
+                 client->height, client->x, client->y);
         XDrawString(dpy, client->titlebar, root_invert_gc, 2,
                     TITLE_HEIGHT - 4, buf, strlen(buf));
     }
@@ -1417,7 +1417,7 @@ static void display_geometry(char *s, client_t *client)
         client->name = titlebar_display;
     }
     snprintf(client->name, 256, "%dx%d+%d+%d [%s %s]",
-             client->x, client->y, width, height, s, client->instance);
+             width, height, client->x, client->y, s, client->instance);
     client_paint_titlebar(client);
 }
 
