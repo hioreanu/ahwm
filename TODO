@@ -8,8 +8,6 @@ TODO before release:
 - test final build with various options at least two weeks before initial release
 
 Wishlist:
-- on alt tab, delay between titlebar color change and raise
-  determined this is not from stacking_raise()
 - Raise() function, like Focus() function, compose for titlebar click
 - GotoNextWorkspace(integer)
 - CycleNextWorkspaces() (like AltTab())
@@ -133,6 +131,7 @@ Finished, no longer TODO:
 - option WorkspaceSendTransients (boolean)
 - use stacking_desktop_{window|frame} for EWMH
 - manage client on first maprequest, not window creation
+- on alt tab, perceptible delay between titlebar color change and raise
 
 Abandoned, no longer TODO:
 - "stop" focus, detect when pointer stops in a window (no timeout) -

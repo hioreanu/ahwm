@@ -83,8 +83,8 @@ static Bool in_alt_tab = False; /* see focus_alt_tab, focus_ensure */
 static Window revert_to = None;
 
 static focus_node *find_node(client_t *);
-static void focus_change_current(client_t *, Time, Bool);
-static void focus_set_internal(focus_node *, Time, Bool);
+static void focus_change_current(client_t *, Time, Bool, Bool);
+static void focus_set_internal(focus_node *, Time, Bool, Bool);
 static void permute(focus_node *, focus_node *);
 static focus_node *get_prev(focus_node *);
 static focus_node *get_next(focus_node *);
@@ -216,7 +216,7 @@ static void focus_add_internal(focus_node *node, int ws, Time timestamp)
                ws, node->client->window, node->client->name));
         focus_stacks[ws - 1] = node;
         if (ws == workspace_current) {
-            focus_change_current(node->client, timestamp, True);
+            focus_change_current(node->client, timestamp, True, True);
         }
     }
     if (XSaveContext(dpy, node->client->window,
@@ -283,10 +283,10 @@ static void focus_remove_internal(focus_node *node, int ws, Time timestamp)
     /* if removed focused window, refocus now */
     if (node->client == focus_current && ws == workspace_current) {
         if (focus_stacks[ws - 1] == NULL) {
-            focus_change_current(NULL, timestamp, True);
+            focus_change_current(NULL, timestamp, True, True);
         } else {
             focus_change_current(focus_stacks[ws - 1]->client,
-                                 timestamp, True);
+                                 timestamp, True, True);
         }
     }
     XDeleteContext(dpy, node->client->window,
@@ -307,7 +307,7 @@ void focus_set(client_t *client, Time timestamp)
 
     node = find_node(client);
     old = find_node(focus_current);
-    focus_set_internal(node, timestamp, True);
+    focus_set_internal(node, timestamp, True, True);
     if (old != NULL && node != NULL)
         permute(old, node);
 }
@@ -321,7 +321,7 @@ void focus_set(client_t *client, Time timestamp)
  */
 
 static void focus_set_internal(focus_node *node, Time timestamp,
-                               Bool call_focus_ensure)
+                               Bool call_focus_ensure, Bool grab_keys)
 {
     focus_node *p;
 
@@ -346,7 +346,7 @@ static void focus_set_internal(focus_node *node, Time timestamp,
             focus_stacks[node->client->workspace - 1] = node;
             if (node->client->workspace == workspace_current) {
                 focus_change_current(node->client, timestamp,
-                                     call_focus_ensure);
+                                     call_focus_ensure, grab_keys);
             }
             return;
         }
@@ -412,7 +412,8 @@ void focus_ensure(Time timestamp)
  */
 
 static void focus_change_current(client_t *new, Time timestamp,
-                                 Bool call_focus_ensure)
+                                 Bool call_focus_ensure,
+                                 Bool grab_buttons)
 {
     client_t *old;
 
@@ -422,7 +423,7 @@ static void focus_change_current(client_t *new, Time timestamp,
     paint_titlebar(new);
     if (new != NULL && new->focus_policy == DontFocus) return;
     if (call_focus_ensure) focus_ensure(timestamp);
-    if (old != new) {
+    if (grab_buttons && old != new) {
         if (old != NULL && old->focus_policy == ClickToFocus) {
             debug(("\tGrabbing Button 1 of 0x%08x\n", old));
             XGrabButton(dpy, Button1, 0, old->frame,
@@ -436,8 +437,8 @@ static void focus_change_current(client_t *new, Time timestamp,
             XUngrabButton(dpy, Button1, 0, new->frame);
             mouse_grab_buttons(new);
         }
+        XFlush(dpy);
     }
-    XFlush(dpy);
 }
 
 /* FIXME:  these grabs/ungrabs should go in mouse_grab_buttons() */
@@ -546,6 +547,40 @@ void focus_cycle_next(XEvent *xevent, arglist *ignored)
                     state = DONE;
                 }
                 break;
+                
+            /* we ignore the following events when in alt-tab: */    
+            case ButtonPress:
+            case ButtonRelease:
+            case MotionNotify:
+            case EnterNotify:
+            case LeaveNotify:
+            case FocusIn:
+            case FocusOut:
+                /* Expose handled */
+                /* GraphicsExpose */
+                /* NoExpose */
+                /* VisibilityNotify */
+                /* CreateNotify */
+                /* DestroyNotify handled */
+                /* UnmapNotify handled */
+                /* MapNotify handled */
+                /* MapRequest handled */
+                /* ReparentNotify handled */
+                /* ConfigureNotify handled */
+                /* ConfigureRequest handled */
+                /* GravityNotify handled */
+                /* ResizeRequest handled */
+                /* CirculateNotify handled */
+                /* CirculateRequest handled */
+                /* PropertyNotify handled */
+                /* SelectionClear handled */
+                /* SelectionRequest handled */
+                /* SelectionNotify handled */
+                /* ColormapNotify handled */
+                /* ClientMessage handled */
+                /* MappingNotify handled */
+                
+                break;
             default:
                 event_dispatch(xevent);
                 if (focus_current == NULL) {
@@ -556,6 +591,25 @@ void focus_cycle_next(XEvent *xevent, arglist *ignored)
         if (state == CONTINUE) event_get(ConnectionNumber(dpy), xevent);
     }
 
+    /* this is a speed hack.  We want this function to be as fast as
+     * possible in the loop.  Whenever we change the current focus,
+     * we might need to do an XGrabButton/XUngrabButton to deal
+     * with ClickToFocus.  However, we can delay this until after
+     * the final focus has been determined instead of changing
+     * them in the loop.
+     * This makes a very perceptible speed difference, and it
+     * took me a couple of weeks to figure out the problem.
+     * This is the entire reason for the fourth boolean argument
+     * to focus_change_current() and focus_set_internal(). */
+    if (orig_focus->client != focus_current) {
+        if (orig_focus->client->focus_policy == ClickToFocus) {
+            focus_policy_to_click(orig_focus->client);
+        }
+        if (focus_current->focus_policy == ClickToFocus) {
+            focus_policy_from_click(focus_current);
+        }
+    }
+    
     node = focus_stacks[workspace_current - 1];
     if (state != QUIT && node != NULL && orig_focus != NULL) {
         permute(orig_focus, node);
@@ -583,9 +637,9 @@ static void cycle_helper(focus_node *node)
 {
     if (!(node->client->cycle_behaviour == SkipCycle
           || node->client->focus_policy == DontFocus)) {
-        focus_set_internal(node, event_timestamp, False);
+        focus_set_internal(node, event_timestamp, False, False);
         if (node->client->cycle_behaviour == RaiseImmediately) {
-            focus_ensure(CurrentTime);
+            stacking_raise(node->client);
         }
     }
 }
