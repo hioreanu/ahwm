@@ -530,7 +530,8 @@ static void event_property(XPropertyEvent *xevent)
 #ifdef DEBUG
         printf("\tWM_HINTS, changing client->xwmh\n");
 #endif /* DEBUG */
-        if (client->xwmh != None) XFree(client->xwmh);
+        if (client->xwmh != NULL && client->group_leader == NULL)
+            XFree(client->xwmh);
         client_set_xwmh(client);
     } else if (xevent->atom == XA_WM_NORMAL_HINTS) {
 #ifdef DEBUG

@@ -116,7 +116,8 @@ void focus_prev(Time timestamp)
 static int raise_transients(client_t *client, void *v)
 {
     Window w = (Window)v;
-    
+
+    /* might be in different workspace, but oh well */
     if (client->transient_for == w && client->state == NormalState)
         XMapRaised(dpy, client->frame);
     return 1;
