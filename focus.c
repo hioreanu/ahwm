@@ -67,6 +67,16 @@ void focus_set(client_t *client)
     focus_add(client);
 }
 
+void focus_next(client_t *client)
+{
+    focus_set(focus_current->next);
+}
+
+void focus_prev(client_t *client)
+{
+    focus_set(focus_current->prev);
+}
+
 int focus_canfocus(client_t *client)
 {
     Window w = client->window;
