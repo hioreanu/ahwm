@@ -14,7 +14,6 @@ client_t *client_create(Window w)
     
     client->window = w;
     client->transient_for = None;
-    client->managed = 1;
     client->name = "???";
     client->state = WithdrawnState;
     client->xwmh = XGetWMHints(dpy, w);

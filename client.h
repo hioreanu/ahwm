@@ -21,7 +21,6 @@ typedef struct _client_t {
     Window    window;
     Window    parent;
     Window    transient_for;
-    Bool      managed;          /* FIXME */
     char     *name;
     int       x;
     int       y;

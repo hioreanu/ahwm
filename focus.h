@@ -11,8 +11,11 @@
 
 extern client_t *focus_current;
 
+void focus_init();
 void focus_lost();
+void focus_none();
 void focus_set(client_t *);
-int focus_wantsfocus(client_t *);
+int focus_settoplevel(client_t *)
+int focus_canfocus(client_t *);
 
 #endif /* FOCUS_H */

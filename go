@@ -1,2 +1,2 @@
 #!/bin/sh
-xinit ./xinitrc --
+xinit ./xinitrc -- -fbbpp 16
