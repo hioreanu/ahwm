@@ -39,10 +39,9 @@ void mouse_handle_event(XEvent *xevent)
     static client_t *moving = NULL;
     static client_t *sizing = NULL;
     static int x_start, y_start;
-    int done = 0;
     XEvent event1, event2;
 
-    while (!done) {
+    do {
         switch (xevent->type) {
             case EnterNotify:
             case LeaveNotify:
@@ -132,12 +131,6 @@ void mouse_handle_event(XEvent *xevent)
                     XMoveWindow(dpy, moving->frame, moving->x, moving->y);
                 }
             
-                if (event2.type != LASTEvent) {
-#ifdef DEBUG
-                    printf("\tProcessing leftover event\n");
-#endif /* DEBUG */
-                    mouse_handle_event(&tmp_event);
-                }
                 break;
             case ButtonRelease:
                 moving->x += xevent->xbutton.x_root - x_start;
@@ -157,7 +150,7 @@ void mouse_handle_event(XEvent *xevent)
         }
         XNextEvent(dpy, &event1);
         xevent = &event1;
-    }
+    } while (moving != NULL && sizing != NULL);
         
     return;
     
