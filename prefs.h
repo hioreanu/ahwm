@@ -75,7 +75,9 @@ struct _context {
 #define SEL_HASTRANSIENT 0200   /* may be ORed with others */
 
 struct _option {
-    enum { DISPLAYTITLEBAR, DEFAULTWORKSPACE } option_name;
+    enum { DISPLAYTITLEBAR,
+           DEFAULTWORKSPACE,
+           NUMBEROFWORKSPACES } option_name;
     type *option_value;
 };
 
@@ -129,16 +131,17 @@ struct _arglist {
     arglist *arglist_next;
 };
 
-/* INTERFACE */
-
 /* The first line of the configuration file */
+/* only exported because parser needs this */
 extern line *preferences;
+
+/* INTERFACE */
 
 /* The defaults from the configuration file */
 extern int pref_no_workspaces;
 extern Bool pref_display_titlebar;
 extern int pref_default_workspace;
 
-void prefs_apply(client_t *client, line *prefs);
+void prefs_apply(client_t *client);
 
 #endif /* PREFS_H */

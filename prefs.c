@@ -3,12 +3,23 @@
  * This code is in the public domain and the author disclaims all
  * copyright privileges.
  */
+/*
+ * There are three basic things one can find in a configuration file:
+ * an option, a context and a binding.  For efficiency, global options
+ * and bindings are filtered out at the beginning.
+ * 
+ * FIXME:  need to figure out some way to allow keybinding changes at
+ * any time without binding/unbinding keys all the time.  May need to
+ * make caller specify what has changed in some way.  sucks.
+ */
 
 #include "config.h"
 
 #include <X11/Xlib.h>
 #include <limits.h>
 #include <errno.h>
+#include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 
 #include "prefs.h"
@@ -20,33 +31,31 @@
 
 /* FIXMENOW: need is_shaped as attribute of client_t */
 
-/*
- * Need to define two types of bindings:  global and local.  Global
- * bindings are applied to all clients.  Each client may also have a
- * set of local bindings, which can override the global keybindings.
- * 
- * Global option and binding lines are kept in an array; global
- * contexts are kept in another array.  Menus and functions are
- * independent of context and are filtered out after parsing.
- * 
- * Need to create default preferences if none specified; create some
- * bindings, nothing more.
- */
+typedef struct _prefs {
+    Bool titlebar;
+    int workspace;
+} prefs;
 
-static Bool get_int(type *typ, int *val);
-static Bool get_string(type *typ, char **val);
-static Bool get_bool(type *typ, Bool *val);
+static void get_int(type *typ, int *val);
+static void get_string(type *typ, char **val);
+static void get_bool(type *typ, Bool *val);
 static Bool context_applies(client_t *client, context *cntxt);
-static void option_apply(client_t *client, option *opt);
-static void type_check(line *block);
+static void option_apply(client_t *client, option *opt, prefs *p);
+static line *type_check(line *block);
 static Bool type_check_context(context *cntxt);
 static Bool type_check_option(option *opt);
 static Bool type_check_keybinding(keybinding *kb);
 static Bool type_check_mousebinding(mousebinding *mb);
-static Bool type_check_keyunbinding(keybinding *kb);
-static Bool type_check_mouseunbinding(mousebinding *mb);
+static Bool type_check_keyunbinding(keyunbinding *kub);
+static Bool type_check_mouseunbinding(mouseunbinding *mub);
 static Bool type_check_function(function *fn);
+static void keybinding_apply(client_t *client, keybinding *kb);
+static void keyunbinding_apply(client_t *client, keyunbinding *kb);
+static void mousebinding_apply(client_t *client, mousebinding *kb);
+static void mouseunbinding_apply(client_t *client, mouseunbinding *kb);
+static void prefs_apply_internal(client_t *client, line *block, prefs *p);
 
+static line *defaults, *contexts;
 int pref_no_workspaces = 7;
 Bool pref_display_titlebar = True;
 int pref_default_workspace = 0;
@@ -55,7 +64,8 @@ void prefs_init()
 {
     char buf[PATH_MAX];
     char *home;
-    line *lp, *prev, *first_context;
+    line *lp, *prev, *first_context, *last_context, *last_line, *first_line;
+    extern FILE *yyin;
 
     home = getenv("HOME");
     if (home == NULL) {
@@ -63,7 +73,7 @@ void prefs_init()
                 "configuration file not found.\n");
         return;
     }
-    snprintf(buf, "%s/.xwmrc", home);
+    snprintf(buf, PATH_MAX, "%s/.xwmrc", home);
     yyin = fopen(buf, "r");
     if (yyin == NULL) {
         fprintf(stderr, "XWM: Could not open configuration file '%s': %s\n",
@@ -74,40 +84,48 @@ void prefs_init()
 
     preferences = type_check(preferences);
 
-    ncontexts = 0;
+/* separate contexts and non-contexts in order to supply global defaults */
+    last_context = last_line = first_line = first_context = NULL;
     for (lp = preferences; lp != NULL; lp = lp->line_next) {
         switch (lp->line_type) {
             case CONTEXT:
-                break;
-            case OPTION:
-                break;
-            case KEYBINDING:
-                break;
-            case KEYUNBINDING:
-                break;
-            case MOUSEBINDING:
-                break;
-            case MOUSEUNBINDING:
-                break;
-        }
-    }
-
-    if (ncontexts != 0) {
-        first_context = prev = NULL;
-        for (lp = preferences; lp != NULL; lp = lp->line_next) {
-            if (lp->line_type == CONTEXT) {
                 if (first_context == NULL) {
                     first_context = lp;
                 }
-                if (prev != NULL) {
-                    prev->line_next = lp;
+                if (last_context != NULL) {
+                    last_context->line_next = lp;
                 }
-                prev = lp;
-            }
-            /* FIXME:  should free top-level non-contexts */
+                last_context = lp;
+                break;
+            case OPTION:
+                switch (lp->line_value.option->option_name) {
+                    case TITLEBAR:
+                        get_bool(lp->line_value.option->option_value,
+                                 &pref_display_titlebar);
+                        break;
+                    case DEFAULTWORKSPACE:
+                        get_int(lp->line_value.option->option_value,
+                                &pref_default_workspace);
+                        break;
+                    case NUMBEROFWORKSPACES:
+                        get_int(lp->line_value.option->option_value,
+                                &pref_no_workspaces);
+                        break;
+                }
+                break;
+            default:
+                if (first_line == NULL) {
+                    first_line = lp;
+                }
+                if (last_line != NULL) {
+                    last_line->line_next = lp;
+                }
+                last_line = lp;
+                break;
         }
-        preferences = first_context;
     }
+    defaults = first_line;
+    contexts = first_context;
 }
 
 static line *type_check(line *block)
@@ -202,7 +220,7 @@ static Bool type_check_option(option *opt)
                 fprintf(stderr, "XWM: error\n");
             }
             break;
-        case INWORKSPACE:
+        case DEFAULTWORKSPACE:
             if ( (retval = CHECK_INT(opt->option_value)) == False) {
                 fprintf(stderr, "XWM: error\n");
             }
@@ -222,12 +240,12 @@ static Bool type_check_mousebinding(mousebinding *mb)
     return type_check_function(mb->mousebinding_function);
 }
 
-static Bool type_check_keyunbinding(keybinding *kb)
+static Bool type_check_keyunbinding(keyunbinding *kub)
 {
     return True;
 }
 
-static Bool type_check_mouseunbinding(mousebinding *mb)
+static Bool type_check_mouseunbinding(mouseunbinding *mub)
 {
     return True;
 }
@@ -258,7 +276,7 @@ static Bool type_check_function(function *fn)
             if (fn->function_args == NULL) {
                 return False;
             }
-            if (CHECK_INT(fn->function_args) == False) {
+            if (CHECK_INT(fn->function_args->arglist_arg) == False) {
                 return False;
             }
             if (fn->function_args->arglist_next != NULL) {
@@ -272,7 +290,7 @@ static Bool type_check_function(function *fn)
             if (fn->function_args == NULL) {
                 return False;
             }
-            if (CHECK_STRING(fn->function_args) == False) {
+            if (CHECK_STRING(fn->function_args->arglist_arg) == False) {
                 return False;
             }
             if (fn->function_args->arglist_next != NULL) {
@@ -284,7 +302,7 @@ static Bool type_check_function(function *fn)
             if (fn->function_args == NULL) {
                 return False;
             }
-            if (CHECK_STRING(fn->function_args) == True) {
+            if (CHECK_STRING(fn->function_args->arglist_arg) == True) {
                 return True;
             }
             break;
@@ -293,7 +311,36 @@ static Bool type_check_function(function *fn)
     }
 }
 
-void prefs_apply_internal(client_t *client, line *block)
+void prefs_apply(client_t *client)
+{
+    prefs p;
+
+    printf("prefs_apply\n");
+    p.titlebar = pref_display_titlebar;
+    p.workspace = pref_default_workspace;
+
+    prefs_apply_internal(client, contexts, &p);
+
+    if (client->state == WithdrawnState) {
+        client->workspace = p.workspace;
+    }
+    printf("client '%s' (%s,%s) %s a titlebar\n",
+           client->name, client->class, client->instance,
+           p.titlebar ? "HAS" : "DOES NOT HAVE");
+    if (p.titlebar == True) {
+        if (!client->has_titlebar) {
+            client->has_titlebar = 1;
+            if (client->frame != None) client_add_titlebar(client);
+        }
+    } else {
+        if (client->has_titlebar) {
+            client->has_titlebar = 0;
+            if (client->frame != None) client_remove_titlebar(client);
+        }
+    }
+}
+
+static void prefs_apply_internal(client_t *client, line *block, prefs *p)
 {
     line *lp;
 
@@ -301,11 +348,13 @@ void prefs_apply_internal(client_t *client, line *block)
         switch (lp->line_type) {
             case CONTEXT:
                 if (context_applies(client, lp->line_value.context)) {
-                    prefs_apply(client, lp->line_value.context->context_lines);
+                    prefs_apply_internal(client,
+                                         lp->line_value.context->context_lines,
+                                         p);
                 }
                 break;
             case OPTION:
-                option_apply(client, lp->line_value.option);
+                option_apply(client, lp->line_value.option, p);
                 break;
             case KEYBINDING:
                 keybinding_apply(client, lp->line_value.keybinding);
@@ -332,7 +381,7 @@ static void get_int(type *typ, int *val)
 {
     *val = 0;
     if (typ->type_type == STRING) {
-        *val = (int)typ->type_value;
+        *val = typ->type_value.intval;
     }
 }
 
@@ -340,7 +389,7 @@ static void get_string(type *typ, char **val)
 {
     *val = NULL;
     if (typ->type_type == STRING) {
-        *val = (char *)typ->type_value;
+        *val = typ->type_value.stringval;
     }
 }
 
@@ -348,7 +397,7 @@ static void get_bool(type *typ, Bool *val)
 {
     *val = False;
     if (typ->type_type == BOOLEAN) {
-        *val = (Bool)typ->type_value;
+        *val = typ->type_value.intval;
     }
 }
 
@@ -389,7 +438,8 @@ static Bool context_applies(client_t *client, context *cntxt)
         cntxt->context_selector = orig_selector;
     } else if (cntxt->context_selector & SEL_ISSHAPED) {
         get_bool(cntxt->context_value, &type_bool);
-        retval = client->is_shaped == type_bool;
+        /* FIXMENOW */
+        retval = client->is_shaped == (type_bool == True ? 1 : 0);
     } else if (cntxt->context_selector & SEL_INWORKSPACE) {
         get_int(cntxt->context_value, &type_int);
         retval = client->workspace == (unsigned)type_int;
@@ -397,11 +447,21 @@ static Bool context_applies(client_t *client, context *cntxt)
         get_string(cntxt->context_value, &type_string);
         retval = !(strcmp(client->name, type_string));
     } else if (cntxt->context_selector & SEL_WINDOWCLASS) {
-        get_string(cntxt->context_value, &type_string);
-        retval = !(strcmp(client->class, type_string));
+        if (client->class == NULL) {
+            retval = False;
+        } else {
+            get_string(cntxt->context_value, &type_string);
+            retval = !(strcmp(client->class, type_string));
+            printf("Using window class (%s, %s), returning %d\n",
+                   client->class, type_string, retval);
+        }
     } else if (cntxt->context_selector & SEL_WINDOWINSTANCE) {
-        get_string(cntxt->context_value, &type_string);
-        retval = !(strcmp(client->instance, type_string));
+        if (client->instance == NULL) {
+            retval = False;
+        } else {
+            get_string(cntxt->context_value, &type_string);
+            retval = !(strcmp(client->instance, type_string));
+        }
     }
     
     if (cntxt->context_selector & SEL_NOT) return !retval;
@@ -411,32 +471,40 @@ static Bool context_applies(client_t *client, context *cntxt)
 /*
  * Applies given option to given client.
  */
-
-static void option_apply(client_t *client, option *opt)
+static void option_apply(client_t *client, option *opt, prefs *p)
 {
     int type_int;
     Bool type_bool;
     
     switch (opt->option_name) {
         case DISPLAYTITLEBAR:
-            get_bool(opt->option_value, &type_bool);
-            if (type_bool == True) {
-                if (!client->has_titlebar) {
-                    client_add_titlebar(client);
-                }
-            } else {
-                if (client->has_titlebar) {
-                    client_remove_titlebar(client);
-                }
-            }
+            get_bool(opt->option_value, &p->titlebar);
             break;
         case DEFAULTWORKSPACE:
-            if (client->state == Withdrawn) {
-                get_int(opt->option_value, &type_int);
-                client->workspace = type_int;
+            if (client->state == WithdrawnState) {
+                get_int(opt->option_value, &p->workspace);
             }
             break;
     }
 }
 
+static void keybinding_apply(client_t *client, keybinding *kb)
+{
+    /* FIXME */
+}
+
+static void keyunbinding_apply(client_t *client, keyunbinding *kb)
+{
+    /* FIXME */
+}
+
+static void mousebinding_apply(client_t *client, mousebinding *kb)
+{
+    /* FIXME */
+}
+
+static void mouseunbinding_apply(client_t *client, mouseunbinding *kb)
+{
+    /* FIXME */
+}
 

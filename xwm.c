@@ -72,25 +72,8 @@ void mark(XEvent *e, void *arg);
 #endif
 
 static int already_running_windowmanager;
-static int (*error_default_handler)(Display *, XErrorEvent *);
-
+static int (*default_error_handler)(Display *, XErrorEvent *);
 static void scan_windows();
-
-static int tmp_error_handler(Display *dpy, XErrorEvent *error)
-{
-    already_running_windowmanager = 1;
-    return -1;
-}
-
-static int error_handler(Display *dpy, XErrorEvent *error)
-{
-    if (error->error_code == BadWindow
-        || (error->request_code == X_SetInputFocus
-            && error->error_code == BadMatch))
-        return 0;
-    fprintf(stderr, "XWM: ");
-    return error_default_handler(dpy, error); /* calls exit() */
-}
 
 /*
  * 1.  Open a display
@@ -148,7 +131,7 @@ int main(int argc, char **argv)
 
     /* get the default error handler and set our error handler */
     XSetErrorHandler(NULL);
-    error_default_handler = XSetErrorHandler(error_handler);
+    default_error_handler = XSetErrorHandler(error_handler);
 #ifdef DEBUG_BAD_IDEA
     XSynchronize(dpy, True);
 #endif
@@ -305,6 +288,9 @@ int main(int argc, char **argv)
                resize_maximize, NULL);
 
     focus_init();
+    printf("Start parsing\n");
+    prefs_init();
+    printf("Done parsing\n");
     scan_windows();
     
     xfd = ConnectionNumber(dpy);
@@ -317,6 +303,36 @@ int main(int argc, char **argv)
         event_dispatch(&event);
     }
     return 0;
+}
+
+/*
+ * Error handler while we see if we have another
+ * window manager already running
+ */
+
+static int tmp_error_handler(Display *dpy, XErrorEvent *error)
+{
+    already_running_windowmanager = 1;
+    return -1;
+}
+
+/*
+ * Xwm's error handler.  Sometimes we'll try to manipulate
+ * a window that's just been destroyed.  There's no way
+ * one can avoid this, so we simply ignore such errors.
+ * Other types of errors call Xlib's default error handler.
+ */
+
+static int error_handler(Display *dpy, XErrorEvent *error)
+{
+    if (error->error_code == BadWindow
+        || (error->request_code == X_SetInputFocus
+            && error->error_code == BadMatch)
+        || (error->request_code == X_PolyText8
+            && error->error_code == BadDrawable))
+        return 0;
+    fprintf(stderr, "XWM: ");
+    return default_error_handler(dpy, error); /* calls exit() */
 }
 
 /*
@@ -365,6 +381,7 @@ void mark(XEvent *e, void *arg)
 #endif
 
 #ifndef HAVE_STRDUP
+/* 'autoscan' tells me 'strdup()' isn't portable (?) */
 char *strdup(char *s)
 {
     char *n;

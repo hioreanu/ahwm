@@ -8,7 +8,7 @@ LDFLAGS=@LDFLAGS@@X_LIBS@
 
 #CFLAGS=-g -Wall -DSHAPE -DDEBUG=1 -I/usr/X11R6/include -L/usr/X11R6/lib
 
-OBJS=xwm.@OBJEXT@ client.@OBJEXT@ event.@OBJEXT@ focus.@OBJEXT@ workspace.@OBJEXT@ keyboard-mouse.@OBJEXT@ xev.@OBJEXT@ cursor.@OBJEXT@ move-resize.@OBJEXT@ kill.@OBJEXT@ malloc.@OBJEXT@ icccm.@OBJEXT@ colormap.@OBJEXT@ ewmh.@OBJEXT@ debug.@OBJEXT@ place.@OBJEXT@ stacking.@OBJEXT@
+OBJS=xwm.@OBJEXT@ client.@OBJEXT@ event.@OBJEXT@ focus.@OBJEXT@ workspace.@OBJEXT@ keyboard-mouse.@OBJEXT@ xev.@OBJEXT@ cursor.@OBJEXT@ move-resize.@OBJEXT@ kill.@OBJEXT@ malloc.@OBJEXT@ icccm.@OBJEXT@ colormap.@OBJEXT@ ewmh.@OBJEXT@ debug.@OBJEXT@ place.@OBJEXT@ stacking.@OBJEXT@ parser.@OBJEXT@ lexer.@OBJEXT@ prefs.@OBJEXT@
 
 all: xwm
 
@@ -16,8 +16,8 @@ xwm: $(OBJS)
 	$(CC) $(CFLAGS) $(LDFLAGS) $(OBJS) -o $@@EXEEXT@ $(LIBS)
 
 parsing: parser.y lexer.l prefs.h prefs.c
-    flex -i -olexer.c lexer.l
-    bison -d -o parser.c parser.y
+	flex -i -olexer.c lexer.l
+	bison -d -o parser.c parser.y
 
 install: xwm
 	@echo Still need to figure out this part

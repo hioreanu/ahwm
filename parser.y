@@ -23,6 +23,7 @@
 
 %token TOK_DISPLAYTITLEBAR
 %token TOK_DEFAULTWORKSPACE
+%token TOK_NUMBEROFWORKSPACES
 
 %token TOK_TRUE
 %token TOK_FALSE
@@ -161,6 +162,7 @@ option: option_name TOK_EQUALS type
 
 option_name: TOK_DISPLAYTITLEBAR { $$ = DISPLAYTITLEBAR; }
            | TOK_DEFAULTWORKSPACE { $$ = DEFAULTWORKSPACE; }
+           | TOK_NUMBEROFWORKSPACES { $$ = NUMBEROFWORKSPACES; }
 
 type: boolean
       {
@@ -178,7 +180,8 @@ type: boolean
           typ = malloc(sizeof(type));
           if (typ != NULL) {
               typ->type_type = STRING;
-              typ->type_value.stringval = $1;
+              typ->type_value.stringval = strdup($1+1);
+              typ->type_value.stringval[strlen($1+1)-1] = '\0';
           }
           $$ = typ;
       }
@@ -352,8 +355,10 @@ int yyerror(char *s)
 
 line *preferences = NULL;
 
+#if 0
 int main(int argc, char **argv)
 {
     yyparse();
     printf("preferences = 0x%lx\n", preferences);
 }
+#endif

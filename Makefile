@@ -9,12 +9,16 @@ LDFLAGS= -L/usr/X11R6/lib
 
 #CFLAGS=-g -Wall -DSHAPE -DDEBUG=1 -I/usr/X11R6/include -L/usr/X11R6/lib
 
-OBJS=xwm.o client.o event.o focus.o workspace.o keyboard-mouse.o xev.o cursor.o move-resize.o kill.o malloc.o icccm.o colormap.o ewmh.o debug.o place.o stacking.o
+OBJS=xwm.o client.o event.o focus.o workspace.o keyboard-mouse.o xev.o cursor.o move-resize.o kill.o malloc.o icccm.o colormap.o ewmh.o debug.o place.o stacking.o parser.o lexer.o prefs.o
 
 all: xwm
 
 xwm: $(OBJS)
 	$(CC) $(CFLAGS) $(LDFLAGS) $(OBJS) -o $@ $(LIBS)
+
+parsing: parser.y lexer.l prefs.h prefs.c
+	flex -i -olexer.c lexer.l
+	bison -d -o parser.c parser.y
 
 install: xwm
 	@echo Still need to figure out this part

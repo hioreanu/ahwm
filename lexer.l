@@ -5,7 +5,8 @@
  */
 
 /* 
- * Nothing very interesting here.
+ * Basic lexer for use with flex (not tested with vanilla lex).  Nothing
+ * very interesting here.
  *
  * Strings may not span multiple lines.  String literals may also have
  * character escapes in them, just like in C.  Numbers may not start
@@ -59,6 +60,7 @@ DIGIT [0-9]
 
 DisplayTitleBar { return TOK_DISPLAYTITLEBAR; }
 DefaultWorkspace { return TOK_DEFAULTWORKSPACE; }
+NumberOfWorkspaces { return TOK_NUMBEROFWORKSPACES; }
 
 True { return TOK_TRUE; }
 False { return TOK_FALSE; }

@@ -104,6 +104,7 @@ void event_get(int xfd, XEvent *event)
         FD_SET(xfd, &fds);
         if (select(xfd + 1, &fds, &fds, &fds, NULL) > 0) {
             if (XPending(dpy) > 0) {
+                event_timestamp = figure_timestamp(event);
                 XNextEvent(dpy, event);
                 return;
             }
@@ -111,7 +112,6 @@ void event_get(int xfd, XEvent *event)
             perror("XWM: select:");
         }
     }
-    event_timestamp = figure_timestamp(event);
 }
 
 void event_dispatch(XEvent *event)
@@ -831,11 +831,17 @@ static void event_shape(XShapeEvent *xevent)
     if (rectangles != NULL) XFree(rectangles);
     if (n_rects <= 1)
         return;
-    if (client->titlebar != None) {
-        client_remove_titlebar(client);
+    client->is_shaped = 1;
+    if (client->has_titlebar) {
+        XShapeCombineShape(dpy, client->frame, ShapeBounding, 0,
+                           TITLE_HEIGHT, client->window,
+                           ShapeBounding, ShapeSet);
+        XShapeCombineShape(dpy, client->frame, ShapeBounding, 0, 0,
+                           client->titlebar, ShapeBounding, ShapeUnion);
+    } else {
+        XShapeCombineShape(dpy, client->frame, ShapeBounding, 0, 0,
+                           client->window, ShapeBounding, ShapeSet);
     }
-    XShapeCombineShape(dpy, client->frame, ShapeBounding, 0, 0,
-                       client->window, ShapeBounding, ShapeSet);
 }
 #endif /* SHAPE */
 

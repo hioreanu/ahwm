@@ -29,6 +29,7 @@
 #include "ewmh.h"
 #include "move-resize.h"
 #include "stacking.h"
+#include "prefs.h"
 
 XContext window_context;
 XContext frame_context;
@@ -86,7 +87,7 @@ client_t *client_create(Window w)
 /*    XSetWindowBorderWidth(dpy, w, 0); */
 
 #ifdef SHAPE
-    /* if we have a shaped window, don't add a titlebar */
+    /* see if window is shaped */
     if (shape_supported) {
         int tmp;
         unsigned int tmp2;
@@ -94,8 +95,7 @@ client_t *client_create(Window w)
         XShapeSelectInput(dpy, client->window, ShapeNotifyMask);
         XShapeQueryExtents(dpy, client->window, &shaped, &tmp, &tmp,
                            &tmp2, &tmp2, &tmp, &tmp, &tmp, &tmp2, &tmp2);
-        client->is_shaped = (shaped ? 0 : 1);
-        client->has_titlebar = (shaped ? 0 : 1);
+        client->is_shaped = (shaped ? 1 : 0);
         if (shaped) debug(("\tIs a shaped window\n"));
         else debug(("\tnot shaped\n"));
     }
@@ -118,6 +118,8 @@ client_t *client_create(Window w)
         }
     }
 
+    prefs_apply(client);
+    
     client->frame_event_mask = SubstructureRedirectMask | EnterWindowMask
         | LeaveWindowMask | FocusChangeMask | StructureNotifyMask;
     client->window_event_mask = xwa.your_event_mask | StructureNotifyMask
@@ -146,9 +148,16 @@ client_t *client_create(Window w)
 
 #ifdef SHAPE
     if (shaped && shape_supported) {
-        XShapeCombineShape(dpy, client->frame, ShapeBounding, 0, 0,
-                           client->window, ShapeBounding, ShapeSet);
-
+        if (client->has_titlebar) {
+            XShapeCombineShape(dpy, client->frame, ShapeBounding, 0,
+                               TITLE_HEIGHT, client->window, ShapeBounding,
+                               ShapeSet);
+            XShapeCombineShape(dpy, client->frame, ShapeBounding, 0, 0,
+                               client->titlebar, ShapeBounding, ShapeUnion);
+        } else {
+            XShapeCombineShape(dpy, client->frame, ShapeBounding, 0, 0,
+                               client->window, ShapeBounding, ShapeSet);
+        }
     }
 #endif /* SHAPE */
 
@@ -263,6 +272,10 @@ void client_add_titlebar(client_t *client)
     XSetWindowAttributes xswa;
     int mask;
 
+    if (client->titlebar != None) {
+        debug(("Client already has titlebar, not touching it"));
+        return;
+    }
     debug(("\tAdding titlebar\n"));
     mask = CWBackPixmap | CWBackPixel | CWCursor | CWEventMask
            | CWOverrideRedirect | CWWinGravity;
@@ -284,6 +297,7 @@ void client_add_titlebar(client_t *client)
                     "XWM: XSaveContext failed, could not save titlebar\n");
         }
     }
+    client->has_titlebar = 1;
 }
 
 void client_remove_titlebar(client_t *client)
@@ -418,7 +432,7 @@ void client_set_name(client_t *client)
         client->focus_policy = DontFocus;
         client->skip_alt_tab = 1;
         client->always_on_top = 1;
-        client->sticky = 1;
+/*        client->sticky = 1; */
         client->omnipresent = 1;
         client_remove_titlebar(client);
     }
