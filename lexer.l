@@ -183,15 +183,17 @@ Refresh { return TOK_REFRESH; }
     return TOK_FLOAT;
 }
 
-\#[^\n]*\n {;}
-"//"[^\n]*\n {;}
+\#[^\n]*\n {line_number++;}
+"//"[^\n]*\n {line_number++;}
 
-[ \v\t\r\n]+ {;}
+[ \v\t\r]+ {;}
 
 [a-zA-Z_][-a-zA-Z0-9]* {
-    fprintf(stderr, "XWM: Unrecognized keyword '%s'\n", yytext);
+    fprintf(stderr, "XWM: Unrecognized keyword '%s' on line %d\n",
+            yytext, line_number);
 }
-. { fprintf(stderr, "XWM: Unrecognized character '%s'\n", yytext); }
+. { fprintf(stderr, "XWM: Unrecognized character '%s' on line %d\n",
+            yytext, line_number); }
 
 %%
 
