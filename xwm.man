@@ -1,6 +1,6 @@
 .\"
 .\" $Id$
-.TH "xwmrc" 5 "last update date" "Alex Hioreanu" "XWM Configuration File Format"
+.TH "xwmrc" 5 "$Date$" "Alex Hioreanu" "XWM Configuration File Format"
 
 .SH NAME
 xwmrc \- configuration file for the XWM window manager
@@ -280,6 +280,81 @@ was to implement sloppy focus correctly.
 Specifies the number of workspaces.  This option only has an effect in the
 global context.  Default: seven.
 
+.SH CONTEXTS
+This section describes the selectors available to define contexts.
+
+.TP
+.BI "IsShaped " (boolean)
+If this option is True, windows which are shaped (ie, it is using the
+XShape extension) will match.  Applications will generally use the
+XShape extension so they can display a non-rectangular top-level
+window.  The standard X program "xclock" is an example of an
+application which uses the XShape extension.
+
+.TP
+.BI "InWorkspace " (integer)
+
+.TP
+.BI "WindowName " (string)
+This will match based a window's name.  This does exact string
+matching, so you must specify the window's entire name.  If you give an
+argument of "*", this will match \fIany\fP window.  A window's name
+will often change, so you may be better off matching against the window
+Class or Instance (see below).  You can find a window's name by seeing
+what is displayed in the window's titlebar or by using the standard X
+program "xprop" and looking for the "WM_NAME" property.
+
+.TP
+.BI "WindowClass " (string)
+This will match based on a window's "class."  This does exact
+string matching.  Windows with the same X window "class" are somehow
+related, perhaps by belonging to the same application.  You can find a
+window's class by using "xprop" and looking for the first value of the
+"WM_CLASS" property.
+
+.TP
+.BI "WindowInstance " (string)
+This will match based on a window's "instance."  This does exact
+string matching.  Windows with the same X window "instance" are different
+invocations of the same window.  You can find a window's instance by using
+"xprop" and looking for the second value of the "WM_CLASS" property.
+
+.TP
+.BI "HasTransient " (context)
+This context selector is placed in front of another context selector.  The
+context will then match window A iff window A has a transient window which
+matches the context.
+
+Top-level windows are those windows which are managed by AHWM. Top-level
+windows are what most people think of as "windows", but in X terminology,
+a "window" is technically something completely different.  X uses
+transient windows to indicate a tree-like structure between top-level
+windows.  A window's transient "children" are generally dialog boxes.
+The term "transient" is a misnomer, but is well-ingrained.  You will see
+the term "Transient For" used in X literature because the tree structure
+is implemented using parent pointers.
+
+FIXME: examples
+
+.TP
+.BI "TransientFor " (context)
+This context selector is placed in front of another context selector.
+The context will then match window A iff window A is a transient window
+and is transient for a window which matches the context.  See also the
+comments for the \fBHasTransient\fP selector.
+
+.TP
+.BI "Not " (context)
+This context selector is placed in front of another context selector.  The
+yes/no value of the context selector is then inverted.
+
+.B Example:
+The following two are equivalent:
+
+IsShaped False { DisplayTitlebar = False; }
+
+Not IsShaped True { DisplayTitlebar = False; }
+
 .SH FUNCTIONS
 This section describes all the available \fBfunctions\fP \(em a
 \fBfunction\fP is an action which one can bind to a mouse click or a
@@ -292,12 +367,14 @@ the current window is the window with the input focus; if the function
 is bound to a mouse click, the current window is the window which
 received the mouse click.
 .TP
-.BI "MoveToWorkspace " (integer)
+.BI "SendToWorkspace " (integer)
 This functions moves the current window to the specified workspace.  NB
 that this does not change the current workspace.
 .TP
 .BI "GoToWorkspace " (integer)
 This changes the current workspace to the specified workspace.
+Going from the current workspace to the current workspace is allowed, and has
+the same effect as invoking the standard X program "xrefresh."
 .TP
 .BI "AltTab " (string)
 This function cycles the input focus window to the next window when the
@@ -517,7 +594,7 @@ FIXME
 FIXME
 
 .SH AUTHOR
-XWM is Copyright (C) 2001, Alex Hioreanu, hioreanu@uchicago.edu.
+XWM is Copyright (C) 2001, Alex Hioreanu, hioreanu+ahwm@uchicago.edu.
 
 .SH LICENSE
 XWM is distributed under the following terms:
