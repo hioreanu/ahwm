@@ -10,6 +10,7 @@ TODO before release:
     doesn't find shape extension
     need -lsocket on Sun machines
     gets wrong /opt/X11R6 instead of /usr/lib/X11, /usr/include/X11
+- zombies on FreeBSD
 - start xwm from an xterm, that xterm doesn't get _NET_DESKTOP prop
 - test with a modern version of Sun's X implementation
 - test final build with various options at least two weeks before initial release
