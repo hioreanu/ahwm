@@ -575,11 +575,33 @@ void client_paint_titlebar(client_t *client)
         XChangeGC(dpy, extra_gc, GCForeground, &xgcv);
         XFillRectangle(dpy, client->titlebar, extra_gc,
                        0, 0, client->width, TITLE_HEIGHT);
+        xgcv.foreground = workspace_dark_highlight[client->workspace - 1];
+        XChangeGC(dpy, extra_gc, GCForeground, &xgcv);
+        XDrawLine(dpy, client->titlebar, extra_gc,
+                  0, TITLE_HEIGHT, client->width, TITLE_HEIGHT);
+        XDrawLine(dpy, client->titlebar, extra_gc,
+                  client->width, 0, client->width, TITLE_HEIGHT);
         xgcv.foreground = workspace_highlight[client->workspace - 1];
         XChangeGC(dpy, extra_gc, GCForeground, &xgcv);
-        XDrawRectangle(dpy, client->titlebar, extra_gc,
-                       0, 0, client->width, TITLE_HEIGHT);
+        XDrawLine(dpy, client->titlebar, extra_gc, 0, 0,
+                  client->width, 0);
+        XDrawLine(dpy, client->titlebar, extra_gc,
+                  0, 0, 0, TITLE_HEIGHT);
+    } else {
+        xgcv.foreground = workspace_darkest_highlight[client->workspace - 1];
+        XChangeGC(dpy, extra_gc, GCForeground, &xgcv);
+        XDrawLine(dpy, client->titlebar, extra_gc,
+                  0, TITLE_HEIGHT, client->width, TITLE_HEIGHT);
+        XDrawLine(dpy, client->titlebar, extra_gc,
+                  client->width, 0, client->width, TITLE_HEIGHT);
+        xgcv.foreground = workspace_pixels[client->workspace - 1];
+        XChangeGC(dpy, extra_gc, GCForeground, &xgcv);
+        XDrawLine(dpy, client->titlebar, extra_gc, 0, 0,
+                  client->width, 0);
+        XDrawLine(dpy, client->titlebar, extra_gc,
+                  0, 0, 0, TITLE_HEIGHT);
     }
+        
     XDrawString(dpy, client->titlebar, root_white_fg_gc, 2, TITLE_HEIGHT - 4,
                 client->name, strlen(client->name));
 }

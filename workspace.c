@@ -167,27 +167,27 @@ static void alloc_workspace_colors()
         }
         workspace_pixels[i] = usable.pixel;
         usable.flags = DoRed | DoGreen | DoBlue;
-        usable.red = exact.red - 16;
-        usable.green = exact.green - 16;
-        usable.blue = exact.blue - 16;
+        usable.red = exact.red - 4096;
+        usable.green = exact.green - 4096;
+        usable.blue = exact.blue - 4096;
         if (XAllocColor(dpy, DefaultColormap(dpy, scr), &usable) == 0) {
             fprintf(stderr,
                     "XWM: Could not allocate dark highlight of color \"%s\"\n",
                     workspace_colors[i]);
         }
         workspace_dark_highlight[i] = usable.pixel;
-        usable.red = exact.red - 32;
-        usable.green = exact.green - 32;
-        usable.blue = exact.blue - 32;
+        usable.red = exact.red - 8192;
+        usable.green = exact.green - 8192;
+        usable.blue = exact.blue - 8192;
         if (XAllocColor(dpy, DefaultColormap(dpy, scr), &usable) == 0) {
             fprintf(stderr,
                     "XWM: Could not allocate dark highlight of color \"%s\"\n",
                     workspace_colors[i]);
         }
         workspace_darkest_highlight[i] = usable.pixel;
-        usable.red = exact.red + 16;
-        usable.green = exact.green + 16;
-        usable.blue = exact.blue + 16;
+        usable.red = exact.red + 4096;
+        usable.green = exact.green + 4096;
+        usable.blue = exact.blue + 4096;
         if (XAllocColor(dpy, DefaultColormap(dpy, scr), &usable) == 0) {
             fprintf(stderr,
                     "XWM: Could not allocate highlight of color \"%s\"\n",

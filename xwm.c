@@ -154,6 +154,7 @@ int main(int argc, char **argv)
                                  | GCFont | GCFunction
                                  | GCPlaneMask | GCSubwindowMode,
                                  &xgcv);
+    xgcv.line_width = 4;
     extra_gc = XCreateGC(dpy, root_window,
                          GCForeground | GCBackground
                          | GCLineWidth | GCLineStyle
@@ -161,6 +162,7 @@ int main(int argc, char **argv)
                          | GCFont | GCFunction
                          | GCPlaneMask | GCSubwindowMode,
                          &xgcv);
+    xgcv.line_width = 0;
     xgcv.function = GXxor;
     root_invert_gc = XCreateGC(dpy, root_window,
                                  GCForeground | GCBackground
