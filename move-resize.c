@@ -1132,8 +1132,7 @@ static void process_resize(client_t *client, int new_x, int new_y,
             if ((direction == NW || direction == NE)
                 || ((old_direction == NORTH)
                     && (direction == EAST || direction == WEST))) {
-                if (client->titlebar != None)
-                    drafting_lines(client, NORTH, x, y, x + w, y);
+                drafting_lines(client, NORTH, x, y, x + w, y);
             }
         }
         if (ordinal != LAST) {
