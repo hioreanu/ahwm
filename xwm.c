@@ -5,6 +5,8 @@
  */
 
 #include <stdio.h>
+#include <unistd.h>
+#include <fcntl.h>
 #include "xwm.h"
 #include "event.h"
 #include "client.h"
@@ -82,7 +84,7 @@ int main(int argc, char **argv)
     
     scan_windows();
 
-    focus_none();
+    focus_ensure();
     
     xfd = ConnectionNumber(dpy);
     fcntl(xfd, F_SETFD, FD_CLOEXEC);
@@ -103,19 +105,12 @@ int main(int argc, char **argv)
 
 static void scan_windows()
 {
-    XWindowAttributes xwa;
     int i, n;
     Window *wins, w1, w2;
 
     XQueryTree(dpy, root_window, &w1, &w2, &wins, &n);
-
-    for (i = 0; i < n; i++) {
-        XGetWindowAttributes(dpy, wins[i], &xwa);
-        if (!xwa.override_redirect) {
-            client_create(wins[i]);  /* client.c */
-        }
-    }
-
+    for (i = 0; i < n; i++)
+        client_create(wins[i]);  /* client.c */
     XFree(wins);
 }
 

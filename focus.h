@@ -10,6 +10,11 @@
 #include "client.h"
 
 /*
+ * The windows in a workspace which can possibly receive the input
+ * focus are stored in a ring (a circular doubly-linked list).
+ */
+
+/*
  * The window which contains the current input focus.  This may become
  * invalid after you call any of the functions in this header; call
  * 'focus_ensure()' to ensure that this is current and that this

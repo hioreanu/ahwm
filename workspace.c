@@ -13,7 +13,7 @@ void workspace_goto(int ws)
     workspace_current = ws;
 }
 
-void workspace_move_client(client_t *client, int ws)
+void workspace_client_moveto(client_t *client, int ws)
 {
     ;
 }

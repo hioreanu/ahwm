@@ -5,11 +5,12 @@
  */
 
 #include "focus.h"
+#include "client.h"
 #include "workspace.h"
 
 client_t *focus_current = NULL;
 
-client_t *focus_stacks[NO_WORKSPACES] = { NULL };
+static client_t *focus_stacks[NO_WORKSPACES] = { NULL };
 
 /* 
  * invariant:
@@ -25,7 +26,7 @@ void focus_add(client_t *client)
 {
     client_t *old;
 
-    focus_remove(client_t *client);
+    focus_remove(client);
     old = focus_stacks[client->workspace - 1];
     if (old == NULL) {
         client->next = client;
@@ -61,19 +62,18 @@ void focus_remove(client_t *client)
 
 void focus_set(client_t *client)
 {
-    focus_remove(client);
+/*    focus_remove(client); */
     focus_add(client);
 }
 
 int focus_canfocus(client_t *client)
 {
     Window w = client->window;
-    /* XQueryTree() */
-
-    if (client->state != NormalState) return 0;
+    
+    if (client->state != MAPPED) return 0;
     if (client->workspace != workspace_current) return 0;
     if (client->xwmh == NULL) return 1;
-    if (client->xwmh.flags & InputHint && client->input == False)
+    if (client->xwmh->flags & InputHint && client->xwmh->input == False)
         return 0;
     return 1;
 
@@ -86,6 +86,10 @@ void focus_ensure()
     if (focus_current == focus_stacks[workspace_current - 1])
         return;
     focus_current = focus_stacks[workspace_current - 1];
+    if (focus_current == NULL) {
+        XSetInputFocus(dpy, None, RevertToNone, CurrentTime);
+        return;
+    }
     XSetInputFocus(dpy,
                    focus_current->window,
                    (focus_current->prev ?
