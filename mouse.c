@@ -456,55 +456,70 @@ static void process_resize(client_t *client, int new_x, int new_y,
         y_diff = 0;
     if (direction == NORTH || direction == SOUTH)
         x_diff = 0;
+#ifdef DEBUG
+    printf("\tx_diff = %d, y_diff = %d\n", x_diff, y_diff);
+#endif /* DEBUG */
     if (client->xsh != NULL && (client->xsh->flags & PResizeInc)) {
 #ifdef DEBUG
-        /* FIXME:  need to listen for property events before this will work */
         printf("\txsh->width_inc = %d, xsh->height_inc = %d\n",
                client->xsh->width_inc, client->xsh->height_inc);
 #endif /* DEBUG */
         if (y_diff > client->xsh->height_inc
             || (-y_diff) > client->xsh->height_inc) {
-            if (y_diff < 0) y_diff += client->xsh->height_inc;
             y_diff -= (y_diff % client->xsh->height_inc);
+            if (y_diff < 0) y_diff += client->xsh->height_inc;
+        } else {
+            y_diff = 0;
         }
         if (x_diff > client->xsh->width_inc
             || (-x_diff) > client->xsh->width_inc) {
-            if (x_diff < 0) x_diff += client->xsh->width_inc;
             x_diff -= (x_diff % client->xsh->width_inc);
+            if (x_diff < 0) x_diff += client->xsh->width_inc;
+        } else {
+            x_diff = 0;
+        }
+#ifdef DEBUG
+        printf("\t(after) x_diff = %d, y_diff = %d\n", x_diff, y_diff);
+#endif /* DEBUG */
+    }
+
+    if (x_diff != 0) {
+        
+        switch (direction) {
+            case WEST:
+            case SW:
+            case NW:
+                client->x += x_diff;
+                client->width -= x_diff;
+                *old_x += x_diff;
+                break;
+            case EAST:
+            case SE:
+            case NE:
+                client->width += x_diff;
+                *old_x += x_diff;
+                break;
+            default:
         }
     }
-    
-    switch (direction) {
-        case WEST:
-        case SW:
-        case NW:
-            client->x += x_diff;
-            client->width -= x_diff;
-            *old_x = new_x;
-            break;
-        case EAST:
-        case SE:
-        case NE:
-            client->width += x_diff;
-            *old_x = new_x;
-            break;
-        default:
-    }
-    switch (direction) {
-        case NORTH:
-        case NW:
-        case NE:
-            client->y += y_diff;
-            client->height -= y_diff;
-            *old_y = new_y;
-            break;
-        case SOUTH:
-        case SE:
-        case SW:
-            client->height += y_diff;
-            *old_y = new_y;
-            break;
-        default:
+    if (y_diff != 0) {
+        
+        switch (direction) {
+            case NORTH:
+            case NW:
+            case NE:
+                client->y += y_diff;
+                client->height -= y_diff;
+                *old_y += y_diff;
+                break;
+            case SOUTH:
+            case SE:
+            case SW:
+                client->height += y_diff;
+                *old_y += y_diff;
+                break;
+            default:
+        }
     }
 }
 

@@ -268,8 +268,8 @@ void client_set_xsh(client_t *client)
         fprintf(stderr, "XWM: Couldn't allocate Size Hints structure\n");
         return;
     }
-    if (XGetWMSizeHints(dpy, client->window, client->xsh,
-                        &set_fields, XA_WM_SIZE_HINTS) == 0) {
+    if (XGetWMNormalHints(dpy, client->window,
+                          client->xsh, &set_fields) == 0) {
         XFree(client->xsh);
         client->xsh = NULL;
     }
