@@ -446,7 +446,7 @@ static void reposition(Window w)
 
     /* don't move offscreen unless window is already offscreen */
     if ((y <= scr_height && y >= 0)
-        && (y + *offset > scr_height || y + *offset + height < 0)) {
+        && (y + *offset > scr_height || y + *offset + (int)height < 0)) {
 
         XFree(offset);
         return;
