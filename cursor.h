@@ -16,13 +16,10 @@
 
 extern Cursor cursor_normal;
 extern Cursor cursor_moving;
-extern Cursor cursor_sizing_nw_se;
-extern Cursor cursor_sizing_ne_sw;
-extern Cursor cursor_sizing_n_s;
-extern Cursor cursor_sizing_e_w;
+extern Cursor cursor_sizing;
 
 /*
- * this is used by the resizing code:
+ * these are used by the resizing code (indexed by resize_direction_t):
  */
 
 extern Cursor cursor_direction_map[9];

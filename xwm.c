@@ -121,6 +121,13 @@ int main(int argc, char **argv)
 #endif
 
     cursor_init();
+    /* I would prefer not changing the root cursor at all (user can
+     * already do that with 'xsetroot'), but it's extremely
+     * distracting to have the cursor change when it simply hovers
+     * over something, and we need to define a cursor for some of our
+     * windows.  X does not provide any mechanism for getting a
+     * window's cursor, so we define the root cursor for
+     * consistency. */
     XDefineCursor(dpy, root_window, cursor_normal);
 
     fontstruct = XLoadQueryFont(dpy,

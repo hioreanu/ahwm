@@ -490,7 +490,7 @@ void resize_client(XEvent *xevent, void *v)
                      PointerMotionMask | ButtonPressMask
                      | ButtonReleaseMask,
                      GrabModeAsync, GrabModeAsync, None,
-                     cursor_moving, CurrentTime);
+                     cursor_sizing, CurrentTime);
     }
     XGrabKeyboard(dpy, root_window, True,
                   GrabModeAsync, GrabModeAsync,
