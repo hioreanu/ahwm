@@ -24,9 +24,30 @@ includefile(common.yo)
 htmlnewfile()
 navtop()
 
-sect(Meta Manual)
+sect(Front Matter)
+
+startit()
+it() ref(note): link(Meta Manual)(note)
+it() ref(license): link(License)(license)
+endit()
+
+navbot()
+htmlnewfile()
+navtop()
+
+subsect(Meta Manual)
 
 includefile(note.yo)
+label(note)
+
+navbot()
+htmlnewfile()
+navtop()
+
+subsect(License)
+label(license)
+
+includefile(license.yo)
 
 navbot()
 htmlnewfile()
@@ -139,13 +160,5 @@ subsect(Functions)
 label(functions)
 
 includefile(functions.yo)
-
-navbot()
-htmlnewfile()
-navtop()
-
-sect(License)
-
-includefile(license.yo)
 
 navbot()

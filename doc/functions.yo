@@ -35,7 +35,7 @@ keystroke is pointless, as the current window is the focus window for
 functions bound to keystrokes.  This function is meant to be bound to a
 mouse click.
 function(GoToWorkspace)(integer)
-This changes the workspace to the specified workspace.  Going from the
+Changes the workspace to the specified workspace.  Going from the
 current workspace to the same workspace is allowed and this has a
 similar effect to the standard X program manlink(xrefresh)(1)(1x).  See
 also the section entitled doc(Workspaces)(workspaces).
@@ -56,8 +56,7 @@ attempt to ascertain whether or not the window is lq()hung+rq().
 Therefore, the when using this function, the window may not close
 itself; if that happens, use docs(KillWithExtremePrejudice).
 function(KillWithExtremePrejudice)(void)
-This function will immediately close the current window, no questions
-asked.
+Immediately close the current window, no questions asked.
 
 Specifically, this function will use manlink(XKillClient)(3)(3x).  This
 is guaranteed to close the window, but the application will not receive
