@@ -21,6 +21,7 @@ client_t *client_create(Window w)
         free(client);
         return NULL;
     }
+    printf("Created an entry for window 0x%08X at 0x%08X\n", w, client);
     return client;
 }
 
