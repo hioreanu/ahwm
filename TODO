@@ -13,7 +13,6 @@ Wishlist:
 - Raise() function, like Focus() function, compose for titlebar click
 - GotoNextWorkspace(integer)
 - CycleNextWorkspaces() (like AltTab())
-- options DontBindKeys, DontBindMouse (boolean)
 - root mouse event proxying for GNOME
 - no need to grab buttons for titlebar binds, just listen for events
 - unbindings don't work at all
@@ -128,6 +127,7 @@ Finished, no longer TODO:
 - maximize vertical, horizontal
 - clean up the AltTab() crap, see .xwmrc for ideas
 - function composition
+- options DontBindKeys, DontBindMouse (boolean)
 
 Abandoned, no longer TODO:
 - "stop" focus, detect when pointer stops in a window (no timeout) -

@@ -527,7 +527,8 @@ static void event_maprequest(XMapRequestEvent *xevent)
         if (client->titlebar != None) {
             XMapWindow(xevent->display, client->titlebar);
         }
-        keyboard_grab_keys(client->frame);
+        if (client->dont_bind_keys == 0)
+            keyboard_grab_keys(client->frame);
         mouse_grab_buttons(client);
         if (addfocus) {
             focus_add(client, event_timestamp);

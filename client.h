@@ -141,6 +141,8 @@ typedef struct _client_t {
     unsigned int always_on_bottom : 1;
     unsigned int omnipresent : 1;
     unsigned int sticky : 1; /* FIXME: implement */
+    unsigned int dont_bind_mouse : 1;
+    unsigned int dont_bind_keys : 1;
 
     option_setting workspace_set : 2;
     option_setting focus_policy_set : 2;
@@ -153,6 +155,8 @@ typedef struct _client_t {
     option_setting always_on_bottom_set : 2;
     option_setting omnipresent_set : 2;
     option_setting sticky_set : 2;
+    option_setting dont_bind_mouse_set : 2;
+    option_setting dont_bind_keys_set : 2;
 } client_t;                     /* 116 bytes on ILP-32 machines */
 
 /* the values for client->protocols, can be ORed together */

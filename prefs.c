@@ -86,6 +86,10 @@ typedef struct _prefs {
     option_setting titlebar_text_color_set;
     char *titlebar_text_focused_color;
     option_setting titlebar_text_focused_color_set;
+    Bool dont_bind_mouse;
+    option_setting dont_bind_mouse_set;
+    Bool dont_bind_keys;
+    option_setting dont_bind_keys_set;
 } prefs;
 
 /* ADDOPT 6: set default value */
@@ -102,6 +106,8 @@ static prefs defaults = {
     NULL, UnSet,                /* titlebar_focused_color */
     NULL, UnSet,                /* titlebar_text_color */
     NULL, UnSet,                /* titlebar_text_focused_color */
+    False, UnSet,               /* dont_bind_mouse */
+    False, UnSet                /* dont_bind_keys */
 };
 
 static line *contexts;
@@ -141,6 +147,7 @@ void prefs_init()
     line *lp, *prev, *first_context, *last_context, *last_line, *first_line;
     int def_number = 0;
     extern FILE *yyin;
+    int i;
 
     home = getenv("HOME");
     if (home == NULL) {
@@ -186,7 +193,18 @@ void prefs_init()
                 globally_unbind(lp);
                 break;
             case OPTION:
-                set_default(lp->line_value.option);
+                if (lp->line_value.option->option_name == NWORKSPACES) {
+                    /* special case: option only applies globally */
+                    get_int(lp->line_value.option->option_value, &i);
+                    if (i < 1) {
+                        fprintf(stderr,
+                                "XWM: NumberOfWorkspaces must be at least one\n");
+                    } else {
+                        nworkspaces = i;
+                    }
+                } else {
+                    option_apply(NULL, lp->line_value.option, &defaults);
+                }
                 break;
             case DEFINITION:
                 break;
@@ -204,6 +222,7 @@ void prefs_init()
     contexts = first_context;
 }
 
+/* FIXME: remove, use option_apply */
 static void set_default(option *opt)
 {
     int i;
@@ -268,6 +287,14 @@ static void set_default(option *opt)
             get_string(opt->option_value,
                        &defaults.titlebar_text_focused_color);
             defaults.titlebar_text_focused_color_set = opt->option_setting;
+            break;
+        case DONTBINDMOUSE:
+            get_bool(opt->option_value, &defaults.dont_bind_mouse);
+            defaults.dont_bind_mouse = opt->option_setting;
+            break;
+        case DONTBINDKEYS:
+            get_bool(opt->option_value, &defaults.dont_bind_keys);
+            defaults.dont_bind_keys = opt->option_setting;
             break;
     }
 }
@@ -387,6 +414,25 @@ static Bool type_check_context(context *cntxt)
     return retval;
 }
 
+static Bool option_check_helper(type *typ, int expected, char *tok)
+{
+    char *s = "acceptable";
+    
+    if (typ->type_type == expected) {
+        return True;
+    } else {
+        if (expected == INTEGER) {
+            s = "integer";
+        } else if (expected == BOOLEAN) {
+            s = "boolean";
+        } else if (expected == STRING) {
+            s = "string";
+        }
+        fprintf(stderr, "XWM: %s not given %s value\n", tok, s);
+        return False;
+    }
+}
+
 static Bool type_check_option(option *opt)
 {
     Bool retval;
@@ -394,54 +440,40 @@ static Bool type_check_option(option *opt)
     switch (opt->option_name) {
         /* ADDOPT 8: define option's type */
         case NWORKSPACES:
-            if ( (retval = CHECK_INT(opt->option_value)) == False) {
-                fprintf(stderr,
-                        "XWM: NumberOfWorkspaces not given integer value\n");
-            }
+            retval = option_check_helper(opt->option_value,
+                                         INTEGER, "NumberOfWorkspaces");
             break;
         case DISPLAYTITLEBAR:
-            if ( (retval = CHECK_BOOL(opt->option_value)) == False) {
-                fprintf(stderr,
-                        "XWM:  DisplayTitlebar not given boolean value\n");
-            }
+            retval = option_check_helper(opt->option_value,
+                                         BOOLEAN, "DisplayTitlebar");
             break;
         case OMNIPRESENT:
-            if ( (retval = CHECK_BOOL(opt->option_value)) == False) {
-                fprintf(stderr,
-                        "XWM: Omnipresent not given boolean value\n");
-            }
+            retval = option_check_helper(opt->option_value,
+                                         BOOLEAN, "Omnipresent");
             break;
         case DEFAULTWORKSPACE:
-            if ( (retval = CHECK_INT(opt->option_value)) == False) {
-                fprintf(stderr,
-                        "XWM: DefaultWorkspace not given integer value\n");
-            }
+            retval = option_check_helper(opt->option_value,
+                                         INTEGER, "DefaultWorkspace");
             break;
         case FOCUSPOLICY:
-            if (opt->option_value->type_type != FOCUS_ENUM) {
+            if (opt->option_value->type_type == FOCUS_ENUM) {
+                retval = True;
+            } else {
                 fprintf(stderr, "XWM:  Unknown value for FocusPolicy\n");
                 retval = False;
-            } else {
-                retval = True;
             }
             break;
         case ALWAYSONTOP:
-            if ( (retval = CHECK_BOOL(opt->option_value)) == False) {
-                fprintf(stderr,
-                        "XWM: AlwaysOnTop not given boolean value\n");
-            }
+            retval = option_check_helper(opt->option_value,
+                                         BOOLEAN, "AlwaysOnTop");
             break;
         case ALWAYSONBOTTOM:
-            if ( (retval = CHECK_BOOL(opt->option_value)) == False) {
-                fprintf(stderr,
-                        "XWM: AlwaysOnBottom not given boolean value\n");
-            }
+            retval = option_check_helper(opt->option_value,
+                                         BOOLEAN, "AlwaysOnBottom");
             break;
         case PASSFOCUSCLICK:
-            if ( (retval = CHECK_BOOL(opt->option_value)) == False) {
-                fprintf(stderr,
-                        "XWM: PassFocusClick not given boolean value\n");
-            }
+            retval = option_check_helper(opt->option_value,
+                                         BOOLEAN, "PassFocusClick");
             break;
         case CYCLEBEHAVIOUR:
             if (opt->option_value->type_type != CYCLE_ENUM) {
@@ -452,28 +484,28 @@ static Bool type_check_option(option *opt)
             }
             break;
         case COLORTITLEBAR:
-            if ( (retval = CHECK_STRING(opt->option_value)) == False) {
-                fprintf(stderr,
-                        "XWM:  Unknown value for ColorTitlebar\n");
-            }
+            retval = option_check_helper(opt->option_value,
+                                         STRING, "ColorTitlebar");
             break;
         case COLORTITLEBARFOCUSED:
-            if ( (retval = CHECK_STRING(opt->option_value)) == False) {
-                fprintf(stderr,
-                        "XWM:  Unknown value for ColorTitlebarFocused\n");
-            }
+            retval = option_check_helper(opt->option_value,
+                                         STRING, "ColorTitlebarFocused");
             break;
         case COLORTEXT:
-            if ( (retval = CHECK_STRING(opt->option_value)) == False) {
-                fprintf(stderr,
-                        "XWM:  Unknown value for ColorTitlebarText\n");
-            }
+            retval = option_check_helper(opt->option_value,
+                                         STRING, "ColorTitlebarText");
             break;
         case COLORTEXTFOCUSED:
-            if ( (retval = CHECK_STRING(opt->option_value)) == False) {
-                fprintf(stderr,
-                        "XWM:  Unknown value for ColorTitlebarTextFocused\n");
-            }
+            retval = option_check_helper(opt->option_value,
+                                         STRING, "ColorTitlebarTextFocused");
+            break;
+        case DONTBINDMOUSE:
+            retval = option_check_helper(opt->option_value,
+                                         BOOLEAN, "DontBindMouse");
+            break;
+        case DONTBINDKEYS:
+            retval = option_check_helper(opt->option_value,
+                                         BOOLEAN, "DontBindKeys");
             break;
         default:
             fprintf(stderr, "XWM: unknown option type found...\n");
@@ -795,6 +827,14 @@ static void option_apply(client_t *client, option *opt, prefs *p)
             get_string(opt->option_value, &p->titlebar_text_focused_color);
             p->titlebar_text_focused_color_set = opt->option_setting;
             break;
+        case DONTBINDMOUSE:
+            get_bool(opt->option_value, &p->dont_bind_mouse);
+            p->dont_bind_mouse = opt->option_setting;
+            break;
+        case DONTBINDKEYS:
+            get_bool(opt->option_value, &p->dont_bind_keys);
+            p->dont_bind_mouse = opt->option_setting;
+            break;
     }
 }
 
@@ -957,7 +997,7 @@ void prefs_apply(client_t *client)
             }
         }
     }
-    if (client->pass_focus_click <= p.pass_focus_click_set) {
+    if (client->pass_focus_click_set <= p.pass_focus_click_set) {
         if (p.pass_focus_click) {
             client->pass_focus_click = 1;
             client->pass_focus_click_set = p.pass_focus_click_set;
@@ -972,6 +1012,29 @@ void prefs_apply(client_t *client)
                            p.titlebar_text_color,
                            p.titlebar_text_focused_color);
 
+    if (client->dont_bind_mouse_set <= p.dont_bind_mouse_set) {
+        if (client->dont_bind_mouse == 1 &&
+            p.dont_bind_mouse == 0) {
+            mouse_grab_buttons(client);
+        } else if (client->dont_bind_mouse == 0 &&
+                   p.dont_bind_mouse == 1) {
+            mouse_ungrab_buttons(client);
+        }
+        client->dont_bind_mouse = p.dont_bind_mouse;
+        client->dont_bind_mouse_set = p.dont_bind_mouse_set;
+    }
+    if (client->dont_bind_keys_set <= p.dont_bind_keys_set) {
+        if (client->dont_bind_keys == 1 &&
+            p.dont_bind_keys == 0) {
+            keyboard_grab_keys(client->frame);
+        } else if (client->dont_bind_keys == 0 &&
+                   p.dont_bind_keys == 1) {
+            keyboard_ungrab_keys(client->frame);
+        }
+        client->dont_bind_keys = p.dont_bind_keys;
+        client->dont_bind_keys_set = p.dont_bind_keys_set;
+    }
+    
     /* ADDOPT 10: apply the option to the client */
 }
 

@@ -564,7 +564,7 @@ static void skip_cycle(client_t *client)
  * always-on-bottom.  Of course, user can override any of these using
  * unconditional option settings.
  * 
- * FIXME:  also sticky, don't bind anything.
+ * FIXME:  also sticky
  */
 
 void ewmh_to_desktop(client_t *client)
@@ -583,6 +583,13 @@ void ewmh_to_desktop(client_t *client)
             client->always_on_bottom_set = HintSet;
             stacking_add(client);
         }
+    }
+    if (client->dont_bind_mouse_set <= HintSet) {
+        if (client->dont_bind_mouse == 0) {
+            mouse_ungrab_buttons(client);
+        }
+        client->dont_bind_mouse = 1;
+        client->dont_bind_mouse_set = HintSet;
     }
 }
 

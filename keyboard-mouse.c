@@ -228,6 +228,7 @@ int keyboard_get_modifier_mask(int keycode)
             }
         }
     }
+    XFreeModifiermap(xmkm);
     return mods;
 }
 
@@ -391,11 +392,28 @@ void keyboard_grab_keys(Window w)
     }
 }
 
+void keyboard_ungrab_keys(Window w)
+{
+    boundkey *kb;
+    int i;
+
+    for (kb = boundkeys; kb != NULL; kb = kb->next) {
+        XUngrabKey(dpy, kb->keycode, kb->modifiers, w);
+        for (i = 0; i < n_modifier_combinations; i++) {
+            XUngrabKey(dpy, kb->keycode,
+                     modifier_combinations[i] | kb->modifiers,
+                     w);
+        }
+    }
+}
+
 void mouse_grab_buttons(client_t *client)
 {
     boundbutton *mb;
     unsigned int mask;
     int i;
+
+    if (client->dont_bind_mouse == 1) return;
     
     for (mb = boundbuttons; mb != NULL; mb = mb->next) {
         mask = ButtonPressMask | ButtonReleaseMask;
@@ -419,6 +437,33 @@ void mouse_grab_buttons(client_t *client)
                             modifier_combinations[i] | mb->modifiers,
                             client->titlebar, True, mask, GrabModeSync,
                             GrabModeAsync, None, cursor_normal);
+            }
+        }
+    }
+}
+
+void mouse_ungrab_buttons(client_t *client)
+{
+    boundbutton *mb;
+    unsigned int mask;
+    int i;
+    
+    for (mb = boundbuttons; mb != NULL; mb = mb->next) {
+        mask = ButtonPressMask | ButtonReleaseMask;
+        if (mb->location & MOUSE_FRAME) {
+            XUngrabButton(dpy, mb->button, mb->modifiers, client->frame);
+            for (i = 0; i < n_modifier_combinations; i++) {
+                XUngrabButton(dpy, mb->button,
+                            modifier_combinations[i] | mb->modifiers,
+                            client->frame);
+            }
+        }
+        if (mb->location & MOUSE_TITLEBAR && client->titlebar != None) {
+            XUngrabButton(dpy, mb->button, mb->modifiers, client->titlebar);
+            for (i = 0; i < n_modifier_combinations; i++) {
+                XUngrabButton(dpy, mb->button,
+                              modifier_combinations[i] | mb->modifiers,
+                              client->titlebar);
             }
         }
     }

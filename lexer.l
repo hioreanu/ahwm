@@ -101,6 +101,8 @@ ColourTitlebarTextNonFocused { return TOK_COLORTEXT; }
 ColorTitlebarTextFocused { return TOK_COLORTEXTFOCUSED; }
 ColourTitlebarTextFocused { return TOK_COLORTEXTFOCUSED; }
 NumberOfWorkspaces { return TOK_NWORKSPACES; }
+DontBindMouse { return TOK_DONTBINDMOUSE; }
+DontBindKeys { return TOK_DONTBINDKEYS; }
 
 SloppyFocus { return TOK_SLOPPY_FOCUS; }
 ClickToFocus { return TOK_CLICK_TO_FOCUS; }

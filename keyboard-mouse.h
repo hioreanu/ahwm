@@ -261,9 +261,16 @@ void mouse_unbind(char *mousestring, int depress, int location);
  * take a client argument as sometimes we need to grab the keys of a
  * window that isn't a client (like when we map an override_redirect
  * window).
+ * 
+ * If you are grabbing keys of a client, always check
+ * client->dont_bind_keys before calling this function.
  */
 
 void keyboard_grab_keys(Window w);
+
+/* Undo everything that keyboard_grab_keys() does */
+
+void keyboard_ungrab_keys(Window w);
 
 /*
  * Grab the mouse buttons we use for a specified window
@@ -277,6 +284,10 @@ void keyboard_grab_keys(Window w);
  */
 
 void mouse_grab_buttons(client_t *client);
+
+/* undo mouse_grab_buttons() */
+
+void mouse_ungrab_buttons(client_t *client);
 
 /* 
  * process a key event

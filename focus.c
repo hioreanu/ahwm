@@ -428,7 +428,8 @@ static void focus_change_current(client_t *new, Time timestamp,
             XGrabButton(dpy, Button1, 0, old->frame,
                         True, ButtonPressMask, GrabModeSync,
                         GrabModeAsync, None, None);
-            keyboard_grab_keys(old->frame); /* FIXME */
+            if (old->dont_bind_keys == 0)
+                keyboard_grab_keys(old->frame); /* FIXME */
             mouse_grab_buttons(old);
         }
         if (new != NULL && new->focus_policy == ClickToFocus) {
@@ -448,7 +449,8 @@ void focus_policy_to_click(client_t *client)
         XGrabButton(dpy, Button1, 0, client->frame,
                     True, ButtonPressMask, GrabModeSync,
                     GrabModeAsync, None, None);
-        keyboard_grab_keys(client->frame); /* FIXME */
+        if (client->dont_bind_keys == 0)
+            keyboard_grab_keys(client->frame); /* FIXME */
         mouse_grab_buttons(client); /* FIXME */
     }
 }

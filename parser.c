@@ -17,69 +17,71 @@
 #define	TOK_COLORTEXT	267
 #define	TOK_COLORTEXTFOCUSED	268
 #define	TOK_NWORKSPACES	269
-#define	TOK_SLOPPY_FOCUS	270
-#define	TOK_CLICK_TO_FOCUS	271
-#define	TOK_DONT_FOCUS	272
-#define	TOK_SKIPCYCLE	273
-#define	TOK_RAISEIMMEDIATELY	274
-#define	TOK_RAISEONCYCLEFINISH	275
-#define	TOK_DONTRAISE	276
-#define	TOK_TRUE	277
-#define	TOK_FALSE	278
-#define	TOK_TRANSIENTFOR	279
-#define	TOK_HASTRANSIENT	280
-#define	TOK_NOT	281
-#define	TOK_ISSHAPED	282
-#define	TOK_INWORKSPACE	283
-#define	TOK_WINDOWCLASS	284
-#define	TOK_WINDOWNAME	285
-#define	TOK_WINDOWINSTANCE	286
-#define	TOK_FUNCTION	287
-#define	TOK_MENU	288
-#define	TOK_BINDKEY	289
-#define	TOK_BINDBUTTON	290
-#define	TOK_BINDDRAG	291
-#define	TOK_BINDKEYRELEASE	292
-#define	TOK_UNBINDKEY	293
-#define	TOK_UNBINDBUTTON	294
-#define	TOK_UNBINDDRAG	295
-#define	TOK_UNBINDKEYRELEASE	296
-#define	TOK_ROOT	297
-#define	TOK_FRAME	298
-#define	TOK_TITLEBAR	299
-#define	TOK_SENDTOWORKSPACE	300
-#define	TOK_GOTOWORKSPACE	301
-#define	TOK_CYCLENEXT	302
-#define	TOK_CYCLEPREV	303
-#define	TOK_KILLNICELY	304
-#define	TOK_KILLWITHEXTREMEPREJUDICE	305
-#define	TOK_LAUNCH	306
-#define	TOK_FOCUS	307
-#define	TOK_MAXIMIZE	308
-#define	TOK_MAXIMIZE_HORIZONTALLY	309
-#define	TOK_MAXIMIZE_VERTICALLY	310
-#define	TOK_NOP	311
-#define	TOK_QUOTE	312
-#define	TOK_MOVEINTERACTIVELY	313
-#define	TOK_RESIZEINTERACTIVELY	314
-#define	TOK_MOVERESIZE	315
-#define	TOK_QUIT	316
-#define	TOK_BEEP	317
-#define	TOK_INVOKE	318
-#define	TOK_SHOWMENU	319
-#define	TOK_REFRESH	320
-#define	TOK_SEMI	321
-#define	TOK_EQUALS	322
-#define	TOK_SET_UNCONDITIONALLY	323
-#define	TOK_LBRACE	324
-#define	TOK_RBRACE	325
-#define	TOK_COMMA	326
-#define	TOK_LPAREN	327
-#define	TOK_RPAREN	328
-#define	TOK_DEFINE	329
-#define	TOK_STRING	330
-#define	TOK_INTEGER	331
-#define	TOK_FLOAT	332
+#define	TOK_DONTBINDMOUSE	270
+#define	TOK_DONTBINDKEYS	271
+#define	TOK_SLOPPY_FOCUS	272
+#define	TOK_CLICK_TO_FOCUS	273
+#define	TOK_DONT_FOCUS	274
+#define	TOK_SKIPCYCLE	275
+#define	TOK_RAISEIMMEDIATELY	276
+#define	TOK_RAISEONCYCLEFINISH	277
+#define	TOK_DONTRAISE	278
+#define	TOK_TRUE	279
+#define	TOK_FALSE	280
+#define	TOK_TRANSIENTFOR	281
+#define	TOK_HASTRANSIENT	282
+#define	TOK_NOT	283
+#define	TOK_ISSHAPED	284
+#define	TOK_INWORKSPACE	285
+#define	TOK_WINDOWCLASS	286
+#define	TOK_WINDOWNAME	287
+#define	TOK_WINDOWINSTANCE	288
+#define	TOK_FUNCTION	289
+#define	TOK_MENU	290
+#define	TOK_BINDKEY	291
+#define	TOK_BINDBUTTON	292
+#define	TOK_BINDDRAG	293
+#define	TOK_BINDKEYRELEASE	294
+#define	TOK_UNBINDKEY	295
+#define	TOK_UNBINDBUTTON	296
+#define	TOK_UNBINDDRAG	297
+#define	TOK_UNBINDKEYRELEASE	298
+#define	TOK_ROOT	299
+#define	TOK_FRAME	300
+#define	TOK_TITLEBAR	301
+#define	TOK_SENDTOWORKSPACE	302
+#define	TOK_GOTOWORKSPACE	303
+#define	TOK_CYCLENEXT	304
+#define	TOK_CYCLEPREV	305
+#define	TOK_KILLNICELY	306
+#define	TOK_KILLWITHEXTREMEPREJUDICE	307
+#define	TOK_LAUNCH	308
+#define	TOK_FOCUS	309
+#define	TOK_MAXIMIZE	310
+#define	TOK_MAXIMIZE_HORIZONTALLY	311
+#define	TOK_MAXIMIZE_VERTICALLY	312
+#define	TOK_NOP	313
+#define	TOK_QUOTE	314
+#define	TOK_MOVEINTERACTIVELY	315
+#define	TOK_RESIZEINTERACTIVELY	316
+#define	TOK_MOVERESIZE	317
+#define	TOK_QUIT	318
+#define	TOK_BEEP	319
+#define	TOK_INVOKE	320
+#define	TOK_SHOWMENU	321
+#define	TOK_REFRESH	322
+#define	TOK_SEMI	323
+#define	TOK_EQUALS	324
+#define	TOK_SET_UNCONDITIONALLY	325
+#define	TOK_LBRACE	326
+#define	TOK_RBRACE	327
+#define	TOK_COMMA	328
+#define	TOK_LPAREN	329
+#define	TOK_RPAREN	330
+#define	TOK_DEFINE	331
+#define	TOK_STRING	332
+#define	TOK_INTEGER	333
+#define	TOK_FLOAT	334
 
 #line 1 "parser.y"
                                                       /* -*-Text-*- */
@@ -131,13 +133,13 @@
 #endif
 
 /* ADDOPT 2: define token */
-#line 138 "parser.y"
+#line 140 "parser.y"
 
 #include "prefs.h"
 line *make_line(int type, void *dollar_one);
 char *make_string(char *s);
 
-#line 144 "parser.y"
+#line 146 "parser.y"
 typedef union {
     int value_int;
     float value_float;
@@ -165,11 +167,11 @@ typedef union {
 
 
 
-#define	YYFINAL		130
+#define	YYFINAL		132
 #define	YYFLAG		-32768
-#define	YYNTBASE	79
+#define	YYNTBASE	81
 
-#define YYTRANSLATE(x) ((unsigned)(x) <= 332 ? yytranslate[x] : 101)
+#define YYTRANSLATE(x) ((unsigned)(x) <= 334 ? yytranslate[x] : 103)
 
 static const char yytranslate[] = {     0,
      2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
@@ -205,7 +207,7 @@ static const char yytranslate[] = {     0,
     47,    48,    49,    50,    51,    52,    53,    54,    55,    56,
     57,    58,    59,    60,    61,    62,    63,    64,    65,    66,
     67,    68,    69,    70,    71,    72,    73,    74,    75,    76,
-    77,    78
+    77,    78,    79,    80
 };
 
 #if YYDEBUG != 0
@@ -214,52 +216,54 @@ static const short yyprhs[] = {     0,
     25,    27,    30,    34,    38,    40,    42,    44,    46,    48,
     50,    52,    54,    56,    58,    60,    62,    64,    66,    68,
     70,    72,    74,    76,    78,    80,    82,    84,    86,    88,
-    90,    92,    99,   101,   103,   105,   107,   109,   110,   112,
-   114,   116,   120,   124,   129,   134,   137,   140,   144,   148,
-   150,   152,   154,   159,   163,   165,   167,   169,   171,   173,
+    90,    92,    94,    96,   103,   105,   107,   109,   111,   113,
+   114,   116,   118,   120,   124,   128,   133,   138,   141,   144,
+   148,   152,   154,   156,   158,   163,   167,   169,   171,   173,
    175,   177,   179,   181,   183,   185,   187,   189,   191,   193,
-   195,   197,   199,   201,   203,   205,   209,   211,   217,   221
+   195,   197,   199,   201,   203,   205,   207,   209,   213,   215,
+   221,   225
 };
 
-static const short yyrhs[] = {    80,
-     0,     0,    80,    81,     0,    82,    67,     0,    88,     0,
-    91,    67,     0,    93,    67,     0,    92,    67,     0,    94,
-    67,     0,    99,     0,    67,     0,     1,    67,     0,    83,
-    68,    84,     0,    83,    69,    84,     0,     3,     0,     4,
+static const short yyrhs[] = {    82,
+     0,     0,    82,    83,     0,    84,    69,     0,    90,     0,
+    93,    69,     0,    95,    69,     0,    94,    69,     0,    96,
+    69,     0,   101,     0,    69,     0,     1,    69,     0,    85,
+    70,    86,     0,    85,    71,    86,     0,     3,     0,     4,
      0,     5,     0,     6,     0,     7,     0,     8,     0,     9,
      0,    10,     0,    11,     0,    12,     0,    13,     0,    14,
-     0,    15,     0,    87,     0,    76,     0,    77,     0,    85,
-     0,    86,     0,    16,     0,    17,     0,    18,     0,    19,
+     0,    15,     0,    16,     0,    17,     0,    89,     0,    78,
+     0,    79,     0,    87,     0,    88,     0,    18,     0,    19,
      0,    20,     0,    21,     0,    22,     0,    23,     0,    24,
-     0,    90,    89,    84,    70,    80,    71,     0,    28,     0,
-    29,     0,    31,     0,    30,     0,    32,     0,     0,    27,
-     0,    25,     0,    26,     0,    35,    76,    96,     0,    38,
-    76,    96,     0,    36,    95,    76,    96,     0,    37,    95,
-    76,    96,     0,    39,    76,     0,    42,    76,     0,    40,
-    95,    76,     0,    41,    95,    76,     0,    43,     0,    44,
-     0,    45,     0,    97,    73,    98,    74,     0,    97,    73,
-    74,     0,    46,     0,    47,     0,    48,     0,    49,     0,
+     0,    25,     0,    26,     0,    92,    91,    86,    72,    82,
+    73,     0,    30,     0,    31,     0,    33,     0,    32,     0,
+    34,     0,     0,    29,     0,    27,     0,    28,     0,    37,
+    78,    98,     0,    40,    78,    98,     0,    38,    97,    78,
+    98,     0,    39,    97,    78,    98,     0,    41,    78,     0,
+    44,    78,     0,    42,    97,    78,     0,    43,    97,    78,
+     0,    45,     0,    46,     0,    47,     0,    99,    75,   100,
+    76,     0,    99,    75,    76,     0,    48,     0,    49,     0,
     50,     0,    51,     0,    52,     0,    53,     0,    54,     0,
     55,     0,    56,     0,    57,     0,    58,     0,    59,     0,
     60,     0,    61,     0,    62,     0,    63,     0,    64,     0,
-    65,     0,    66,     0,    98,    72,    84,     0,    84,     0,
-    75,    76,    70,   100,    71,     0,    96,    67,   100,     0,
-    96,    67,     0
+    65,     0,    66,     0,    67,     0,    68,     0,   100,    74,
+    86,     0,    86,     0,    77,    78,    72,   102,    73,     0,
+    98,    69,   102,     0,    98,    69,     0
 };
 
 #endif
 
 #if YYDEBUG != 0
 static const short yyrline[] = { 0,
-   184,   186,   187,   201,   202,   203,   204,   205,   206,   207,
-   208,   209,   216,   228,   242,   243,   244,   245,   246,   247,
-   248,   249,   250,   251,   252,   253,   254,   256,   266,   276,
-   286,   296,   307,   308,   309,   311,   312,   313,   314,   316,
-   317,   319,   332,   333,   334,   335,   336,   338,   339,   340,
-   341,   343,   354,   366,   378,   391,   401,   412,   423,   435,
-   436,   437,   439,   448,   458,   459,   460,   461,   462,   463,
-   464,   465,   466,   467,   468,   469,   470,   471,   472,   473,
-   474,   475,   476,   477,   478,   480,   497,   507,   517,   526
+   186,   188,   189,   203,   204,   205,   206,   207,   208,   209,
+   210,   211,   218,   230,   244,   245,   246,   247,   248,   249,
+   250,   251,   252,   253,   254,   255,   256,   257,   258,   260,
+   270,   280,   290,   300,   311,   312,   313,   315,   316,   317,
+   318,   320,   321,   323,   336,   337,   338,   339,   340,   342,
+   343,   344,   345,   347,   358,   370,   382,   395,   405,   416,
+   427,   439,   440,   441,   443,   452,   462,   463,   464,   465,
+   466,   467,   468,   469,   470,   471,   472,   473,   474,   475,
+   476,   477,   478,   479,   480,   481,   482,   484,   501,   511,
+   521,   530
 };
 #endif
 
@@ -270,35 +274,37 @@ static const char * const yytname[] = {   "$","error","$undefined.","TOK_DISPLAY
 "TOK_OMNIPRESENT","TOK_DEFAULTWORKSPACE","TOK_FOCUS_POLICY","TOK_ALWAYSONTOP",
 "TOK_ALWAYSONBOTTOM","TOK_PASSFOCUSCLICK","TOK_CYCLEBEHAVIOUR","TOK_COLORTITLEBAR",
 "TOK_COLORTITLEBARFOCUSED","TOK_COLORTEXT","TOK_COLORTEXTFOCUSED","TOK_NWORKSPACES",
-"TOK_SLOPPY_FOCUS","TOK_CLICK_TO_FOCUS","TOK_DONT_FOCUS","TOK_SKIPCYCLE","TOK_RAISEIMMEDIATELY",
-"TOK_RAISEONCYCLEFINISH","TOK_DONTRAISE","TOK_TRUE","TOK_FALSE","TOK_TRANSIENTFOR",
-"TOK_HASTRANSIENT","TOK_NOT","TOK_ISSHAPED","TOK_INWORKSPACE","TOK_WINDOWCLASS",
-"TOK_WINDOWNAME","TOK_WINDOWINSTANCE","TOK_FUNCTION","TOK_MENU","TOK_BINDKEY",
-"TOK_BINDBUTTON","TOK_BINDDRAG","TOK_BINDKEYRELEASE","TOK_UNBINDKEY","TOK_UNBINDBUTTON",
-"TOK_UNBINDDRAG","TOK_UNBINDKEYRELEASE","TOK_ROOT","TOK_FRAME","TOK_TITLEBAR",
-"TOK_SENDTOWORKSPACE","TOK_GOTOWORKSPACE","TOK_CYCLENEXT","TOK_CYCLEPREV","TOK_KILLNICELY",
-"TOK_KILLWITHEXTREMEPREJUDICE","TOK_LAUNCH","TOK_FOCUS","TOK_MAXIMIZE","TOK_MAXIMIZE_HORIZONTALLY",
-"TOK_MAXIMIZE_VERTICALLY","TOK_NOP","TOK_QUOTE","TOK_MOVEINTERACTIVELY","TOK_RESIZEINTERACTIVELY",
-"TOK_MOVERESIZE","TOK_QUIT","TOK_BEEP","TOK_INVOKE","TOK_SHOWMENU","TOK_REFRESH",
-"TOK_SEMI","TOK_EQUALS","TOK_SET_UNCONDITIONALLY","TOK_LBRACE","TOK_RBRACE",
-"TOK_COMMA","TOK_LPAREN","TOK_RPAREN","TOK_DEFINE","TOK_STRING","TOK_INTEGER",
-"TOK_FLOAT","config_file","config","line","option","option_name","type","focus_enumeration",
-"cycle_enumeration","boolean","context","context_name","context_option","keybinding",
-"mousebinding","keyunbinding","mouseunbinding","location","function","function_name",
-"arglist","definition","function_list", NULL
+"TOK_DONTBINDMOUSE","TOK_DONTBINDKEYS","TOK_SLOPPY_FOCUS","TOK_CLICK_TO_FOCUS",
+"TOK_DONT_FOCUS","TOK_SKIPCYCLE","TOK_RAISEIMMEDIATELY","TOK_RAISEONCYCLEFINISH",
+"TOK_DONTRAISE","TOK_TRUE","TOK_FALSE","TOK_TRANSIENTFOR","TOK_HASTRANSIENT",
+"TOK_NOT","TOK_ISSHAPED","TOK_INWORKSPACE","TOK_WINDOWCLASS","TOK_WINDOWNAME",
+"TOK_WINDOWINSTANCE","TOK_FUNCTION","TOK_MENU","TOK_BINDKEY","TOK_BINDBUTTON",
+"TOK_BINDDRAG","TOK_BINDKEYRELEASE","TOK_UNBINDKEY","TOK_UNBINDBUTTON","TOK_UNBINDDRAG",
+"TOK_UNBINDKEYRELEASE","TOK_ROOT","TOK_FRAME","TOK_TITLEBAR","TOK_SENDTOWORKSPACE",
+"TOK_GOTOWORKSPACE","TOK_CYCLENEXT","TOK_CYCLEPREV","TOK_KILLNICELY","TOK_KILLWITHEXTREMEPREJUDICE",
+"TOK_LAUNCH","TOK_FOCUS","TOK_MAXIMIZE","TOK_MAXIMIZE_HORIZONTALLY","TOK_MAXIMIZE_VERTICALLY",
+"TOK_NOP","TOK_QUOTE","TOK_MOVEINTERACTIVELY","TOK_RESIZEINTERACTIVELY","TOK_MOVERESIZE",
+"TOK_QUIT","TOK_BEEP","TOK_INVOKE","TOK_SHOWMENU","TOK_REFRESH","TOK_SEMI","TOK_EQUALS",
+"TOK_SET_UNCONDITIONALLY","TOK_LBRACE","TOK_RBRACE","TOK_COMMA","TOK_LPAREN",
+"TOK_RPAREN","TOK_DEFINE","TOK_STRING","TOK_INTEGER","TOK_FLOAT","config_file",
+"config","line","option","option_name","type","focus_enumeration","cycle_enumeration",
+"boolean","context","context_name","context_option","keybinding","mousebinding",
+"keyunbinding","mouseunbinding","location","function","function_name","arglist",
+"definition","function_list", NULL
 };
 #endif
 
 static const short yyr1[] = {     0,
-    79,    80,    80,    81,    81,    81,    81,    81,    81,    81,
-    81,    81,    82,    82,    83,    83,    83,    83,    83,    83,
-    83,    83,    83,    83,    83,    83,    83,    84,    84,    84,
-    84,    84,    85,    85,    85,    86,    86,    86,    86,    87,
-    87,    88,    89,    89,    89,    89,    89,    90,    90,    90,
-    90,    91,    91,    92,    92,    93,    93,    94,    94,    95,
-    95,    95,    96,    96,    97,    97,    97,    97,    97,    97,
-    97,    97,    97,    97,    97,    97,    97,    97,    97,    97,
-    97,    97,    97,    97,    97,    98,    98,    99,   100,   100
+    81,    82,    82,    83,    83,    83,    83,    83,    83,    83,
+    83,    83,    84,    84,    85,    85,    85,    85,    85,    85,
+    85,    85,    85,    85,    85,    85,    85,    85,    85,    86,
+    86,    86,    86,    86,    87,    87,    87,    88,    88,    88,
+    88,    89,    89,    90,    91,    91,    91,    91,    91,    92,
+    92,    92,    92,    93,    93,    94,    94,    95,    95,    96,
+    96,    97,    97,    97,    98,    98,    99,    99,    99,    99,
+    99,    99,    99,    99,    99,    99,    99,    99,    99,    99,
+    99,    99,    99,    99,    99,    99,    99,   100,   100,   101,
+   102,   102
 };
 
 static const short yyr2[] = {     0,
@@ -306,55 +312,58 @@ static const short yyr2[] = {     0,
      1,     2,     3,     3,     1,     1,     1,     1,     1,     1,
      1,     1,     1,     1,     1,     1,     1,     1,     1,     1,
      1,     1,     1,     1,     1,     1,     1,     1,     1,     1,
-     1,     6,     1,     1,     1,     1,     1,     0,     1,     1,
-     1,     3,     3,     4,     4,     2,     2,     3,     3,     1,
-     1,     1,     4,     3,     1,     1,     1,     1,     1,     1,
+     1,     1,     1,     6,     1,     1,     1,     1,     1,     0,
+     1,     1,     1,     3,     3,     4,     4,     2,     2,     3,
+     3,     1,     1,     1,     4,     3,     1,     1,     1,     1,
      1,     1,     1,     1,     1,     1,     1,     1,     1,     1,
-     1,     1,     1,     1,     1,     3,     1,     5,     3,     2
+     1,     1,     1,     1,     1,     1,     1,     3,     1,     5,
+     3,     2
 };
 
 static const short yydefact[] = {     2,
      0,     0,    15,    16,    17,    18,    19,    20,    21,    22,
-    23,    24,    25,    26,    27,    50,    51,    49,     0,     0,
-     0,     0,     0,     0,     0,     0,    11,     0,     3,     0,
-     0,     5,     0,     0,     0,     0,     0,    10,    12,     0,
-    60,    61,    62,     0,     0,     0,    56,     0,     0,    57,
-     0,     4,     0,     0,    43,    44,    46,    45,    47,     0,
-     6,     8,     7,     9,    65,    66,    67,    68,    69,    70,
+    23,    24,    25,    26,    27,    28,    29,    52,    53,    51,
+     0,     0,     0,     0,     0,     0,     0,     0,    11,     0,
+     3,     0,     0,     5,     0,     0,     0,     0,     0,    10,
+    12,     0,    62,    63,    64,     0,     0,     0,    58,     0,
+     0,    59,     0,     4,     0,     0,    45,    46,    48,    47,
+    49,     0,     6,     8,     7,     9,    67,    68,    69,    70,
     71,    72,    73,    74,    75,    76,    77,    78,    79,    80,
-    81,    82,    83,    84,    85,    52,     0,     0,     0,    53,
-    58,    59,     0,    33,    34,    35,    36,    37,    38,    39,
-    40,    41,    29,    30,    13,    31,    32,    28,    14,     0,
-     0,    54,    55,     0,     0,     2,    64,    87,     0,    90,
-    88,     0,     0,    63,    89,    42,    86,     0,     0,     0
+    81,    82,    83,    84,    85,    86,    87,    54,     0,     0,
+     0,    55,    60,    61,     0,    35,    36,    37,    38,    39,
+    40,    41,    42,    43,    31,    32,    13,    33,    34,    30,
+    14,     0,     0,    56,    57,     0,     0,     2,    66,    89,
+     0,    92,    90,     0,     0,    65,    91,    44,    88,     0,
+     0,     0
 };
 
-static const short yydefgoto[] = {   128,
-     1,    29,    30,    31,   105,   106,   107,   108,    32,    60,
-    33,    34,    35,    36,    37,    44,   114,    87,   119,    38,
-   115
+static const short yydefgoto[] = {   130,
+     1,    31,    32,    33,   107,   108,   109,   110,    34,    62,
+    35,    36,    37,    38,    39,    46,   116,    89,   121,    40,
+   117
 };
 
 static const short yypact[] = {-32768,
-     0,   -65,-32768,-32768,-32768,-32768,-32768,-32768,-32768,-32768,
--32768,-32768,-32768,-32768,-32768,-32768,-32768,-32768,   -43,    26,
-    26,   -42,   -23,    26,    26,    -4,-32768,     8,-32768,    29,
-   -45,-32768,   -11,    32,    33,    35,    48,-32768,-32768,    81,
--32768,-32768,-32768,    19,    38,    81,-32768,    44,    49,-32768,
-    53,-32768,    89,    89,-32768,-32768,-32768,-32768,-32768,    89,
+     0,   -67,-32768,-32768,-32768,-32768,-32768,-32768,-32768,-32768,
 -32768,-32768,-32768,-32768,-32768,-32768,-32768,-32768,-32768,-32768,
+   -43,    26,    26,   -42,   -32,    26,    26,   -31,-32768,   -28,
+-32768,     5,   -45,-32768,   -11,    17,    45,    46,    47,-32768,
+-32768,    81,-32768,-32768,-32768,    39,    43,    81,-32768,    44,
+    48,-32768,    53,-32768,    87,    87,-32768,-32768,-32768,-32768,
+-32768,    87,-32768,-32768,-32768,-32768,-32768,-32768,-32768,-32768,
 -32768,-32768,-32768,-32768,-32768,-32768,-32768,-32768,-32768,-32768,
--32768,-32768,-32768,-32768,-32768,-32768,    75,    81,    81,-32768,
--32768,-32768,    81,-32768,-32768,-32768,-32768,-32768,-32768,-32768,
--32768,-32768,-32768,-32768,-32768,-32768,-32768,-32768,-32768,    54,
-    27,-32768,-32768,    82,    79,-32768,-32768,-32768,    47,    81,
--32768,    51,    89,-32768,-32768,-32768,-32768,   151,   152,-32768
+-32768,-32768,-32768,-32768,-32768,-32768,-32768,-32768,    52,    81,
+    81,-32768,-32768,-32768,    81,-32768,-32768,-32768,-32768,-32768,
+-32768,-32768,-32768,-32768,-32768,-32768,-32768,-32768,-32768,-32768,
+-32768,    79,    78,-32768,-32768,    54,    77,-32768,-32768,-32768,
+   -23,    81,-32768,    51,    87,-32768,-32768,-32768,-32768,   152,
+   153,-32768
 };
 
 static const short yypgoto[] = {-32768,
     37,-32768,-32768,-32768,   -38,-32768,-32768,-32768,-32768,-32768,
--32768,-32768,-32768,-32768,-32768,    73,    28,-32768,-32768,-32768,
-    34
+-32768,-32768,-32768,-32768,-32768,    22,    28,-32768,-32768,-32768,
+    36
 };
 
 
@@ -362,43 +371,43 @@ static const short yypgoto[] = {-32768,
 
 
 static const short yytable[] = {    -1,
-     2,    39,     3,     4,     5,     6,     7,     8,     9,    10,
-    11,    12,    13,    14,    15,   109,    55,    56,    57,    58,
-    59,   110,    53,    54,    16,    17,    18,   -48,   -48,   -48,
-   -48,   -48,    40,    46,    19,    20,    21,    22,    23,    24,
-    25,    26,    94,    95,    96,    97,    98,    99,   100,   101,
-   102,     2,    47,     3,     4,     5,     6,     7,     8,     9,
-    10,    11,    12,    13,    14,    15,    27,    86,    41,    42,
-    43,    50,   118,    90,    28,    16,    17,    18,   -48,   -48,
-   -48,   -48,   -48,    51,   127,    19,    20,    21,    22,    23,
-    24,    25,    26,    45,    88,    52,    48,    49,    61,    62,
-   117,    63,   103,   104,    94,    95,    96,    97,    98,    99,
-   100,   101,   102,    89,    64,   112,   113,    27,   123,    91,
-   124,   126,    93,   116,    92,    28,    65,    66,    67,    68,
+     2,    41,     3,     4,     5,     6,     7,     8,     9,    10,
+    11,    12,    13,    14,    15,    16,    17,   111,    57,    58,
+    59,    60,    61,   112,    55,    56,    18,    19,    20,   -50,
+   -50,   -50,   -50,   -50,    42,    48,    21,    22,    23,    24,
+    25,    26,    27,    28,    47,    49,    52,    50,    51,    53,
+   125,     2,   126,     3,     4,     5,     6,     7,     8,     9,
+    10,    11,    12,    13,    14,    15,    16,    17,    29,    88,
+    43,    44,    45,    54,   120,    92,    30,    18,    19,    20,
+   -50,   -50,   -50,   -50,   -50,    63,   129,    21,    22,    23,
+    24,    25,    26,    27,    28,    96,    97,    98,    99,   100,
+   101,   102,   103,   104,    96,    97,    98,    99,   100,   101,
+   102,   103,   104,    64,    65,    66,    90,   114,   115,    29,
+    91,    93,   122,   128,    95,    94,   113,    30,    67,    68,
     69,    70,    71,    72,    73,    74,    75,    76,    77,    78,
-    79,    80,    81,    82,    83,    84,    85,   111,   120,   121,
-   129,   130,   122,   125,     0,     0,     0,     0,     0,     0,
-     0,     0,     0,     0,   103,   104
+    79,    80,    81,    82,    83,    84,    85,    86,    87,   123,
+   118,   131,   132,   119,   124,   105,   106,   127,     0,     0,
+     0,     0,     0,     0,   105,   106
 };
 
 static const short yycheck[] = {     0,
-     1,    67,     3,     4,     5,     6,     7,     8,     9,    10,
-    11,    12,    13,    14,    15,    54,    28,    29,    30,    31,
-    32,    60,    68,    69,    25,    26,    27,    28,    29,    30,
-    31,    32,    76,    76,    35,    36,    37,    38,    39,    40,
-    41,    42,    16,    17,    18,    19,    20,    21,    22,    23,
-    24,     1,    76,     3,     4,     5,     6,     7,     8,     9,
-    10,    11,    12,    13,    14,    15,    67,    40,    43,    44,
-    45,    76,   111,    46,    75,    25,    26,    27,    28,    29,
-    30,    31,    32,    76,   123,    35,    36,    37,    38,    39,
-    40,    41,    42,    21,    76,    67,    24,    25,    67,    67,
-    74,    67,    76,    77,    16,    17,    18,    19,    20,    21,
-    22,    23,    24,    76,    67,    88,    89,    67,    72,    76,
-    74,    71,    70,    70,    76,    75,    46,    47,    48,    49,
+     1,    69,     3,     4,     5,     6,     7,     8,     9,    10,
+    11,    12,    13,    14,    15,    16,    17,    56,    30,    31,
+    32,    33,    34,    62,    70,    71,    27,    28,    29,    30,
+    31,    32,    33,    34,    78,    78,    37,    38,    39,    40,
+    41,    42,    43,    44,    23,    78,    78,    26,    27,    78,
+    74,     1,    76,     3,     4,     5,     6,     7,     8,     9,
+    10,    11,    12,    13,    14,    15,    16,    17,    69,    42,
+    45,    46,    47,    69,   113,    48,    77,    27,    28,    29,
+    30,    31,    32,    33,    34,    69,   125,    37,    38,    39,
+    40,    41,    42,    43,    44,    18,    19,    20,    21,    22,
+    23,    24,    25,    26,    18,    19,    20,    21,    22,    23,
+    24,    25,    26,    69,    69,    69,    78,    90,    91,    69,
+    78,    78,    69,    73,    72,    78,    75,    77,    48,    49,
     50,    51,    52,    53,    54,    55,    56,    57,    58,    59,
-    60,    61,    62,    63,    64,    65,    66,    73,    67,    71,
-     0,     0,   116,   120,    -1,    -1,    -1,    -1,    -1,    -1,
-    -1,    -1,    -1,    -1,    76,    77
+    60,    61,    62,    63,    64,    65,    66,    67,    68,    73,
+    72,     0,     0,    76,   118,    78,    79,   122,    -1,    -1,
+    -1,    -1,    -1,    -1,    78,    79
 };
 /* -*-C-*-  Note some compilers choke on comments on `#line' lines.  */
 #line 3 "/usr/share/bison.simple"
@@ -944,15 +953,15 @@ yyreduce:
   switch (yyn) {
 
 case 1:
-#line 184 "parser.y"
+#line 186 "parser.y"
 { preferences = yyvsp[0].value_line; ;
     break;}
 case 2:
-#line 186 "parser.y"
+#line 188 "parser.y"
 { yyval.value_line = NULL; ;
     break;}
 case 3:
-#line 188 "parser.y"
+#line 190 "parser.y"
 {
            line *tmp;
            parse_debug("CONFIG\n");
@@ -967,39 +976,39 @@ case 3:
        ;
     break;}
 case 4:
-#line 201 "parser.y"
+#line 203 "parser.y"
 { yyval.value_line = make_line(OPTION, yyvsp[-1].value_option); ;
     break;}
 case 5:
-#line 202 "parser.y"
+#line 204 "parser.y"
 { yyval.value_line = make_line(CONTEXT, yyvsp[0].value_context); ;
     break;}
 case 6:
-#line 203 "parser.y"
+#line 205 "parser.y"
 { yyval.value_line = make_line(KEYBINDING, yyvsp[-1].value_keybinding); ;
     break;}
 case 7:
-#line 204 "parser.y"
+#line 206 "parser.y"
 { yyval.value_line = make_line(KEYUNBINDING, yyvsp[-1].value_keyunbinding); ;
     break;}
 case 8:
-#line 205 "parser.y"
+#line 207 "parser.y"
 { yyval.value_line = make_line(MOUSEBINDING, yyvsp[-1].value_mousebinding); ;
     break;}
 case 9:
-#line 206 "parser.y"
+#line 208 "parser.y"
 { yyval.value_line = make_line(MOUSEUNBINDING, yyvsp[-1].value_mouseunbinding); ;
     break;}
 case 10:
-#line 207 "parser.y"
+#line 209 "parser.y"
 { yyval.value_line = make_line(DEFINITION, yyvsp[0].value_definition); ;
     break;}
 case 11:
-#line 208 "parser.y"
+#line 210 "parser.y"
 { yyval.value_line = make_line(INVALID_LINE, NULL); ;
     break;}
 case 12:
-#line 210 "parser.y"
+#line 212 "parser.y"
 {
           extern int line_number;
           fprintf(stderr, "XWM: parse error on line %d.  Ignoring statement.\n",
@@ -1008,7 +1017,7 @@ case 12:
       ;
     break;}
 case 13:
-#line 217 "parser.y"
+#line 219 "parser.y"
 {
             option *opt;
             parse_debug("OPTION\n");
@@ -1022,7 +1031,7 @@ case 13:
         ;
     break;}
 case 14:
-#line 229 "parser.y"
+#line 231 "parser.y"
 {
             option *opt;
             parse_debug("OPTION\n");
@@ -1036,59 +1045,67 @@ case 14:
         ;
     break;}
 case 15:
-#line 242 "parser.y"
+#line 244 "parser.y"
 { yyval.value_int = DISPLAYTITLEBAR; ;
     break;}
 case 16:
-#line 243 "parser.y"
+#line 245 "parser.y"
 { yyval.value_int = OMNIPRESENT; ;
     break;}
 case 17:
-#line 244 "parser.y"
+#line 246 "parser.y"
 { yyval.value_int = DEFAULTWORKSPACE; ;
     break;}
 case 18:
-#line 245 "parser.y"
+#line 247 "parser.y"
 { yyval.value_int = FOCUSPOLICY; ;
     break;}
 case 19:
-#line 246 "parser.y"
+#line 248 "parser.y"
 { yyval.value_int = ALWAYSONTOP; ;
     break;}
 case 20:
-#line 247 "parser.y"
+#line 249 "parser.y"
 { yyval.value_int = ALWAYSONBOTTOM; ;
     break;}
 case 21:
-#line 248 "parser.y"
+#line 250 "parser.y"
 { yyval.value_int = PASSFOCUSCLICK; ;
     break;}
 case 22:
-#line 249 "parser.y"
+#line 251 "parser.y"
 { yyval.value_int = CYCLEBEHAVIOUR; ;
     break;}
 case 23:
-#line 250 "parser.y"
+#line 252 "parser.y"
 { yyval.value_int = COLORTITLEBAR; ;
     break;}
 case 24:
-#line 251 "parser.y"
+#line 253 "parser.y"
 { yyval.value_int = COLORTITLEBARFOCUSED; ;
     break;}
 case 25:
-#line 252 "parser.y"
+#line 254 "parser.y"
 { yyval.value_int = COLORTEXT; ;
     break;}
 case 26:
-#line 253 "parser.y"
+#line 255 "parser.y"
 { yyval.value_int = COLORTEXTFOCUSED; ;
     break;}
 case 27:
-#line 254 "parser.y"
+#line 256 "parser.y"
 { yyval.value_int = NWORKSPACES; ;
     break;}
 case 28:
 #line 257 "parser.y"
+{ yyval.value_int = DONTBINDMOUSE; ;
+    break;}
+case 29:
+#line 258 "parser.y"
+{ yyval.value_int = DONTBINDKEYS; ;
+    break;}
+case 30:
+#line 261 "parser.y"
 {
           type *typ;
           typ = malloc(sizeof(type));
@@ -1099,8 +1116,8 @@ case 28:
           yyval.value_type = typ;
       ;
     break;}
-case 29:
-#line 267 "parser.y"
+case 31:
+#line 271 "parser.y"
 {
           type *typ;
           typ = malloc(sizeof(type));
@@ -1111,8 +1128,8 @@ case 29:
           yyval.value_type = typ;
       ;
     break;}
-case 30:
-#line 277 "parser.y"
+case 32:
+#line 281 "parser.y"
 {
           type *typ;
           typ = malloc(sizeof(type));
@@ -1123,8 +1140,8 @@ case 30:
           yyval.value_type = typ;
       ;
     break;}
-case 31:
-#line 287 "parser.y"
+case 33:
+#line 291 "parser.y"
 {
           type *typ;
           typ = malloc(sizeof(type));
@@ -1135,8 +1152,8 @@ case 31:
           yyval.value_type = typ;
       ;
     break;}
-case 32:
-#line 297 "parser.y"
+case 34:
+#line 301 "parser.y"
 {
           type *typ;
           typ = malloc(sizeof(type));
@@ -1147,44 +1164,44 @@ case 32:
           yyval.value_type = typ;
       ;
     break;}
-case 33:
-#line 307 "parser.y"
+case 35:
+#line 311 "parser.y"
 { yyval.value_int = TYPE_SLOPPY_FOCUS; ;
     break;}
-case 34:
-#line 308 "parser.y"
+case 36:
+#line 312 "parser.y"
 { yyval.value_int = TYPE_CLICK_TO_FOCUS; ;
     break;}
-case 35:
-#line 309 "parser.y"
+case 37:
+#line 313 "parser.y"
 { yyval.value_int = TYPE_DONT_FOCUS; ;
     break;}
-case 36:
-#line 311 "parser.y"
+case 38:
+#line 315 "parser.y"
 { yyval.value_int = TYPE_SKIP_CYCLE ;
     break;}
-case 37:
-#line 312 "parser.y"
+case 39:
+#line 316 "parser.y"
 { yyval.value_int = TYPE_RAISE_IMMEDIATELY ;
     break;}
-case 38:
-#line 313 "parser.y"
+case 40:
+#line 317 "parser.y"
 { yyval.value_int = TYPE_RAISE_ON_CYCLE_FINISH ;
     break;}
-case 39:
-#line 314 "parser.y"
-{ yyval.value_int = TYPE_DONT_RAISE ;
-    break;}
-case 40:
-#line 316 "parser.y"
-{ yyval.value_int = 1; ;
-    break;}
 case 41:
-#line 317 "parser.y"
-{ yyval.value_int = 0; ;
+#line 318 "parser.y"
+{ yyval.value_int = TYPE_DONT_RAISE ;
     break;}
 case 42:
 #line 320 "parser.y"
+{ yyval.value_int = 1; ;
+    break;}
+case 43:
+#line 321 "parser.y"
+{ yyval.value_int = 0; ;
+    break;}
+case 44:
+#line 324 "parser.y"
 {
              context *cntxt;
              parse_debug("CONTEXT\n");
@@ -1197,44 +1214,44 @@ case 42:
              yyval.value_context = cntxt;
          ;
     break;}
-case 43:
-#line 332 "parser.y"
+case 45:
+#line 336 "parser.y"
 { yyval.value_int = SEL_ISSHAPED; ;
     break;}
-case 44:
-#line 333 "parser.y"
+case 46:
+#line 337 "parser.y"
 { yyval.value_int = SEL_INWORKSPACE; ;
     break;}
-case 45:
-#line 334 "parser.y"
+case 47:
+#line 338 "parser.y"
 { yyval.value_int = SEL_WINDOWNAME; ;
     break;}
-case 46:
-#line 335 "parser.y"
+case 48:
+#line 339 "parser.y"
 { yyval.value_int = SEL_WINDOWCLASS; ;
     break;}
-case 47:
-#line 336 "parser.y"
+case 49:
+#line 340 "parser.y"
 { yyval.value_int = SEL_WINDOWINSTANCE; ;
     break;}
-case 48:
-#line 338 "parser.y"
+case 50:
+#line 342 "parser.y"
 { yyval.value_int = 0; ;
     break;}
-case 49:
-#line 339 "parser.y"
-{ yyval.value_int = SEL_NOT; ;
-    break;}
-case 50:
-#line 340 "parser.y"
-{ yyval.value_int = SEL_TRANSIENTFOR; ;
-    break;}
 case 51:
-#line 341 "parser.y"
-{ yyval.value_int = SEL_HASTRANSIENT; ;
+#line 343 "parser.y"
+{ yyval.value_int = SEL_NOT; ;
     break;}
 case 52:
 #line 344 "parser.y"
+{ yyval.value_int = SEL_TRANSIENTFOR; ;
+    break;}
+case 53:
+#line 345 "parser.y"
+{ yyval.value_int = SEL_HASTRANSIENT; ;
+    break;}
+case 54:
+#line 348 "parser.y"
 {
                 keybinding *kb;
                 kb = malloc(sizeof(keybinding));
@@ -1246,8 +1263,8 @@ case 52:
                 yyval.value_keybinding = kb;
             ;
     break;}
-case 53:
-#line 355 "parser.y"
+case 55:
+#line 359 "parser.y"
 {
                 keybinding *kb;
                 kb = malloc(sizeof(keybinding));
@@ -1259,8 +1276,8 @@ case 53:
                 yyval.value_keybinding = kb;
             ;
     break;}
-case 54:
-#line 367 "parser.y"
+case 56:
+#line 371 "parser.y"
 {
                   mousebinding *mb;
                   mb = malloc(sizeof(mousebinding));
@@ -1273,8 +1290,8 @@ case 54:
                   yyval.value_mousebinding = mb;
               ;
     break;}
-case 55:
-#line 379 "parser.y"
+case 57:
+#line 383 "parser.y"
 {
                   mousebinding *mb;
                   mb = malloc(sizeof(mousebinding));
@@ -1287,8 +1304,8 @@ case 55:
                   yyval.value_mousebinding = mb;
               ;
     break;}
-case 56:
-#line 392 "parser.y"
+case 58:
+#line 396 "parser.y"
 {
                   keyunbinding *kub;
                   kub = malloc(sizeof(keyunbinding));
@@ -1299,8 +1316,8 @@ case 56:
                   yyval.value_keyunbinding = kub;
               ;
     break;}
-case 57:
-#line 402 "parser.y"
+case 59:
+#line 406 "parser.y"
 {
                   keyunbinding *kub;
                   kub = malloc(sizeof(keyunbinding));
@@ -1311,8 +1328,8 @@ case 57:
                   yyval.value_keyunbinding = kub;
               ;
     break;}
-case 58:
-#line 413 "parser.y"
+case 60:
+#line 417 "parser.y"
 {
                     mouseunbinding *mub;
                     mub = malloc(sizeof(mouseunbinding));
@@ -1324,8 +1341,8 @@ case 58:
                     yyval.value_mouseunbinding = mub;
                 ;
     break;}
-case 59:
-#line 424 "parser.y"
+case 61:
+#line 428 "parser.y"
 {
                     mouseunbinding *mub;
                     mub = malloc(sizeof(mouseunbinding));
@@ -1337,20 +1354,20 @@ case 59:
                     yyval.value_mouseunbinding = mub;
                 ;
     break;}
-case 60:
-#line 435 "parser.y"
-{ yyval.value_int = MOUSE_ROOT; ;
-    break;}
-case 61:
-#line 436 "parser.y"
-{ yyval.value_int = MOUSE_FRAME; ;
-    break;}
 case 62:
-#line 437 "parser.y"
-{ yyval.value_int = MOUSE_TITLEBAR; ;
+#line 439 "parser.y"
+{ yyval.value_int = MOUSE_ROOT; ;
     break;}
 case 63:
 #line 440 "parser.y"
+{ yyval.value_int = MOUSE_FRAME; ;
+    break;}
+case 64:
+#line 441 "parser.y"
+{ yyval.value_int = MOUSE_TITLEBAR; ;
+    break;}
+case 65:
+#line 444 "parser.y"
 {
               function *f = malloc(sizeof(function));
               if (f != NULL) {
@@ -1360,8 +1377,8 @@ case 63:
               yyval.value_function = f;
           ;
     break;}
-case 64:
-#line 449 "parser.y"
+case 66:
+#line 453 "parser.y"
 {
               function *f = malloc(sizeof(function));
               if (f != NULL) {
@@ -1371,92 +1388,92 @@ case 64:
               yyval.value_function = f;
           ;
     break;}
-case 65:
-#line 458 "parser.y"
+case 67:
+#line 462 "parser.y"
 { yyval.value_int = SENDTOWORKSPACE; ;
     break;}
-case 66:
-#line 459 "parser.y"
+case 68:
+#line 463 "parser.y"
 { yyval.value_int = GOTOWORKSPACE; ;
     break;}
-case 67:
-#line 460 "parser.y"
+case 69:
+#line 464 "parser.y"
 { yyval.value_int = CYCLENEXT; ;
     break;}
-case 68:
-#line 461 "parser.y"
+case 70:
+#line 465 "parser.y"
 { yyval.value_int = CYCLEPREV; ;
     break;}
-case 69:
-#line 462 "parser.y"
+case 71:
+#line 466 "parser.y"
 { yyval.value_int = KILLNICELY; ;
     break;}
-case 70:
-#line 463 "parser.y"
+case 72:
+#line 467 "parser.y"
 { yyval.value_int = KILLWITHEXTREMEPREJUDICE; ;
     break;}
-case 71:
-#line 464 "parser.y"
+case 73:
+#line 468 "parser.y"
 { yyval.value_int = LAUNCH; ;
     break;}
-case 72:
-#line 465 "parser.y"
+case 74:
+#line 469 "parser.y"
 { yyval.value_int = FOCUS; ;
     break;}
-case 73:
-#line 466 "parser.y"
+case 75:
+#line 470 "parser.y"
 { yyval.value_int = MAXIMIZE; ;
     break;}
-case 74:
-#line 467 "parser.y"
+case 76:
+#line 471 "parser.y"
 { yyval.value_int = MAXIMIZE_H; ;
     break;}
-case 75:
-#line 468 "parser.y"
+case 77:
+#line 472 "parser.y"
 { yyval.value_int = MAXIMIZE_V; ;
     break;}
-case 76:
-#line 469 "parser.y"
+case 78:
+#line 473 "parser.y"
 { yyval.value_int = NOP; ;
     break;}
-case 77:
-#line 470 "parser.y"
+case 79:
+#line 474 "parser.y"
 { yyval.value_int = QUOTE; ;
     break;}
-case 78:
-#line 471 "parser.y"
+case 80:
+#line 475 "parser.y"
 { yyval.value_int = MOVEINTERACTIVELY; ;
     break;}
-case 79:
-#line 472 "parser.y"
+case 81:
+#line 476 "parser.y"
 { yyval.value_int = RESIZEINTERACTIVELY; ;
     break;}
-case 80:
-#line 473 "parser.y"
+case 82:
+#line 477 "parser.y"
 { yyval.value_int = MOVERESIZE; ;
     break;}
-case 81:
-#line 474 "parser.y"
+case 83:
+#line 478 "parser.y"
 { yyval.value_int = QUIT; ;
     break;}
-case 82:
-#line 475 "parser.y"
+case 84:
+#line 479 "parser.y"
 { yyval.value_int = BEEP; ;
     break;}
-case 83:
-#line 476 "parser.y"
-{ yyval.value_int = INVOKE; ;
-    break;}
-case 84:
-#line 477 "parser.y"
-{ yyval.value_int = SHOWMENU; ;
-    break;}
 case 85:
-#line 478 "parser.y"
-{ yyval.value_int = REFRESH; ;
+#line 480 "parser.y"
+{ yyval.value_int = INVOKE; ;
     break;}
 case 86:
 #line 481 "parser.y"
+{ yyval.value_int = SHOWMENU; ;
+    break;}
+case 87:
+#line 482 "parser.y"
+{ yyval.value_int = REFRESH; ;
+    break;}
+case 88:
+#line 485 "parser.y"
 {
              arglist *tmp;
              arglist *al;
@@ -1474,8 +1491,8 @@ case 86:
              yyval.value_arglist = yyvsp[-2].value_arglist;
          ;
     break;}
-case 87:
-#line 498 "parser.y"
+case 89:
+#line 502 "parser.y"
 {
              arglist *al = malloc(sizeof(arglist));
              if (al != NULL) {
@@ -1485,8 +1502,8 @@ case 87:
              yyval.value_arglist = al;
          ;
     break;}
-case 88:
-#line 508 "parser.y"
+case 90:
+#line 512 "parser.y"
 {
                 definition *def = malloc(sizeof(definition));
                 if (def != NULL) {
@@ -1496,8 +1513,8 @@ case 88:
                 yyval.value_definition = def;
             ;
     break;}
-case 89:
-#line 518 "parser.y"
+case 91:
+#line 522 "parser.y"
 {
                    funclist *fl = malloc(sizeof(funclist));
                    if (fl != NULL) {
@@ -1507,8 +1524,8 @@ case 89:
                    yyval.value_funclist = fl;
                ;
     break;}
-case 90:
-#line 527 "parser.y"
+case 92:
+#line 531 "parser.y"
 {
                    funclist *fl = malloc(sizeof(funclist));
                    if (fl != NULL) {
@@ -1740,7 +1757,7 @@ yyerrhandle:
     }
   return 1;
 }
-#line 536 "parser.y"
+#line 540 "parser.y"
 
 
 /*
