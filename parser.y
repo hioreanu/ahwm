@@ -635,13 +635,16 @@ char *make_string(char *s)
        
 line *make_line(int type, void *dollar_one)
 {
+    extern int line_number;
     line *ln;
+
     parse_debug("LINE\n");
     ln = malloc(sizeof(line));
     if (ln != NULL) {
         ln->line_type = type;
         ln->line_value.option = dollar_one;
         ln->line_next = NULL;
+        ln->line_number = line_number;
     }
     return ln;
 }

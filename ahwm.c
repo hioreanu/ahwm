@@ -461,10 +461,6 @@ void run_program(XEvent *e, struct _arglist *args)
     fflush(stdout);
     fflush(stderr);
     for (p = args; p != NULL; p = p->arglist_next) {
-        if (p->arglist_arg->type_type != STRING) {
-            fprintf(stderr, "AHWM: type error\n"); /* FIXME */
-            continue;
-        }
         progname = p->arglist_arg->type_value.stringval;
         if ( (pid = fork()) == 0) {
             close(ConnectionNumber(dpy));

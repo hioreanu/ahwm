@@ -44,7 +44,7 @@ void workspace_goto_bindable(XEvent *e, arglist *args)
     if (args != NULL && args->arglist_arg->type_type == INTEGER) {
         workspace_goto(args->arglist_arg->type_value.intval);
     } else {
-        fprintf(stderr, "AHWM: type error\n"); /* FIXME */
+        fprintf(stderr, "AHWM: type error\n"); /* can't happen */
     }
 }
 
@@ -152,7 +152,7 @@ void workspace_client_moveto_bindable(XEvent *xevent, arglist *args)
     if (args != NULL && args->arglist_arg->type_type == INTEGER) {
         ws = args->arglist_arg->type_value.intval;
     } else {
-        fprintf(stderr, "AHWM: type error\n"); /* FIXME */
+        fprintf(stderr, "AHWM: type error\n"); /* can't happen */
         return;
     }
     if (client == NULL) {

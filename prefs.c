@@ -132,6 +132,15 @@ static prefs defaults = {
     0, UserSet,                   /* raise_delay */
 };
 
+/* names of the types
+ * used only for displaying to user
+ * matches up with enumeration in struct _type in prefs.h
+ */
+static char *type_names[] = {
+    "boolean", "integer", "string", "focus enumeration",
+    "cycle enumeration", "position enumeration", "resize enumeration" 
+};
+
 static line *contexts;
 static definition **definitions = NULL;
 static int ndefinitions = 0;
@@ -148,10 +157,11 @@ static Bool type_check_context(context *cntxt);
 static Bool type_check_option(option *opt);
 static Bool type_check_keybinding(keybinding *kb);
 static Bool type_check_mousebinding(mousebinding *mb);
-static Bool type_check_keyunbinding(keyunbinding *kub);
-static Bool type_check_mouseunbinding(mouseunbinding *mub);
 static Bool type_check_function(function *fn);
 static Bool type_check_definition(definition *def);
+static char *get_type_name(int typ);
+static Bool type_check_helper(type *typ, int expected,
+                              char *tok, char *tok_type);
 static void keybinding_apply(client_t *client, keybinding *kb);
 static void keyunbinding_apply(client_t *client, keyunbinding *kb);
 static void mousebinding_apply(client_t *client, mousebinding *kb);
@@ -164,6 +174,59 @@ static void invoke(XEvent *e, arglist *args);
 static void focus(XEvent *e, arglist *args);
 static void crash(XEvent *e, arglist *args);
 static void xmessage();
+
+/* must follow declarations */
+static key_fn fn_table[] = {
+/* 0  */    workspace_client_moveto_bindable,
+/* 1  */    workspace_goto_bindable,
+/* 2  */    focus_cycle_next,
+/* 3  */    focus_cycle_prev,
+/* 4  */    kill_nicely,
+/* 5  */    kill_with_extreme_prejudice,
+/* 6  */    run_program,
+/* 7  */    focus,
+/* 8  */    resize_maximize,
+/* 9  */    resize_maximize_vertically,
+/* 10 */    resize_maximize_horizontally,
+/* 11 */    keyboard_ignore,
+/* 12 */    keyboard_quote,
+/* 13 */    move_client,
+/* 14 */    resize_client,
+/* 15 */    NULL, /* non-interactive move/resize, must implement */
+/* 16 */    ahwm_quit,
+/* 17 */    NULL, /* beep */
+/* 18 */    invoke,
+/* 19 */    NULL, /* expansion for menu system */
+/* 20 */    NULL, /* refresh/reset */
+/* 21 */    ahwm_restart,
+/* 22 */    crash,
+};
+
+static char *fn_names[] = {
+/* 0  */    "SendToWorkspace",
+/* 1  */    "GotoWorkspace",
+/* 2  */    "CycleNext",
+/* 3  */    "CyclePrevious",
+/* 4  */    "KillNicely",
+/* 5  */    "KillWithExtremePrejudice",
+/* 6  */    "Launch",
+/* 7  */    "Focus",
+/* 8  */    "Maxmize",
+/* 9  */    "MaximizeVertically",
+/* 10 */    "MaximizeHorizontally",
+/* 11 */    "Nop",
+/* 12 */    "Quote",
+/* 13 */    "MoveInteractively",
+/* 14 */    "ResizeInteractively",
+/* 15 */    "MoveResize",
+/* 16 */    "Quit",
+/* 17 */    "Beep",
+/* 18 */    "Invoke",
+/* 19 */    "ShowMenu",
+/* 20 */    "Refresh",
+/* 21 */    "Restart",
+/* 22 */    "Crash",
+};
 
 void prefs_init()
 {
@@ -288,13 +351,13 @@ static line *type_check(line *block)
     for (lp = block; lp != NULL; lp = lp->line_next) {
         switch (lp->line_type) {
             case CONTEXT:
-                if (type_check_context(lp->line_value.context)) {
+                line_ok = type_check_context(lp->line_value.context);
+                if (line_ok) {
                     lp->line_value.context->context_lines =
                         type_check(lp->line_value.context->context_lines);
                 } else {
                     lp->line_value.context->context_selector = 0;
                 }
-                line_ok = True;
                 break;
             case OPTION:
                 line_ok = type_check_option(lp->line_value.option);
@@ -303,14 +366,13 @@ static line *type_check(line *block)
                 line_ok = type_check_keybinding(lp->line_value.keybinding);
                 break;
             case KEYUNBINDING:
-                line_ok = type_check_keyunbinding(lp->line_value.keyunbinding);
+                line_ok = True;
                 break;
             case MOUSEBINDING:
                 line_ok = type_check_mousebinding(lp->line_value.mousebinding);
                 break;
             case MOUSEUNBINDING:
-                line_ok =
-                    type_check_mouseunbinding(lp->line_value.mouseunbinding);
+                line_ok = True;
                 break;
             case DEFINITION:
                 /* we fill the "definitions" table on type checking */
@@ -330,61 +392,71 @@ static line *type_check(line *block)
             if (prev != NULL) {
                 prev->line_next = lp->line_next;
             }
+            fprintf(stderr,
+                    "AHWM: error on statement ending on line %d, "
+                    "ignoring statement\n", lp->line_number);
         }
     }
     return first_ok;
 }
 
-/* FIXME:  error messages, need line number */
 static Bool type_check_context(context *cntxt)
 {
     Bool retval;
     
     if (cntxt->context_selector & SEL_HASTRANSIENT
         && cntxt->context_selector & SEL_TRANSIENTFOR) {
-        fprintf(stderr, "AHWM: error\n");
+        /* FIXME: can't happen? */
+        fprintf(stderr,
+                "AHWM: HasTransient and TransientFor "
+                "are mutually exclusive\n");
         retval = False;
     } else if (cntxt->context_selector & SEL_ISSHAPED) {
-        if ( (retval = CHECK_BOOL(cntxt->context_value)) == False) {
-            fprintf(stderr, "AHWM: error\n");
-        }
+        retval = type_check_helper(cntxt->context_value, BOOLEAN,
+                                   "IsShaped", "selector");
     } else if (cntxt->context_selector & SEL_INWORKSPACE) {
-        if ( (retval = CHECK_INT(cntxt->context_value)) == False) {
-            fprintf(stderr, "AHWM: error\n");
-        }
+        retval = type_check_helper(cntxt->context_value, INTEGER,
+                                   "InWorkspace", "selector");
     } else if (cntxt->context_selector & SEL_WINDOWNAME) {
-        if ( (retval = CHECK_STRING(cntxt->context_value)) == False) {
-            fprintf(stderr, "AHWM: error\n");
-        }
+        retval = type_check_helper(cntxt->context_value, STRING,
+                                   "WindowName", "selector");
     } else if (cntxt->context_selector & SEL_WINDOWCLASS) {
-        if ( (retval = CHECK_STRING(cntxt->context_value)) == False) {
-            fprintf(stderr, "AHWM: error\n");
-        }
+        retval = type_check_helper(cntxt->context_value, STRING,
+                                   "WindowClass", "selector");
     } else if (cntxt->context_selector & SEL_WINDOWINSTANCE) {
-        if ( (retval = CHECK_STRING(cntxt->context_value)) == False) {
-            fprintf(stderr, "AHWM: error\n");
-        }
+        retval = type_check_helper(cntxt->context_value, STRING,
+                                   "WindowInstance", "selector");
     } else {
+        fprintf(stderr, "AHWM: unknown selector\n");
         retval = False;
     }
     return retval;
 }
 
-static Bool option_check_helper(type *typ, int expected, char *tok)
+static char *get_type_name(int typ)
 {
-    char *s = "acceptable";
+    if (typ < sizeof(type_names) / sizeof(char *)) {
+        return type_names[typ];
+    } else {
+        return "unknown type";  /* shouldn't ever be seen */
+    }
+}
+
+static Bool type_check_helper(type *typ, int expected,
+                              char *tok, char *tok_type)
+{
+    char *s_given;
     
-    if (typ->type_type == expected) {
+    if (typ != NULL && typ->type_type == expected) {
         return True;
     } else {
-        if (expected == INTEGER) {
-            s = "integer";
-        } else if (expected == BOOLEAN) {
-            s = "boolean";
-        } else if (expected == STRING) {
-            s = "string";
+        if (typ == NULL) {
+            s_given = "null argument";
+        } else {
+            s_given = get_type_name(typ->type_type);
         }
-        fprintf(stderr, "AHWM: %s not given %s value\n", tok, s);
+        fprintf(stderr, "AHWM: type error: %s '%s' takes %s, not %s\n",
+                tok_type, tok, get_type_name(expected), s_given);
         return False;
     }
 }
@@ -396,24 +468,24 @@ static Bool type_check_option(option *opt)
     switch (opt->option_name) {
         /* ADDOPT 7: define option's type */
         case NWORKSPACES:
-            retval = option_check_helper(opt->option_value,
-                                         INTEGER, "NumberOfWorkspaces");
+            retval = type_check_helper(opt->option_value, INTEGER,
+                                       "NumberOfWorkspaces", "option");
             break;
         case TITLEBARFONT:
-            retval = option_check_helper(opt->option_value,
-                                         STRING, "TitlebarFont");
+            retval = type_check_helper(opt->option_value, STRING,
+                                       "TitlebarFont", "option");
             break;
         case DISPLAYTITLEBAR:
-            retval = option_check_helper(opt->option_value,
-                                         BOOLEAN, "DisplayTitlebar");
+            retval = type_check_helper(opt->option_value, BOOLEAN,
+                                       "DisplayTitlebar", "option");
             break;
         case OMNIPRESENT:
-            retval = option_check_helper(opt->option_value,
-                                         BOOLEAN, "Omnipresent");
+            retval = type_check_helper(opt->option_value, BOOLEAN,
+                                       "Omnipresent", "option");
             break;
         case DEFAULTWORKSPACE:
-            retval = option_check_helper(opt->option_value,
-                                         INTEGER, "DefaultWorkspace");
+            retval = type_check_helper(opt->option_value, INTEGER,
+                                       "DefaultWorkspace", "option");
             break;
         case FOCUSPOLICY:
             if (opt->option_value->type_type == FOCUS_ENUM) {
@@ -424,16 +496,16 @@ static Bool type_check_option(option *opt)
             }
             break;
         case ALWAYSONTOP:
-            retval = option_check_helper(opt->option_value,
-                                         BOOLEAN, "AlwaysOnTop");
+            retval = type_check_helper(opt->option_value, BOOLEAN,
+                                       "AlwaysOnTop", "option");
             break;
         case ALWAYSONBOTTOM:
-            retval = option_check_helper(opt->option_value,
-                                         BOOLEAN, "AlwaysOnBottom");
+            retval = type_check_helper(opt->option_value, BOOLEAN,
+                                       "AlwaysOnBottom", "option");
             break;
         case PASSFOCUSCLICK:
-            retval = option_check_helper(opt->option_value,
-                                         BOOLEAN, "PassFocusClick");
+            retval = type_check_helper(opt->option_value, BOOLEAN,
+                                       "PassFocusClick", "option");
             break;
         case CYCLEBEHAVIOUR:
             if (opt->option_value->type_type != CYCLE_ENUM) {
@@ -444,32 +516,32 @@ static Bool type_check_option(option *opt)
             }
             break;
         case COLORTITLEBAR:
-            retval = option_check_helper(opt->option_value,
-                                         STRING, "ColorTitlebar");
+            retval = type_check_helper(opt->option_value, STRING,
+                                       "ColorTitlebar", "option");
             break;
         case COLORTITLEBARFOCUSED:
-            retval = option_check_helper(opt->option_value,
-                                         STRING, "ColorTitlebarFocused");
+            retval = type_check_helper(opt->option_value, STRING,
+                                       "ColorTitlebarFocused", "option");
             break;
         case COLORTEXT:
-            retval = option_check_helper(opt->option_value,
-                                         STRING, "ColorTitlebarText");
+            retval = type_check_helper(opt->option_value, STRING,
+                                       "ColorTitlebarText", "option");
             break;
         case COLORTEXTFOCUSED:
-            retval = option_check_helper(opt->option_value,
-                                         STRING, "ColorTitlebarTextFocused");
+            retval = type_check_helper(opt->option_value, STRING,
+                                       "ColorTitlebarTextFocused", "option");
             break;
         case DONTBINDMOUSE:
-            retval = option_check_helper(opt->option_value,
-                                         BOOLEAN, "DontBindMouse");
+            retval = type_check_helper(opt->option_value, BOOLEAN,
+                                       "DontBindMouse", "option");
             break;
         case DONTBINDKEYS:
-            retval = option_check_helper(opt->option_value,
-                                         BOOLEAN, "DontBindKeys");
+            retval = type_check_helper(opt->option_value, BOOLEAN,
+                                       "DontBindKeys", "option");
             break;
         case STICKY:
-            retval = option_check_helper(opt->option_value,
-                                         BOOLEAN, "Sticky");
+            retval = type_check_helper(opt->option_value, BOOLEAN,
+                                       "Sticky", "option");
             break;
         case TITLEPOSITION:
             if (opt->option_value->type_type != POSITION_ENUM) {
@@ -480,12 +552,12 @@ static Bool type_check_option(option *opt)
             }
             break;
         case KEEPTRANSIENTSONTOP:
-            retval = option_check_helper(opt->option_value,
-                                         BOOLEAN, "KeepTransientsOnTop");
+            retval = type_check_helper(opt->option_value, BOOLEAN,
+                                       "KeepTransientsOnTop", "option");
             break;
         case RAISEDELAY:
-            retval = option_check_helper(opt->option_value,
-                                         INTEGER, "RaiseDelay");
+            retval = type_check_helper(opt->option_value, INTEGER,
+                                       "RaiseDelay", "option");
             break;
         default:
             fprintf(stderr, "AHWM: unknown option type found...\n");
@@ -506,25 +578,27 @@ static Bool type_check_mousebinding(mousebinding *mb)
     return type_check_function(mb->mousebinding_function);
 }
 
-static Bool type_check_keyunbinding(keyunbinding *kub)
-{
-    return True;                /* FIXME */
-}
-
-static Bool type_check_mouseunbinding(mouseunbinding *mub)
-{
-    return True;                /* FIXME */
-}
-
 static Bool type_check_definition(definition *def)
 {
-    return True;                /* FIXME */
+    funclist *fl;
+
+    for (fl = def->funclist; fl != NULL; fl = fl->next) {
+        if (type_check_function(fl->func) == False) {
+            return False;
+        }
+    }
+    return True;
 }
 
 static Bool type_check_function(function *fn)
 {
     arglist *al;
-    
+    char *fn_name = "(Unknown function)"; /* shouldn't display */
+    Bool retval;
+
+    if (fn->function_type < sizeof(fn_names) / sizeof(char *)) {
+        fn_name = fn_names[fn->function_type];
+    }
     switch (fn->function_type) {
         case CYCLENEXT:
         case CYCLEPREV:
@@ -544,52 +618,77 @@ static Bool type_check_function(function *fn)
         case RESTART:
         case CRASH:
             if (fn->function_args == NULL) {
-                return True;
+                retval = True;
             } else {
-                return False;
+                fprintf(stderr,
+                        "AHWM: type error: %s '%s' takes %s, not %s\n",
+                        "function", fn_name, "no arguments",
+                        fn->function_args->arglist_arg == NULL ?
+                        "unknown argument" :
+                        get_type_name(fn->function_args->arglist_arg->type_type));
+                retval = False;
             }
-            break;
+            break;              /* aesthetic */
         case SENDTOWORKSPACE:
         case GOTOWORKSPACE:
             if (fn->function_args == NULL) {
-                return False;
+                fprintf(stderr, "AHWM: type error: %s '%s' takes %s, not %s\n",
+                        "function", fn_name,
+                        type_names[INTEGER], "null argument");
+                retval = False;
+            } else if (fn->function_args->arglist_next != NULL) {
+                fprintf(stderr, "AHWM: type error: %s '%s' takes %s, not %s\n",
+                        "function", fn_name, "a single integer argument",
+                        "multiple arguments");
+                retval = False;
+            } else {
+                retval = type_check_helper(fn->function_args->arglist_arg,
+                                           INTEGER, fn_name, "function");
             }
-            if (CHECK_INT(fn->function_args->arglist_arg) == False) {
-                return False;
-            }
-            if (fn->function_args->arglist_next != NULL) {
-                return False;
-            }
-            return True;
             break;
         case LAUNCH:
         case MOVERESIZE:
         case SHOWMENU:
             if (fn->function_args == NULL) {
-                return False;
+                fprintf(stderr, "AHWM: type error: %s '%s' takes %s, not %s\n",
+                        "function", fn_name,
+                        type_names[STRING], "null argument");
+                retval = False;
+            } else if (fn->function_args->arglist_next != NULL) {
+                fprintf(stderr, "AHWM: type error: %s '%s' takes %s, not %s\n",
+                        "function", fn_name, "a single string argument",
+                        "multiple arguments");
+                retval = False;
+            } else {
+                retval = type_check_helper(fn->function_args->arglist_arg,
+                                           STRING, fn_name, "function");
             }
-            if (CHECK_STRING(fn->function_args->arglist_arg) == False) {
-                return False;
-            }
-            if (fn->function_args->arglist_next != NULL) {
-                return False;
-            }
-            return True;
             break;
         case INVOKE:
             if (fn->function_args == NULL) {
-                return False;
-            }
-            for (al = fn->function_args; al != NULL; al = al->arglist_next) {
-                if (CHECK_STRING(al->arglist_arg) == False) {
-                    return False;
+                fprintf(stderr, "AHWM: type error: %s '%s' takes %s, not %s\n",
+                        "function", fn_name, type_names[STRING],
+                        "null argument");
+                retval = False;
+            } else {
+                for (al = fn->function_args; al != NULL; al = al->arglist_next) {
+                    if (CHECK_STRING(al->arglist_arg) == False) {
+                        fprintf(stderr,
+                                "AHWM: type error: %s '%s' takes %s, not %s\n",
+                                "function", fn_name, type_names[STRING],
+                                get_type_name(al->arglist_arg->type_type));
+                        retval = False;
+                        break;
+                    }
                 }
+                retval = True;
             }
-            return True;
             break;
         default:
-            return False;
+            fprintf(stderr, "AHWM: unknown function %s\n", fn_name);
+            retval = False;
     }
+    return retval;
 }
 
 /*
@@ -1061,35 +1160,6 @@ void prefs_apply(client_t *client)
     
     /* ADDOPT 9: apply the option to the client */
 }
-
-/* FIXME:  this should probably get its own module */
-/* in addition, this is pretty ugly */
-/* could prolly just move all this into the parser */
-key_fn fn_table[] = {
-/* 0  */    workspace_client_moveto_bindable,
-/* 1  */    workspace_goto_bindable,
-/* 2  */    focus_cycle_next,
-/* 3  */    focus_cycle_prev,
-/* 4  */    kill_nicely,
-/* 5  */    kill_with_extreme_prejudice,
-/* 6  */    run_program,
-/* 7  */    focus,
-/* 8  */    resize_maximize,
-/* 9  */    resize_maximize_vertically,
-/* 10 */    resize_maximize_horizontally,
-/* 11 */    keyboard_ignore,
-/* 12 */    keyboard_quote,
-/* 13 */    move_client,
-/* 14 */    resize_client,
-/* 15 */    NULL, /* non-interactive move/resize, must implement */
-/* 16 */    ahwm_quit,
-/* 17 */    NULL, /* beep */
-/* 18 */    invoke,
-/* 19 */    NULL, /* expansion for menu system */
-/* 20 */    NULL, /* refresh/reset */
-/* 21 */    ahwm_restart,
-/* 22 */    crash,
-};
 
 static void globally_bind(line *lp)
 {

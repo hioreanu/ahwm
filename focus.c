@@ -376,10 +376,8 @@ static void focus_set_internal(focus_node *node, Time timestamp,
  * say you're supposed to; however, that ALWAYS causes problems and
  * never solves any problems.  Having the wrong window focused (or
  * reverting to PointerRoot on accident) is a CATASTROPHIC FAILURE.  I
- * consider that worse than crashing.  Thus, we always call
- * XSetInputFocus with CurrentTime and everything works beautifully.
- * 
- * FIXME:  update comment
+ * consider that worse than crashing.  Thus, we pass usually pass
+ * CurrentTime to XSetInputFocus.
  */
 
 void focus_ensure(Time timestamp)
@@ -395,13 +393,6 @@ void focus_ensure(Time timestamp)
 
     ewmh_active_window_update();
 
-#if 0
-    if (in_alt_tab) {
-        stacking_raise(focus_current); /* FIXME: wtf? remove */
-        return;
-    }
-#endif
-    
     /* see ICCCM 4.1.7 */
     if (focus_current->xwmh != NULL &&
         focus_current->xwmh->flags & InputHint &&
@@ -450,20 +441,13 @@ static void focus_change_current(client_t *new, Time timestamp,
             XGrabButton(dpy, Button1, 0, old->frame,
                         True, ButtonPressMask, GrabModeSync,
                         GrabModeAsync, None, None);
-            /* FIXME */
-/*             if (old->dont_bind_keys == 0) */
-/*                 keyboard_grab_keys(old->frame); */
-/*             mouse_grab_buttons(old); */
         }
         if (new != NULL && new->focus_policy == ClickToFocus) {
             XUngrabButton(dpy, Button1, 0, new->frame);
-/*            mouse_grab_buttons(new); */ /* FIXME: */
         }
         XFlush(dpy);
     }
 }
-
-/* FIXME:  these grabs/ungrabs should go in mouse_grab_buttons() */
 
 void focus_policy_to_click(client_t *client)
 {
@@ -472,17 +456,12 @@ void focus_policy_to_click(client_t *client)
         XGrabButton(dpy, Button1, 0, client->frame,
                     True, ButtonPressMask, GrabModeSync,
                     GrabModeAsync, None, None);
-        /* FIXME */
-/*         if (client->dont_bind_keys == 0) */
-/*             keyboard_grab_keys(client->frame); */
-/*         mouse_grab_buttons(client); */
     }
 }
 
 void focus_policy_from_click(client_t *client)
 {
     XUngrabButton(dpy, Button1, 0, client->frame);
-/*    mouse_grab_buttons(client); */ /* FIXME */
 }
 
 /*
@@ -615,10 +594,6 @@ void focus_cycle_next(XEvent *xevent, arglist *ignored)
     }
     
     XUngrabKeyboard(dpy, event_timestamp);
-    /* we want to make sure server knows we've
-     * ungrabbed keyboard before calling
-     * XSetInputFocus: */
-/*     XFlush(dpy); */ /* FIXME: remove */
     in_alt_tab = False;
     focus_ensure(event_timestamp);
     stacking_raise(focus_current);

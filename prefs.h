@@ -71,11 +71,12 @@ struct _line {
         mouseunbinding *mouseunbinding;
         definition *definition;
     } line_value;
+    int line_number;
     line *line_next;
 };
 
 struct _type {
-    enum { BOOLEAN, INTEGER, STRING, FOCUS_ENUM,
+    enum { BOOLEAN = 0, INTEGER, STRING, FOCUS_ENUM,
            CYCLE_ENUM, POSITION_ENUM, RESIZE_ENUM } type_type;
     union {
         int intval;
