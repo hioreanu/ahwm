@@ -529,8 +529,6 @@ Bool keyboard_handle_event(XKeyEvent *xevent)
 #define ANYBUTTONMASK (Button1Mask | Button2Mask | Button3Mask \
                        | Button4Mask | Button5Mask)
 
-#include "xev.h"
-
 Bool mouse_handle_event(XEvent *xevent)
 {
     mousebinding *mb;
@@ -544,7 +542,6 @@ Bool mouse_handle_event(XEvent *xevent)
     state = xevent->xbutton.state & (~(ANYBUTTONMASK | AllLocksMask));
     location = get_location(&xevent->xbutton);
     debug(("\tMouse event, button = %d, state = 0x%08X\n", button, state));
-    xev_print(xevent);
     
     if (xevent->xbutton.button == Button1
         && xevent->xbutton.state == 0) {
