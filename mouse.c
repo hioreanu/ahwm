@@ -723,13 +723,14 @@ static void drafting_lines(client_t *client, resize_direction_t direction,
         x2 -= x_room + 3;
         XDrawLine(dpy, root_window, root_invert_gc,
                   x1, y1, x2,
-                  y1 + ((y2 - y1) / 2) - (y_room + 1));
+                  ((y2 + y1) / 2) - (y_room + 1));
         XDrawLine(dpy, root_window, root_invert_gc,
                   x1, y2, x2,
-                  y2 - ((y2 - y1) / 2) + (y_room + 1));
+                  ((y2 + y1) / 2) + (y_room + 1));
+        /* FIXME:  working on this statement */
         XDrawString(dpy, root_window, root_invert_gc,
                     x2 - x_room,
-                    y2 - ((y2 - y1) / 2) + y_room,
+                    ((y2 + y1) / 2) + y_room,
                     label, strlen(label));
     } else if (direction == EAST) {
         x1 += x_room;

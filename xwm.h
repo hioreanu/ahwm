@@ -24,6 +24,6 @@ extern Window root_window;
 extern GC root_white_fg_gc;
 extern GC root_black_fg_gc;
 extern GC root_invert_gc;
-extern Font font;
+extern XFontStruct *fontstruct;
 
 #endif /* XWM_H */

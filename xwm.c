@@ -25,7 +25,7 @@ Window root_window;
 GC root_white_fg_gc;
 GC root_black_fg_gc;
 GC root_invert_gc;
-Font font;
+XFontStruct *fontstruct;
 
 int alt_tab(Window win, Window subwindow, Time t,
             int x, int y, int root_x, int root_y);
@@ -114,7 +114,8 @@ int main(int argc, char **argv)
     cursor_init();
     XDefineCursor(dpy, root_window, cursor_normal);
 
-    font = XLoadFont(dpy, "-*-helvetica-medium-r-normal-*-12-*-*-*-*-*-*-*");
+    fontstruct = XLoadQueryFont(dpy,
+                 "-*-helvetica-medium-r-normal-*-12-*-*-*-*-*-*-*");
 
     xgcv.function = GXcopy;
     xgcv.plane_mask = AllPlanes;
@@ -124,7 +125,7 @@ int main(int argc, char **argv)
     xgcv.line_style = LineSolid;
     xgcv.cap_style = CapButt;
     xgcv.join_style = JoinMiter;
-    xgcv.font = font;
+    xgcv.font = fontstruct->fid;
     xgcv.subwindow_mode = IncludeInferiors;
     
     root_white_fg_gc = XCreateGC(dpy, root_window,
