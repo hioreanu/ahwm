@@ -36,6 +36,7 @@
 #include <string.h>
 #include <X11/keysym.h>
 
+#include "compat.h"
 #include "move-resize.h"
 #include "client.h"
 #include "cursor.h"

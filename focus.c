@@ -50,11 +50,13 @@
 #include "config.h"
 
 #include <X11/Xlib.h>
+#include <X11/Xatom.h>
 #include <X11/keysym.h>
 #include <X11/Xresource.h>
 #include <X11/Xutil.h>
 
 #include <stdio.h>
+#include "compat.h"
 #include "focus.h"
 #include "client.h"
 #include "workspace.h"
@@ -363,6 +365,13 @@ static void focus_set_internal(focus_node *node, Time timestamp,
  * 
  * This is the only function in the module that will call
  * XSetInputFocus; all other functions call this function.
+ * 
+ * Also, I had this idea of using the timestamp, like the Xlib docs
+ * say you're supposed to; however, that ALWAYS causes problems and
+ * never solves any problems.  Having the wrong window focused (or
+ * reverting to PointerRoot on accident) is a CATASTROPHIC FAILURE.  I
+ * consider that worse than crashing.  Thus, we always call
+ * XSetInputFocus with CurrentTime and everything works beautifully.
  */
 
 void focus_ensure(Time timestamp)
@@ -392,7 +401,7 @@ void focus_ensure(Time timestamp)
     } else {
         debug(("\tInput hint is True\n"));
         XSetInputFocus(dpy, focus_current->window,
-                       RevertToPointerRoot, timestamp);
+                       RevertToPointerRoot, CurrentTime);
     }
     if (focus_current->protocols & PROTO_TAKE_FOCUS) {
         debug(("\tUses TAKE_FOCUS protocol\n"));
@@ -723,4 +732,72 @@ static void permute(focus_node *A, focus_node *D)
         D->next = A;
         A->prev = D;
     }
+}
+
+void focus_save_stacks()
+{
+    int ws;
+    focus_node *orig, *node;
+    Atom atom;
+    char buf[32];
+
+    for (ws = 0; ws < nworkspaces; ws++) {
+        snprintf(buf, 32, "_AHWM_FOCUS_NODES_%d", ws);
+        atom = XInternAtom(dpy, buf, False);
+        if (focus_stacks[ws] == NULL) continue;
+        node = orig = focus_stacks[ws]->prev;
+        do {
+            XChangeProperty(dpy, root_window, atom, XA_WINDOW, 32,
+                            node == orig ? PropModeReplace : PropModeAppend,
+                            (char *)&node->client->window, 1);
+            node = node->prev;
+        } while (node != orig);
+    }
+}
+
+void focus_load_stacks()
+{
+    int ws, fmt, i;
+    long nitems, bytes_after_return;
+    Window *windows;
+    focus_node *node;
+    client_t *client;
+    Atom atom, actual;
+    char buf[32];
+
+    debug(("focus_load_stacks\n"));
+    for (ws = 0; ws < nworkspaces; ws++) {
+        snprintf(buf, 32, "_AHWM_FOCUS_NODES_%d", ws);
+        atom = XInternAtom(dpy, buf, False);
+        if (XGetWindowProperty(dpy, root_window, atom, 0,
+                               0x7FFFFFFF, False, XA_WINDOW, &actual,
+                               &fmt, &nitems, &bytes_after_return,
+                               (unsigned char **)&windows) != Success) {
+            debug(("XGetWindowProperty(%s) failed\n", buf));
+            continue;
+        }
+        if (actual != XA_WINDOW || fmt != 32) {
+            debug(("actual = %#lx, expected = %#lx, fmt = %d\n",
+                   actual, XA_WINDOW, fmt));
+            if (windows != NULL) XFree(windows);
+            continue;
+        }
+        for (i = 0; i < nitems; i++) {
+            client = client_find(windows[i]);
+            if (client == NULL) {
+                debug(("Client is null\n"));
+                continue;
+            }
+            node = find_node(client);
+            if (node == NULL) {
+                debug(("Node is null\n"));
+                continue;
+            }
+            focus_set_internal(node, CurrentTime, False, True);
+            stacking_raise(node->client);
+            debug(("%d. %s\n", i, client->name));
+        }
+        if (windows != NULL) XFree(windows);
+    }
+    focus_ensure(CurrentTime);
 }

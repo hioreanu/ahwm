@@ -44,6 +44,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "compat.h"
 #include "prefs.h"
 #include "parser.h"
 #include "debug.h"

@@ -46,6 +46,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <signal.h>
 
 #include "xwm.h"
 #include "event.h"
@@ -97,6 +98,8 @@ static int (*default_error_handler)(Display *, XErrorEvent *);
 static int tmp_error_handler(Display *dpy, XErrorEvent *error);
 static int error_handler(Display *dpy, XErrorEvent *error);
 static void scan_windows();
+static void remove_titlebars();
+static void sigterm(int signo);
 
 #ifdef DEBUG
 static void mark(XEvent *e, struct _arglist *ignored);
@@ -276,8 +279,13 @@ int main(int argc, char **argv)
                                  | GCFont | GCFunction
                                  | GCPlaneMask | GCSubwindowMode,
                                  &xgcv);
+
+    atexit(remove_titlebars);
+    atexit(focus_save_stacks);
+    signal(SIGTERM, sigterm);
     
     scan_windows();
+    focus_load_stacks();
     
     XSync(dpy, 0);
 
@@ -361,7 +369,7 @@ void run_program(XEvent *e, struct _arglist *args)
             if (fork() == 0) {
                 execl("/bin/sh", "/bin/sh", "-c", progname, NULL);
             }
-            exit(0);
+            _exit(0);
         } else if (pid > 0) {
             wait(NULL);
         } else {
@@ -375,6 +383,43 @@ void xwm_quit(XEvent *e, struct _arglist *ignored)
 #ifdef DEBUG
     printf("XWM: xwm_quit called, quitting\n");
 #endif
+    exit(0);
+}
+
+static void remove_titlebars()
+{
+    static int exiting = 0;
+    int i, n;
+    Window *wins, junk;
+    client_t *client;
+
+    if (exiting == 1) _exit(1);
+    exiting = 1;
+
+    XQueryTree(dpy, root_window, &junk, &junk, &wins, &n);
+    for (i = 0; i < n; i++) {
+        client = client_find(wins[i]);
+        if (client != NULL) {
+            client_remove_titlebar(client);
+        }
+    }
+    if (wins != NULL) XFree(wins); /* not needed, but oh well */
+    XCloseDisplay(dpy);
+    close(ConnectionNumber(dpy));
+}
+
+/*
+ * call atexit() functions instead of terminating immediately on SIGTERM.
+ * 
+ * Problem is that we aren't supposed to call any Xlib functions in a
+ * signal handler as Xlib isn't reentrant.  This way, we just do all
+ * the Xlib stuff in the atexit functions instead of in the signal
+ * handler.  We still get all sorts of X IO errors doing it like this,
+ * however.  Not sure what's going on with that.
+ */
+
+static void sigterm(int signo)
+{
     exit(0);
 }
 

@@ -130,4 +130,20 @@ void focus_cycle_prev(XEvent *e, arglist *ignored);
 void focus_policy_to_click(client_t *client);
 void focus_policy_from_click(client_t *client);
 
+/*
+ * This saves the focus stacks in a property on the root window.
+ * Meant to be used with 'atexit()'; this allows us to restart AHWM
+ * almost transparently.
+ */
+
+void focus_save_stacks();
+
+/*
+ * This tries to read the property focus_save_stacks sets and modifies
+ * the focus stacks accordingly.  Call after all initially-mapped
+ * clients are created on startup.
+ */
+
+void focus_load_stacks();
+
 #endif /* FOCUS_H */

@@ -1,5 +1,7 @@
 TODO before release:
 - remove titlebars on normal exit, for restarting
+- save focus stacks in some property for restarting
+- use autoconf to check for signal.h
 - transient for self means something?  Directory property window in konq
 - use XInternAtoms for ewmh.c
 - figure out what the hell 'sticky' means to EWMH

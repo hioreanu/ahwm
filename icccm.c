@@ -29,6 +29,7 @@
 #include <X11/Xatom.h>
 #include <stdio.h>
 
+#include "compat.h"
 #include "xwm.h"
 #include "icccm.h"
 #include "debug.h"
