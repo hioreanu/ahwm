@@ -1,0 +1,214 @@
+TODO before release:
+- variable number of workspaces to config file
+- some options (nworkspaces) must be global
+- option WorkspaceSendTransients (boolean)
+- clean up the AltTab() crap, see .xwmrc for ideas
+- on alt tab, delay between titlebar color change and raise, mebbe stacking_raise()
+- differentiate between hint-based, user-based, and overridden options
+  perhaps have a token EQUALS_UNCONDITIONALLY "=!" or something
+- transient for self means something?  Directory property window in konq
+- colormaps
+- deal with build problems on Debian and Solaris 8
+- test with a modern version of Sun's X implementation
+- test final build with various options at least two weeks before initial release
+
+Wishlist:
+- Raise() function, like Focus() function
+- GotoNextWorkspace(integer)
+- CycleNextWorkspaces() (like AltTab())
+- Name the workspaces "Workspace 1", ewmh
+- options DontBindKeys, DontBindMouse (boolean)
+- maximize vertical, horizontal
+- unbindings don't work at all
+- function composition
+- may need fake client struct for revert_to window for dynamic bindings
+- on resize, don't allow mouse to move past end of window - sucks
+- allow binding to click and drag on same place
+- allow window titles to be centered and right-aligned
+- 'mouse' map_policy placement algorithm - map window under mouse
+- finish support for DontRaise for CycleBehaviour
+- cascade placement algorithm
+- change window according to prefs when changes ws, becomes shaped, etc.
+- sticky windows: don't bind move/resize actions
+- deal with window "strut"
+- placement algos to config file
+- 2-bit struct fields not portable, use autoconf
+- grab pointer on MOUSE_DEPRESS, ungrab when receive ButtonRelease?
+- raise delay, need better timer handler
+- session management (WM_SAVE_YOURSELF, WM_CLIENT_LEADER, etc.)
+- old gnome hints, much like EWMH 1.1 (look at xmms)
+- old KDE 1.1 hints?
+- we assume that focused window is somehow raised (eg, on window cycling)
+- window edge resistance
+- screen edge resistance on resize
+- double-click action
+- send MB4 and MB5 "clicks" to focus window when received on root
+- remove any R6isms
+- compress ConfigureRequest events, and others if possible
+- buttons on titlebars
+- optional window frame?
+- config file, perhaps with gui frontend....
+- window positions persist across sessions
+- have a "reset" function that resets colormap installation, etc.
+- add saveunder option (where would I use this?)
+- keep bottom 1 pixel free of windows, bind menu there
+- profile, optimize, create benchmarks
+
+Finished, no longer TODO:
+- titlebar subwindow
+- mouse interface similar to keyboard interface
+- delete windows
+- window gravity in configure events
+- clients always have frames, but maybe not titlebars
+- maximization
+- allow shift+j to shove window to bottom edge of screen during move
+- ICCCM input focus models
+- shape extension
+- window groups
+- reset client's border width to zero and keep around old border width
+- experiment with motion event compression - XPutBackEvent
+- transient windows, keep on top of client but maybe not focused
+- workspaces, experiment with both implementation methods
+- ensure we revert to previous focus window when window unmapped
+- colored workspaces
+- need to ignore EnterNotify in certain places, calculate if it will
+  happen, then wait for it
+- figure out why xterm doesn't change cursor when loses focus sometimes
+- specify ICCCM 2.0 compliance
+- use standard cursors (XC_bottom_right_corner)
+- colored titlebars
+- deal with stacking change requests
+- ignore numlock, very annoying
+- do right thing with meta/super/hyper
+- fix it so that base_width hint is honored (xterm charproc.c:4589)
+- do the things in EWMH 1.1, pretty easy
+- screen edge resistance
+- reparent window on first MapRequest, not CreateNotify (workaround xterm bug)
+- use save sets
+- UTF-8_STRING is actually UTF8_STRING, typo in EWMH 1.1
+- have a "quote" function that sends following key event to client
+  also change background to white when quoting
+  also make it work for mouse clicks as well as keystrokes
+- combine mouse.c, keyboard.c into keyboard-mouse.c
+- window placement algorithms
+- clean up keyboard-mouse.c
+- when switching workspaces, can see unmapping - better unmap from bottom up
+- reap children
+- hold down alt, hit tab, hit 2, should get out of alt_tab
+- ignore all BadWindow errors, simpler error handler (remove error.[hc])
+- enable unbinding of keys and buttons
+- send synthetic event if needed on ConfigureRequest (ICCCM 4.1.5)
+- click-to-focus
+- AlwaysOnTop, AlwaysOnBottom
+- no need to raise window on workspace change?
+- omnipresent windows - need to make focus rings external lists
+- NoFocus input focus policy
+- ignore all restacking requests
+- removable titlebar
+- detect TRANSIENT_FOR cycles
+- transient for root means something special?
+- use autoconf
+- test with XFree86 3.3 and 4.0
+- shaped windows with titlebar
+- check for strerror in configure.in
+- supply bogus snprintf and strerror if none available
+- test on SunOS 4.x with old Sun X server
+- key- and mouse-bindings to config file
+- remove semicolon from end of context markers
+- rename MoveToWorkspace to SendToWorkspace
+- always_on_{top|bottom} to config file
+- pass_focus_click to config file
+- AltTabBehaviour = { Skip, RaiseImmediately, RaiseOnCycleFinish, DontRaise }
+- colors to config file
+- line numbers in error messages of parser.y are off
+- motif hints, looks simple enough
+- close .xwmrc fd
+
+Abandoned, no longer TODO:
+- "stop" focus, detect when pointer stops in a window (no timeout) -
+  impossible using motion events, perhaps possible with
+  XGetDeviceMotionEvents, but that's not supported by all X servers
+- play with gradients - X imaging model kind of sucks; only way to do it
+  would be to make my own graphics abstraction API which gives a straight
+  RGB array and then go in a tight loop doing XPutPixel() whenever
+  gradient updated, in addition to dealing with all of the visual types
+  and bit depths by hand.  Not worth it my time programming it or my
+  computer's time doing it whenever I resize a window.
+- perhaps avoid transient windows on alt-tab? - don't like it that way
+- ungrab mouse, keyboard on unmapped clients - point being?
+- deal with old border width in places ICCCM requires it - already doing it
+- use automake? - don't see the point, doesn't help me in any way
+
+BUG - badwindow on XSetInputFocus, deleting one window kills a sibling which
+was to be the next focused window.  Easiest to ignore this error and other
+similar non-fatal errors brought upon by race conditions. - FIXED
+
+BUG - still have free() bug in move-resize.c; perhaps start using my
+memory allocation auditing routines. - FIXED
+
+BUG - open konqueror, open file->open location, focus other window, refocus
+konqueror - does some crazy resizing, perhaps reading wrong gravity hint - FIXED
+
+BUG - Resize window, while resizing, switch workspaces, switch back,
+drafting lines and geometry display are screwed up. - FIXED
+
+BUG - have gravity in two places: XSizeHints and XWindowAttributes;
+seems that gravity in XWindowAttributes is completely ignored in most
+window managers, just like in mine.  Need to test this.  FIXED - doesn't
+cause problems, leaving it as is
+
+BUG - when moving GTK window after window initially mapped, application
+has wrong idea of window's size - test by using the gimp's tool options
+window - FIXED
+
+BUG - 'xterm -sb' segfaults - FIXED
+
+BUG - resizing shaped windows, leaves remnants on top lines - FIXED
+
+BUG - setting mouse function for button release doesn't work - FIXED
+
+BUG - resize a window with some other window in the background.  If
+window in background is continually updating contents, resize graphics
+messed up somehow.  WindowMaker somehow disables other windows from
+updating while resizing, but that seems a bit too much. - FIXED
+it seems that wmaker and enlightenment grab the server when they move a
+window, which I am definitely NOT doing.  Leaving as is.
+
+BUG - seems to be spending a lot of time in event_get(), but not system
+time, user time.  Something I don't know about select()? - FIXED
+
+BUG - resize oclock to 0 by 0 and accept; keyboard resize no longer
+works - FIXED, see below bug
+
+BUG - when move/resize initiated via keyboard, uses what's under mouse,
+not what has focus - FIXED
+
+BUG - many times when right-click titlebar to maximize window, mouse
+grabbed and then not let go.  Only happens on FreeBSD machine for
+some reason - FIXED, problem with timestamp to XGrabPointer.
+
+BUG - sometimes on alt-tab, focus reverts to PointerRoot, log saved in
+alt-tab-bug.errs, can't reproduce - FIXED: haven't seen this after months of
+usage; probably inadvertently fixed at some point
+
+BUG - middle-click to close some window, click sometimes gets passed to next
+window, pasting stuff - FIXED: this will always happen when killing window
+on ButtonPress, doesn't happen when killing on ButtonRelease
+
+BUG - when switching to a workspace which has no windows, no longer
+getting keyboard events - FIXED: all the key-handling stuff depends on the
+'revert_to' window in focus.c.
+
+BUG - sometimes when xterm loses focus, it doesn't update its cursor; looks
+like an xterm bug, other window managers do same thing
+
+BUG - when switching to a workspace which has transients in it,
+getting multiple EnterNotify events for the transients, causes input focus
+to jump about wildly for a bit of time
+
+BUG - strange interaction in window moving edge-resistance, sometimes
+pointer leaves window when moving quickly, can't reproduce
+
+BUG - resize xterm off-screen using "echo -ne '\033[8;120;120t'" - resize
+code no longer seems to honor client's height/width increment hints.
+Looks like xterm bug off-hand, need to check.

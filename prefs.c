@@ -135,6 +135,7 @@ void prefs_init()
     debug(("Start parsing\n"));
     yyparse();
     debug(("Done parsing\n"));
+    fclose(yyin);
 
     preferences = type_check(preferences);
 
