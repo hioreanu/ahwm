@@ -30,14 +30,14 @@ void focus_add(client_t *client, Time timestamp)
     focus_remove(client, timestamp);
     old = focus_stacks[client->workspace - 1];
     if (old == NULL) {
-        client->next = client;
-        client->prev = client;
+        client->next_focus = client;
+        client->prev_focus = client;
         focus_stacks[client->workspace - 1] = client;
     } else {
-        client->next = old;
-        client->prev = old->prev;
-        old->prev->next = client;
-        old->prev = client;
+        client->next_focus = old;
+        client->prev_focus = old->prev_focus;
+        old->prev_focus->next_focus = client;
+        old->prev_focus = client;
     }
     if (client->workspace == workspace_current) {
         focus_current = client;
@@ -54,26 +54,26 @@ void focus_remove(client_t *client, Time timestamp)
     do {
         if (stack == client) {
             /* remove from list */
-            client->prev->next = client->next;
-            client->next->prev = client->prev;
+            client->prev_focus->next_focus = client->next_focus;
+            client->next_focus->prev_focus = client->prev_focus;
             /* if was focused for workspace, update workspace pointer */
             if (focus_stacks[client->workspace - 1] == client) {
-                focus_stacks[client->workspace - 1] = client->next;
+                focus_stacks[client->workspace - 1] = client->next_focus;
             }
             /* if only client left on workspace, set to NULL */
-            if (client->next == client) {
+            if (client->next_focus == client) {
                 focus_stacks[client->workspace - 1] = NULL;
-                client->next = NULL;
-                client->prev = NULL;
+                client->next_focus = NULL;
+                client->prev_focus = NULL;
             }
             /* if removed from current workspace, refocus now */
             if (client->workspace == workspace_current) {
-                focus_current = client->next;
+                focus_current = client->next_focus;
                 focus_ensure(timestamp);
             }
             return;
         }
-        stack = stack->next;
+        stack = stack->next_focus;
     } while (stack != orig);
 }
 
@@ -81,6 +81,7 @@ void focus_set(client_t *client, Time timestamp)
 {
     client_t *p;
 
+    if (client == focus_current) return;
     p = focus_stacks[client->workspace - 1];
     if (p == NULL) {
         fprintf(stderr, "XWM: current focus list is empty, shouldn't be\n");
@@ -95,7 +96,7 @@ void focus_set(client_t *client, Time timestamp)
             }
             return;
         }
-        p = p->next;
+        p = p->next_focus;
     } while (p != focus_stacks[client->workspace - 1]);
     fprintf(stderr, "XWM: client not found on focus list, shouldn't happen\n");
 }
@@ -103,28 +104,34 @@ void focus_set(client_t *client, Time timestamp)
 void focus_next(Time timestamp)
 {
     if (focus_current != NULL)
-        focus_set(focus_current->next, timestamp);
+        focus_set(focus_current->next_focus, timestamp);
 }
 
 void focus_prev(Time timestamp)
 {
     if (focus_current != NULL)
-        focus_set(focus_current->prev, timestamp);
+        focus_set(focus_current->prev_focus, timestamp);
+}
+
+static int raise_transients(client_t *client, void *v)
+{
+    Window w = (Window)v;
+    
+    if (client->transient_for == w && client->state == NormalState)
+        XMapRaised(dpy, client->frame);
+    return 1;
 }
 
 void focus_ensure(Time timestamp)
 {
-//    if (focus_current == focus_stacks[workspace_current - 1])
-//        return;
-//    focus_current = focus_stacks[workspace_current - 1];
     if (focus_current == NULL) {
         XSetInputFocus(dpy, root_window, RevertToPointerRoot, CurrentTime);
         return;
     }
 
 #ifdef DEBUG
-    printf("\tSetting focus to 0x%08X...\n",
-           (unsigned int)focus_current->window);
+    printf("\tSetting focus to 0x%08X (%s)...\n",
+           (unsigned int)focus_current->window, focus_current->name);
 #endif /* DEBUG */
 
     /* see ICCCM 4.1.7 */
@@ -158,5 +165,8 @@ void focus_ensure(Time timestamp)
     }
     XSync(dpy, False);
     XFlush(dpy);
+    
     XMapRaised(dpy, focus_current->frame);
+
+    client_foreach(raise_transients, (void *)focus_current->window);
 }

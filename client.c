@@ -27,9 +27,12 @@ XContext window_context;
 XContext frame_context;
 XContext title_context;
 
+/* we only keep around clients as a list to allow iteration over all clients */
+client_t *client_list = NULL;
+
 client_t *client_create(Window w)
 {
-    client_t *client, *group_leader;
+    client_t *client;
     XWindowAttributes xwa;
     Bool has_titlebar = True;
     position_size requested_geometry;
@@ -52,6 +55,7 @@ client_t *client_create(Window w)
     
     client->window = w;
     client->transient_for = None;
+    client->group_leader = NULL;
     client->workspace = workspace_current;
     client->state = WithdrawnState;
     client->frame = None;
@@ -66,14 +70,16 @@ client_t *client_create(Window w)
     client_set_xwmh(client);
     client_set_xsh(client);
     client_set_protocols(client);
+    client_set_transient_for(client);
 
     /* see if in window group (ICCCM, 4.1.11) */
     if (client->xwmh != NULL
         && client->xwmh->flags & WindowGroupHint) {
-        group_leader = client_find((Window)client->xwmh->window_group);
-        if (group_leader != NULL && group_leader->xwmh != NULL) {
+        client->group_leader = client_find((Window)client->xwmh->window_group);
+        if (client->group_leader != NULL
+            && client->group_leader->xwmh != NULL) {
             XFree(client->xwmh);
-            client->xwmh = group_leader->xwmh;
+            client->xwmh = client->group_leader->xwmh;
         }
     }
 
@@ -118,6 +124,11 @@ client_t *client_create(Window w)
         Free(client);
         return NULL;
     }
+
+    client->next = client_list;
+    client->prev = NULL;
+    if (client_list != NULL) client_list->prev = client;
+    client_list = client;
     
     return client;
 }
@@ -281,11 +292,27 @@ void client_destroy(client_t *client)
         XUnmapWindow(dpy, client->titlebar);
         XDestroyWindow(dpy, client->titlebar);
     }
-    if (client->xwmh != NULL) XFree(client->xwmh);
+    if (client->xwmh != NULL
+        && client->group_leader == NULL)
+        XFree(client->xwmh);
     Free(client->name);         /* should never be NULL */
     if (client->instance != NULL) XFree(client->instance);
     if (client->class != NULL) XFree(client->class);
+    
+    if (client->next != NULL) client->next->prev = client->prev;
+    if (client->prev != NULL) client->prev->next = client->next;
+    if (client_list == client) client_list = client->next;
     Free(client);
+}
+
+int client_foreach(client_foreach_function fn, void *arg)
+{
+    client_t *c;
+
+    for (c = client_list; c != NULL; c = c->next) {
+        if ((*fn)(c, arg) == 0) return 0;
+    }
+    return 1;
 }
 
 /* snarfed mostly from ctwm and WindowMaker */
@@ -320,7 +347,7 @@ void client_set_name(client_t *client)
             }
         }
     }
-    XFree(xtp.value);
+    if (xtp.value != NULL) XFree(xtp.value);
 
 #ifdef DEBUG
     printf("\tClient 0x%08X is %s\n", (unsigned int)client, client->name);
@@ -366,6 +393,16 @@ void client_set_xsh(client_t *client)
         if (client->xsh->width_inc <= 0)
             client->xsh->width_inc = 1;
     }
+}
+
+void client_set_transient_for(client_t *client)
+{
+    Window w;
+
+    if (XGetTransientForHint(dpy, client->window, &w))
+        client->transient_for = w;
+    else
+        client->transient_for = None;
 }
 
 void client_get_position_size_hints(client_t *client, position_size *ps)
@@ -540,7 +577,7 @@ void client_set_protocols(client_t *client)
             }
         }
     }
-    XFree(atoms);
+    if (atoms != NULL) XFree(atoms);
 }
 
 void client_sendmessage(client_t *client, Atom data0, Time timestamp,

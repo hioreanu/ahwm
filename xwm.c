@@ -233,7 +233,7 @@ static void scan_windows()
             mouse_grab_buttons(client); /* mouse.c */
         }
     }
-    XFree(wins);
+    if (wins != NULL) XFree(wins);
 }
 
 void alt_tab(XEvent *e)

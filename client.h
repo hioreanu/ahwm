@@ -37,10 +37,9 @@
 typedef struct _client_t {
     Window window;              /* their application window */
     Window frame;               /* contains titlebar, parent of above */
-    Window titlebar;            /* titlebar, subwindow of frame */
-    Window transient_for;       /* FIXME */
-    Window next_transient;      /* FIXME */
-    Window group_leader;        /* FIXME */
+    Window titlebar;            /* our titlebar, subwindow of frame */
+    Window transient_for;       /* WM_TRANSIENT_FOR hint */
+    struct _client_t *group_leader; /* group leader, ICCCM 4.1.11 */
     XWMHints *xwmh;             /* Hints or NULL (ICCCM, 4.1.2.4) */
     XSizeHints *xsh;            /* Size hints or NULL (ICCCM, 4.1.2.3) */
     int x;                      /* frame's actual position when mapped */
@@ -74,11 +73,14 @@ typedef struct _client_t {
      * The state is 'NormalState' whenever the window is mapped.
      */
 
-    /* clients are managed as doubly linked lists in focus.c: */
+    /* clients are also managed as doubly linked lists */
     struct _client_t *next;
     struct _client_t *prev;
+    
+    /* mapped clients are managed as doubly linked lists in focus.c: */
+    struct _client_t *next_focus;
+    struct _client_t *prev_focus;
 } client_t;
-/* FIXME:  prolly need to keep a list of client's transient clients */
 
 /* the values for client->protocols, can be ORed together */
 
@@ -130,6 +132,21 @@ client_t *client_find(Window);
 void client_destroy(client_t *);
 
 /*
+ * Utility to iterate over all clients
+ * 
+ * client_foreach_function takes a client and a pointer which is
+ * passed in to client_foreach as arguments; if the function returns
+ * one, processing will continue, else processing stops.
+ * 
+ * client_foreach will return one if all clients were processed, zero
+ * if processing stopped because the client_foreach_function returned
+ * zero.
+ */
+
+typedef int (*client_foreach_function)(client_t *, void *);
+int client_foreach(client_foreach_function, void *);
+
+/*
  * Figure out the name of a client and set it to a newly-malloced
  * string.  The name is found using the WM_NAME property, and this
  * function will always set the 'name' member of the client
@@ -179,6 +196,12 @@ void client_set_xsh(client_t *);
  */
 
 void client_set_protocols(client_t *);
+
+/*
+ * Examine client's WM_TRANSIENT_FOR property and set client->transient_for
+ */
+
+void client_set_transient_for(client_t *);
 
 /*
  * Ensure that a client's WM_STATE property reflects what we think it

@@ -543,6 +543,8 @@ static void event_property(XPropertyEvent *xevent)
         printf("\tWM_PROTOCOLS, changing client->protocols\n");
 #endif /* DEBUG */
         client_set_protocols(client);
+    } else if (xevent->atom == XA_WM_TRANSIENT_FOR) {
+        client_set_transient_for(client);
     }
 }
 
@@ -621,7 +623,7 @@ static void event_shape(XShapeEvent *xevent)
                                            ShapeBounding, &n_rects,
                                            &junk)) == NULL)
         return;
-    XFree(rectangles);
+    if (rectangles != NULL) XFree(rectangles);
     if (n_rects <= 1)
         return;
     if (client->titlebar != None) {
