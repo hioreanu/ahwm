@@ -10,6 +10,7 @@
 #include <X11/Xlib.h>
 #include <X11/Xatom.h>
 #include <X11/Xutil.h>
+#include <X11/Xproto.h>
 
 #include "client.h"
 #include "workspace.h"
@@ -282,11 +283,6 @@ void client_set_xsh(client_t *client)
     }
 }
 
-/* ICCCM, 4.1.3.1 */
-void client_inform_state(client_t *client)
-{
-    /* FIXME */
-}
 
 void client_get_position_size_hints(client_t *client, position_size *ps)
 {
@@ -381,3 +377,13 @@ void client_paint_titlebar(client_t *client)
                 client->name, strlen(client->name));
 }
 
+/* ICCCM, 4.1.3.1 */
+void client_inform_state(client_t *client)
+{
+    CARD32 data[2];
+
+    data[0] = (CARD32)client->state;
+    data[1] = (CARD32)None;
+    XChangeProperty(dpy, client->window, WM_STATE, WM_STATE, 32,
+                    PropModeReplace, (unsigned char *)data, 2);
+}

@@ -18,6 +18,7 @@
 #include "keyboard.h"
 #include "mouse.h"
 #include "xev.h"
+#include "error.h"
 
 static void event_enter_leave(XCrossingEvent *);
 static void event_create(XCreateWindowEvent *);
@@ -179,7 +180,6 @@ void event_dispatch(XEvent *event)
             break;
     }
 }
-/* FIXME:  must catch UnmapNotify, DestroyNotify */
 
 /*
  * see the manual page for each individual event (for instance,
@@ -246,6 +246,22 @@ static void event_destroy(XDestroyWindowEvent *xevent)
     client_destroy(client);
 }
 
+/*
+ * ICCCM 4.1.4:
+ * 
+ * For compatibility with obsolete clients, window managers should
+ * trigger the transition to the Withdrawn state on the real
+ * UnmapNotify rather than waiting for the synthetic one. They should
+ * also trigger the transition if they receive a synthetic UnmapNotify
+ * on a window for which they have not yet received a real UnmapNotify.
+ * 
+ * Which means that we simply set the state to Withdrawn if we receive
+ * any kind of unmap request.  Most other window managers also reparent
+ * the window to the root window when it's unmapped so that it doesn't
+ * get mapped again if the window manager exits.  I'm not going to deal
+ * with that since I don't use X that way.
+ */
+
 static void event_unmap(XUnmapEvent *xevent)
 {
     client_t *client;
@@ -255,9 +271,33 @@ static void event_unmap(XUnmapEvent *xevent)
     client_print("Unmap:", client);
 #endif /* DEBUG */
     if (client == NULL) return;
-    client->state = NormalState; /* FIXME: right? */
-    if (client->frame != None)
-        XUnmapWindow(dpy, client->frame);
+
+    /* well, at this point, we need to do some things to the window
+     * (such as setting the WM_STATE property on the window to Withdrawn
+     * as per ICCCM), but the problem is that the client may have
+     * already destroyed the window, and the server may have already
+     * processed the destroy request, which makes the window invalid.
+     * I can't think of any way of figuring out if the window is still
+     * valid other than grabbing the server and seeing if some request
+     * on that window fails.  In any case, we have to catch some sort
+     * of error, and since we don't care if the requests we are about
+     * to make succeed or fail, we just ignore the errors they can
+     * cause. */
+    /* FIXME:  this will break with synchronous behaviour turned off */
+    if (client->state == NormalState) {
+        if (client->frame != None)
+            XUnmapWindow(dpy, client->frame);
+
+        error_ignore(BadWindow, X_UnmapWindow);
+        XUnmapWindow(dpy, client->window);
+        error_ignore(BadWindow, X_UnmapWindow);
+    }
+    client->state = WithdrawnState;
+
+    error_ignore(BadWindow, X_ChangeProperty);
+    client_inform_state(client);
+    error_unignore(BadWindow, X_ChangeProperty);
+
     focus_remove(client);
     focus_ensure();
 }
@@ -275,23 +315,32 @@ static void event_maprequest(XMapRequestEvent *xevent)
         return;
     }
     if (client->state == NormalState) {
+        /* already mapped, remove from focus list since it will
+         * be added again at end of function */
         focus_remove(client);
     }
-    client->state = NormalState;
+
+    if (client->xwmh != NULL && client->state == WithdrawnState) {
+        client->state = client->xwmh->initial_state;
+    } else {
+        client->state = NormalState;
+    }
     client->workspace = workspace_current;
 
-    XMapWindow(xevent->display, client->window);
-    if (client->frame != None) {
-        XMapWindow(xevent->display, client->frame);
-        keyboard_grab_keys(client->frame);
-        mouse_grab_buttons(client->frame);
-    } else {
-        keyboard_grab_keys(client->window);
-        mouse_grab_buttons(client->window);
+    if (client->state == NormalState) {
+        XMapWindow(xevent->display, client->window);
+        if (client->frame != None) {
+            XMapWindow(xevent->display, client->frame);
+            keyboard_grab_keys(client->frame);
+            mouse_grab_buttons(client->frame);
+        } else {
+            keyboard_grab_keys(client->window);
+            mouse_grab_buttons(client->window);
+        }
+        focus_set(client);
+        focus_ensure();
     }
-    
-    focus_set(client);
-    focus_ensure();
+    client_inform_state(client);
 }
 
 static void event_configurerequest(XConfigureRequestEvent *xevent)
@@ -387,7 +436,21 @@ static void event_colormap(XColormapEvent *xevent)
 
 static void event_clientmessage(XClientMessageEvent *xevent)
 {
-    /* used to iconify or hide windows in 9wm */
+    client_t *client;
+    
+    if (xevent->message_type == WM_CHANGE_STATE) {
+        client = client_find(xevent->window);
+        if (xevent->format == 32 && xevent->data.l[0] == IconicState) {
+            if (client->frame != None) {
+                XUnmapWindow(dpy, client->frame);
+            }
+            XUnmapWindow(dpy, client->window);
+            client->state = IconicState;
+            client_inform_state(client);
+            focus_remove(client);
+            focus_ensure();
+        }
+    }
 }
 
 static void event_circulaterequest(XCirculateRequestEvent *xevent)

@@ -15,6 +15,7 @@
 #include "cursor.h"
 #include "mouse.h"
 #include "move-resize.h"
+#include "error.h"
 
 Display *dpy;
 int scr;
@@ -27,6 +28,8 @@ GC root_white_fg_gc;
 GC root_black_fg_gc;
 GC root_invert_gc;
 XFontStruct *fontstruct;
+Atom WM_STATE;
+Atom WM_CHANGE_STATE;
 
 void alt_tab(XEvent *);
 void alt_shift_tab(XEvent *);
@@ -39,16 +42,6 @@ static void scan_windows();
 static int tmp_error_handler(Display *dpy, XErrorEvent *error)
 {
     already_running_windowmanager = 1;
-    return -1;
-}
-
-/*
- * FIXME:  I might actually release some day, I really should deal
- * with this...
- */
-static int error_handler(Display *dpy, XErrorEvent *error)
-{
-    fprintf(stderr, "XWM: Caught some sort of X error.\n");
     return -1;
 }
 
@@ -101,14 +94,13 @@ int main(int argc, char **argv)
     printf(" Welcome to xwm ");
     printf("--------------------------------\n");
 
-#ifdef DEBUG
+    /* get the default error handler and set the error handler */
     XSetErrorHandler(NULL);
-#else
-    XSetErrorHandler(error_handler);
-#endif /* DEBUG */
+    error_default_handler = XSetErrorHandler(error_handler);
+#ifdef DEBUG
     XSynchronize(dpy, True);
+#endif
 
-//    keyboard_grab_keys(root_window);
     cursor_init();
     XDefineCursor(dpy, root_window, cursor_normal);
 
@@ -165,6 +157,9 @@ int main(int argc, char **argv)
     keyboard_set_function("Control | Alt | Shift | r", KEYBOARD_DEPRESS,
                           resize_client);
 
+    WM_STATE = XInternAtom(dpy, "WM_STATE", False);
+    WM_CHANGE_STATE = XInternAtom(dpy, "WM_CHANGE_STATE", False);
+    
     scan_windows();
 
     XSetInputFocus(dpy, root_window, RevertToPointerRoot, CurrentTime);

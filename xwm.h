@@ -25,5 +25,7 @@ extern GC root_white_fg_gc;
 extern GC root_black_fg_gc;
 extern GC root_invert_gc;
 extern XFontStruct *fontstruct;
+extern Atom WM_STATE;
+extern Atom WM_CHANGE_STATE;
 
 #endif /* XWM_H */

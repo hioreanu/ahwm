@@ -156,7 +156,7 @@ void client_set_xsh(client_t *);
  * Ensure that a client's WM_STATE property reflects what we think it
  * should be (the 'state' member, either NormalState, Iconic,
  * Withdrawn, etc.).  We set this attribute on the client's
- * application window according to ICCCM 4.1.3.1.
+ * application window according to ICCCM 4.1.3.1 and 4.1.4.
  */
 
 void client_inform_state(client_t *);
