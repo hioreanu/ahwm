@@ -79,4 +79,9 @@ extern int shape_event_base;
 char *strdup(char *s);
 #endif
 
+/* FIXME:  wrong place */
+void run_program(XEvent *e, void *v);
+void xwm_quit(XEvent *e, void *v);
+void xwm_nop(XEvent *e, void *v);
+
 #endif /* XWM_H */

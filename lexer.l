@@ -143,7 +143,7 @@ Refresh { return TOK_REFRESH; }
 "(" { return TOK_LPAREN; }
 ")" { return TOK_RPAREN; }
 
-\"([^\"\\\n]|\\n|\\\"|\\\\)*\" {
+\"([^\"\n]|\\n|\\\"|\\\\)*\" {
     yylval.value_string = yytext;
     return TOK_STRING;
 }

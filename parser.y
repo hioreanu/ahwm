@@ -33,6 +33,8 @@
 
 #include "config.h"
 
+#include "keyboard-mouse.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -112,6 +114,7 @@
 %{
 #include "prefs.h"
 line *make_line(int type, void *dollar_one);
+char *make_string(char *s);
 %}
 
 %union {
@@ -214,8 +217,9 @@ type: boolean
           typ = malloc(sizeof(type));
           if (typ != NULL) {
               typ->type_type = STRING;
-              typ->type_value.stringval = strdup($1+1);
-              typ->type_value.stringval[strlen($1+1)-1] = '\0';
+              typ->type_value.stringval = make_string($1);
+//              typ->type_value.stringval = strdup($1+1);
+//              typ->type_value.stringval[strlen($1+1)-1] = '\0';
           }
           $$ = typ;
       }
@@ -276,17 +280,18 @@ keybinding: TOK_BINDKEY TOK_STRING function
                 keybinding *kb;
                 kb = malloc(sizeof(keybinding));
                 if (kb != NULL) {
-                    kb->keybinding_string = $2;
+                    kb->keybinding_string = make_string($2);
                     kb->keybinding_function = $3;
                 }
                 $$ = kb;
             }
+
 mousebinding: TOK_BINDBUTTON location TOK_STRING function
               {
                   mousebinding *mb;
                   mb = malloc(sizeof(mousebinding));
                   if (mb != NULL) {
-                      mb->mousebinding_string = $3;
+                      mb->mousebinding_string = make_string($3);
                       mb->mousebinding_location = $2;
                       mb->mousebinding_function = $4;
                   }
@@ -297,7 +302,7 @@ keyunbinding: TOK_UNBINDKEY TOK_STRING
                   keyunbinding *kub;
                   kub = malloc(sizeof(keyunbinding));
                   if (kub != NULL) {
-                      kub->keyunbinding_string = $2;
+                      kub->keyunbinding_string = make_string($2);
                   }
                   $$ = kub;
               }
@@ -306,15 +311,15 @@ mouseunbinding: TOK_UNBINDBUTTON location TOK_STRING
                     mouseunbinding *mub;
                     mub = malloc(sizeof(mouseunbinding));
                     if (mub != NULL) {
-                        mub->mouseunbinding_string = $3;
+                        mub->mouseunbinding_string = make_string($3);
                         mub->mouseunbinding_location = $2;
                     }
                     $$ = mub;
                 }
 
-location: TOK_ROOT { $$ = ROOT; }
-        | TOK_FRAME { $$ = FRAME; }
-        | TOK_TITLEBAR { $$ = TITLEBAR; }
+location: TOK_ROOT { $$ = MOUSE_ROOT; }
+        | TOK_FRAME { $$ = MOUSE_FRAME; }
+        | TOK_TITLEBAR { $$ = MOUSE_TITLEBAR; }
 
 function: function_name TOK_LPAREN arglist TOK_RPAREN
           {
@@ -383,6 +388,60 @@ arglist: arglist TOK_COMMA type
 
 %%
 
+/*
+ * Changes:
+ * "blah \"blah" foo qux
+ * To:
+ * blah "blah
+ * Returns newly-malloced string (which is perhaps over-malloced)
+ */
+char *make_string(char *s)
+{
+    char *n, *np, *sp, c;
+
+    n = malloc(strlen(s) - 2);
+    c = '\0';
+    np = n;
+    for (sp = s+1; *sp != '\0'; sp++) {
+        if (c == '\\') {
+            /* deal with escape characters */
+            switch (*sp) {
+                case 'n':
+                    *np++ = '\n';
+                    break;
+                case 'a':
+                    *np++ = '\a';
+                    break;
+                case 'b':
+                    *np++ = '\b';
+                    break;
+                case 'r':
+                    *np++ = '\r';
+                    break;
+                case 't':
+                    *np++ = '\t';
+                    break;
+                case 'v':
+                    *np++ = '\v';
+                    break;
+                case '"':
+                    *np++ = '"';
+                    break;
+                default:
+                    *np++ = '\\';
+                    *np++ = *sp;
+            }
+        } else if (*sp == '"') {
+            break;
+        } else {
+            *np++ = *sp;
+        }
+        c = *sp;
+    }
+    *np = '\0';
+    return n;
+}
+       
 line *make_line(int type, void *dollar_one)
 {
     line *ln;

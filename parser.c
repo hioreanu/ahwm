@@ -97,6 +97,8 @@
 
 #include "config.h"
 
+#include "keyboard-mouse.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -107,12 +109,13 @@
 #define parse_debug(x) /* */
 #endif
 
-#line 112 "parser.y"
+#line 114 "parser.y"
 
 #include "prefs.h"
 line *make_line(int type, void *dollar_one);
+char *make_string(char *s);
 
-#line 117 "parser.y"
+#line 120 "parser.y"
 typedef union {
     int value_int;
     float value_float;
@@ -213,13 +216,13 @@ static const short yyrhs[] = {    60,
 
 #if YYDEBUG != 0
 static const short yyrline[] = { 0,
-   152,   154,   155,   169,   170,   171,   172,   173,   174,   175,
-   182,   194,   195,   196,   197,   198,   199,   201,   211,   222,
-   232,   243,   244,   245,   247,   248,   250,   263,   264,   265,
-   266,   267,   269,   270,   271,   272,   274,   284,   295,   304,
-   315,   316,   317,   319,   328,   338,   339,   340,   341,   342,
-   343,   344,   345,   346,   347,   348,   349,   350,   351,   352,
-   353,   354,   355,   357,   374
+   155,   157,   158,   172,   173,   174,   175,   176,   177,   178,
+   185,   197,   198,   199,   200,   201,   202,   204,   214,   226,
+   236,   247,   248,   249,   251,   252,   254,   267,   268,   269,
+   270,   271,   273,   274,   275,   276,   278,   289,   300,   309,
+   320,   321,   322,   324,   333,   343,   344,   345,   346,   347,
+   348,   349,   350,   351,   352,   353,   354,   355,   356,   357,
+   358,   359,   360,   362,   379
 };
 #endif
 
@@ -875,15 +878,15 @@ yyreduce:
   switch (yyn) {
 
 case 1:
-#line 152 "parser.y"
+#line 155 "parser.y"
 { preferences = yyvsp[0].value_line; ;
     break;}
 case 2:
-#line 154 "parser.y"
+#line 157 "parser.y"
 { yyval.value_line = NULL; ;
     break;}
 case 3:
-#line 156 "parser.y"
+#line 159 "parser.y"
 {
            line *tmp;
            parse_debug("CONFIG\n");
@@ -898,31 +901,31 @@ case 3:
        ;
     break;}
 case 4:
-#line 169 "parser.y"
+#line 172 "parser.y"
 { yyval.value_line = make_line(OPTION, yyvsp[-1].value_option); ;
     break;}
 case 5:
-#line 170 "parser.y"
+#line 173 "parser.y"
 { yyval.value_line = make_line(CONTEXT, yyvsp[-1].value_context); ;
     break;}
 case 6:
-#line 171 "parser.y"
+#line 174 "parser.y"
 { yyval.value_line = make_line(KEYBINDING, yyvsp[-1].value_keybinding); ;
     break;}
 case 7:
-#line 172 "parser.y"
+#line 175 "parser.y"
 { yyval.value_line = make_line(KEYUNBINDING, yyvsp[-1].value_keyunbinding); ;
     break;}
 case 8:
-#line 173 "parser.y"
+#line 176 "parser.y"
 { yyval.value_line = make_line(MOUSEBINDING, yyvsp[-1].value_mousebinding); ;
     break;}
 case 9:
-#line 174 "parser.y"
+#line 177 "parser.y"
 { yyval.value_line = make_line(MOUSEUNBINDING, yyvsp[-1].value_mouseunbinding); ;
     break;}
 case 10:
-#line 176 "parser.y"
+#line 179 "parser.y"
 {
           extern int line_number;
           fprintf(stderr, "XWM: parse error on line %d.  Ignoring statement.\n",
@@ -931,7 +934,7 @@ case 10:
       ;
     break;}
 case 11:
-#line 183 "parser.y"
+#line 186 "parser.y"
 {
             option *opt;
             parse_debug("OPTION\n");
@@ -944,31 +947,31 @@ case 11:
         ;
     break;}
 case 12:
-#line 194 "parser.y"
+#line 197 "parser.y"
 { yyval.value_int = DISPLAYTITLEBAR; ;
     break;}
 case 13:
-#line 195 "parser.y"
+#line 198 "parser.y"
 { yyval.value_int = OMNIPRESENT; ;
     break;}
 case 14:
-#line 196 "parser.y"
+#line 199 "parser.y"
 { yyval.value_int = SKIPALTTAB; ;
     break;}
 case 15:
-#line 197 "parser.y"
+#line 200 "parser.y"
 { yyval.value_int = DEFAULTWORKSPACE; ;
     break;}
 case 16:
-#line 198 "parser.y"
+#line 201 "parser.y"
 { yyval.value_int = NUMBEROFWORKSPACES; ;
     break;}
 case 17:
-#line 199 "parser.y"
+#line 202 "parser.y"
 { yyval.value_int = FOCUSPOLICY; ;
     break;}
 case 18:
-#line 202 "parser.y"
+#line 205 "parser.y"
 {
           type *typ;
           typ = malloc(sizeof(type));
@@ -980,20 +983,21 @@ case 18:
       ;
     break;}
 case 19:
-#line 212 "parser.y"
+#line 215 "parser.y"
 {
           type *typ;
           typ = malloc(sizeof(type));
           if (typ != NULL) {
               typ->type_type = STRING;
-              typ->type_value.stringval = strdup(yyvsp[0].value_string+1);
-              typ->type_value.stringval[strlen(yyvsp[0].value_string+1)-1] = '\0';
+              typ->type_value.stringval = make_string(yyvsp[0].value_string);
+//              typ->type_value.stringval = strdup($1+1);
+//              typ->type_value.stringval[strlen($1+1)-1] = '\0';
           }
           yyval.value_type = typ;
       ;
     break;}
 case 20:
-#line 223 "parser.y"
+#line 227 "parser.y"
 {
           type *typ;
           typ = malloc(sizeof(type));
@@ -1005,7 +1009,7 @@ case 20:
       ;
     break;}
 case 21:
-#line 233 "parser.y"
+#line 237 "parser.y"
 {
           type *typ;
           typ = malloc(sizeof(type));
@@ -1017,27 +1021,27 @@ case 21:
       ;
     break;}
 case 22:
-#line 243 "parser.y"
+#line 247 "parser.y"
 { yyval.value_int = TYPE_SLOPPY_FOCUS; ;
     break;}
 case 23:
-#line 244 "parser.y"
+#line 248 "parser.y"
 { yyval.value_int = TYPE_CLICK_TO_FOCUS; ;
     break;}
 case 24:
-#line 245 "parser.y"
+#line 249 "parser.y"
 { yyval.value_int = TYPE_DONT_FOCUS; ;
     break;}
 case 25:
-#line 247 "parser.y"
+#line 251 "parser.y"
 { yyval.value_int = 1; ;
     break;}
 case 26:
-#line 248 "parser.y"
+#line 252 "parser.y"
 { yyval.value_int = 0; ;
     break;}
 case 27:
-#line 251 "parser.y"
+#line 255 "parser.y"
 {
              context *cntxt;
              parse_debug("CONTEXT\n");
@@ -1051,60 +1055,60 @@ case 27:
          ;
     break;}
 case 28:
-#line 263 "parser.y"
+#line 267 "parser.y"
 { yyval.value_int = SEL_ISSHAPED; ;
     break;}
 case 29:
-#line 264 "parser.y"
+#line 268 "parser.y"
 { yyval.value_int = SEL_INWORKSPACE; ;
     break;}
 case 30:
-#line 265 "parser.y"
+#line 269 "parser.y"
 { yyval.value_int = SEL_WINDOWNAME; ;
     break;}
 case 31:
-#line 266 "parser.y"
+#line 270 "parser.y"
 { yyval.value_int = SEL_WINDOWCLASS; ;
     break;}
 case 32:
-#line 267 "parser.y"
+#line 271 "parser.y"
 { yyval.value_int = SEL_WINDOWINSTANCE; ;
     break;}
 case 33:
-#line 269 "parser.y"
+#line 273 "parser.y"
 { yyval.value_int = 0; ;
     break;}
 case 34:
-#line 270 "parser.y"
+#line 274 "parser.y"
 { yyval.value_int = SEL_NOT; ;
     break;}
 case 35:
-#line 271 "parser.y"
+#line 275 "parser.y"
 { yyval.value_int = SEL_TRANSIENTFOR; ;
     break;}
 case 36:
-#line 272 "parser.y"
+#line 276 "parser.y"
 { yyval.value_int = SEL_HASTRANSIENT; ;
     break;}
 case 37:
-#line 275 "parser.y"
+#line 279 "parser.y"
 {
                 keybinding *kb;
                 kb = malloc(sizeof(keybinding));
                 if (kb != NULL) {
-                    kb->keybinding_string = yyvsp[-1].value_string;
+                    kb->keybinding_string = make_string(yyvsp[-1].value_string);
                     kb->keybinding_function = yyvsp[0].value_function;
                 }
                 yyval.value_keybinding = kb;
             ;
     break;}
 case 38:
-#line 285 "parser.y"
+#line 290 "parser.y"
 {
                   mousebinding *mb;
                   mb = malloc(sizeof(mousebinding));
                   if (mb != NULL) {
-                      mb->mousebinding_string = yyvsp[-1].value_string;
+                      mb->mousebinding_string = make_string(yyvsp[-1].value_string);
                       mb->mousebinding_location = yyvsp[-2].value_int;
                       mb->mousebinding_function = yyvsp[0].value_function;
                   }
@@ -1112,42 +1116,42 @@ case 38:
               ;
     break;}
 case 39:
-#line 296 "parser.y"
+#line 301 "parser.y"
 {
                   keyunbinding *kub;
                   kub = malloc(sizeof(keyunbinding));
                   if (kub != NULL) {
-                      kub->keyunbinding_string = yyvsp[0].value_string;
+                      kub->keyunbinding_string = make_string(yyvsp[0].value_string);
                   }
                   yyval.value_keyunbinding = kub;
               ;
     break;}
 case 40:
-#line 305 "parser.y"
+#line 310 "parser.y"
 {
                     mouseunbinding *mub;
                     mub = malloc(sizeof(mouseunbinding));
                     if (mub != NULL) {
-                        mub->mouseunbinding_string = yyvsp[0].value_string;
+                        mub->mouseunbinding_string = make_string(yyvsp[0].value_string);
                         mub->mouseunbinding_location = yyvsp[-1].value_int;
                     }
                     yyval.value_mouseunbinding = mub;
                 ;
     break;}
 case 41:
-#line 315 "parser.y"
-{ yyval.value_int = ROOT; ;
+#line 320 "parser.y"
+{ yyval.value_int = MOUSE_ROOT; ;
     break;}
 case 42:
-#line 316 "parser.y"
-{ yyval.value_int = FRAME; ;
+#line 321 "parser.y"
+{ yyval.value_int = MOUSE_FRAME; ;
     break;}
 case 43:
-#line 317 "parser.y"
-{ yyval.value_int = TITLEBAR; ;
+#line 322 "parser.y"
+{ yyval.value_int = MOUSE_TITLEBAR; ;
     break;}
 case 44:
-#line 320 "parser.y"
+#line 325 "parser.y"
 {
               function *f = malloc(sizeof(function));
               if (f != NULL) {
@@ -1158,7 +1162,7 @@ case 44:
           ;
     break;}
 case 45:
-#line 329 "parser.y"
+#line 334 "parser.y"
 {
               function *f = malloc(sizeof(function));
               if (f != NULL) {
@@ -1169,79 +1173,79 @@ case 45:
           ;
     break;}
 case 46:
-#line 338 "parser.y"
+#line 343 "parser.y"
 { yyval.value_int = MOVETOWORKSPACE; ;
     break;}
 case 47:
-#line 339 "parser.y"
+#line 344 "parser.y"
 { yyval.value_int = GOTOWORKSPACE; ;
     break;}
 case 48:
-#line 340 "parser.y"
+#line 345 "parser.y"
 { yyval.value_int = ALTTAB; ;
     break;}
 case 49:
-#line 341 "parser.y"
+#line 346 "parser.y"
 { yyval.value_int = KILLNICELY; ;
     break;}
 case 50:
-#line 342 "parser.y"
+#line 347 "parser.y"
 { yyval.value_int = KILLWITHEXTREMEPREJUDICE; ;
     break;}
 case 51:
-#line 343 "parser.y"
+#line 348 "parser.y"
 { yyval.value_int = LAUNCH; ;
     break;}
 case 52:
-#line 344 "parser.y"
+#line 349 "parser.y"
 { yyval.value_int = FOCUS; ;
     break;}
 case 53:
-#line 345 "parser.y"
+#line 350 "parser.y"
 { yyval.value_int = MAXIMIZE; ;
     break;}
 case 54:
-#line 346 "parser.y"
+#line 351 "parser.y"
 { yyval.value_int = NOP; ;
     break;}
 case 55:
-#line 347 "parser.y"
+#line 352 "parser.y"
 { yyval.value_int = QUOTE; ;
     break;}
 case 56:
-#line 348 "parser.y"
+#line 353 "parser.y"
 { yyval.value_int = MOVEINTERACTIVELY; ;
     break;}
 case 57:
-#line 349 "parser.y"
+#line 354 "parser.y"
 { yyval.value_int = RESIZEINTERACTIVELY; ;
     break;}
 case 58:
-#line 350 "parser.y"
+#line 355 "parser.y"
 { yyval.value_int = MOVERESIZE; ;
     break;}
 case 59:
-#line 351 "parser.y"
+#line 356 "parser.y"
 { yyval.value_int = QUIT; ;
     break;}
 case 60:
-#line 352 "parser.y"
+#line 357 "parser.y"
 { yyval.value_int = BEEP; ;
     break;}
 case 61:
-#line 353 "parser.y"
+#line 358 "parser.y"
 { yyval.value_int = INVOKE; ;
     break;}
 case 62:
-#line 354 "parser.y"
+#line 359 "parser.y"
 { yyval.value_int = SHOWMENU; ;
     break;}
 case 63:
-#line 355 "parser.y"
+#line 360 "parser.y"
 { yyval.value_int = REFRESH; ;
     break;}
 case 64:
-#line 358 "parser.y"
+#line 363 "parser.y"
 {
              arglist *tmp;
              arglist *al;
@@ -1260,7 +1264,7 @@ case 64:
          ;
     break;}
 case 65:
-#line 375 "parser.y"
+#line 380 "parser.y"
 {
              arglist *al = malloc(sizeof(arglist));
              if (al != NULL) {
@@ -1492,9 +1496,63 @@ yyerrhandle:
     }
   return 1;
 }
-#line 384 "parser.y"
+#line 389 "parser.y"
 
 
+/*
+ * Changes:
+ * "blah \"blah" foo qux
+ * To:
+ * blah "blah
+ * Returns newly-malloced string (which is perhaps over-malloced)
+ */
+char *make_string(char *s)
+{
+    char *n, *np, *sp, c;
+
+    n = malloc(strlen(s) - 2);
+    c = '\0';
+    np = n;
+    for (sp = s+1; *sp != '\0'; sp++) {
+        if (c == '\\') {
+            /* deal with escape characters */
+            switch (*sp) {
+                case 'n':
+                    *np++ = '\n';
+                    break;
+                case 'a':
+                    *np++ = '\a';
+                    break;
+                case 'b':
+                    *np++ = '\b';
+                    break;
+                case 'r':
+                    *np++ = '\r';
+                    break;
+                case 't':
+                    *np++ = '\t';
+                    break;
+                case 'v':
+                    *np++ = '\v';
+                    break;
+                case '"':
+                    *np++ = '"';
+                    break;
+                default:
+                    *np++ = '\\';
+                    *np++ = *sp;
+            }
+        } else if (*sp == '"') {
+            break;
+        } else {
+            *np++ = *sp;
+        }
+        c = *sp;
+    }
+    *np = '\0';
+    return n;
+}
+       
 line *make_line(int type, void *dollar_one)
 {
     line *ln;

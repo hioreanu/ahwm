@@ -110,11 +110,9 @@ struct _keybinding {
     function *keybinding_function;
 };
 
-enum location_enum { TITLEBAR, FRAME, ROOT };
-
 struct _mousebinding {
     char *mousebinding_string;
-    enum location_enum mousebinding_location;
+    int mousebinding_location;
     function *mousebinding_function;
 };
 
@@ -124,28 +122,28 @@ struct _keyunbinding {
 
 struct _mouseunbinding {
     char *mouseunbinding_string;
-    enum location_enum mouseunbinding_location;
+    int mouseunbinding_location;
 };
 
 struct _function {
-    enum { MOVETOWORKSPACE,
-           GOTOWORKSPACE,
-           ALTTAB,
-           KILLNICELY,
-           KILLWITHEXTREMEPREJUDICE,
-           LAUNCH,
-           FOCUS,
-           MAXIMIZE,
-           NOP,
-           QUOTE,
-           MOVEINTERACTIVELY,
-           RESIZEINTERACTIVELY,
-           MOVERESIZE,
-           QUIT,
-           BEEP,
-           INVOKE,
-           SHOWMENU,
-           REFRESH,
+    enum { MOVETOWORKSPACE = 0,
+           GOTOWORKSPACE = 1,
+           ALTTAB = 2,
+           KILLNICELY = 3,
+           KILLWITHEXTREMEPREJUDICE = 4,
+           LAUNCH = 5,
+           FOCUS = 6,
+           MAXIMIZE = 7,
+           NOP = 8,
+           QUOTE = 9,
+           MOVEINTERACTIVELY = 10,
+           RESIZEINTERACTIVELY = 11,
+           MOVERESIZE = 12,
+           QUIT = 13,
+           BEEP = 14,
+           INVOKE = 15,
+           SHOWMENU = 16,
+           REFRESH = 17,
     } function_type;
     arglist *function_args;
 };

@@ -71,9 +71,6 @@ typedef struct _client_t {
     int prev_height;            /* previous position/size for maximization */
     int orig_border_width;      /* client's requested border width */
     unsigned int workspace;     /* client's workspace, see workspace.h */
-    /* FIXME:  get rid of these two */
-    int window_event_mask;      /* event mask of client->window */
-    int frame_event_mask;       /* event mask of client->frame */
     unsigned int protocols;     /* WM_PROTOCOLS, see below (ICCCM, 4.1.2.7) */
     char *name;                 /* window's name (ICCCM, 4.1.2.1) */
     /* will not be NULL; use free() */
@@ -84,12 +81,10 @@ typedef struct _client_t {
     /* The state is 'Withdrawn' when the window is created but is
      * not yet mapped and when the window has been unmapped but
      * not yet destroyed.
-     * The state is 'Iconic' when the window has been unmapped
-     * because it is not in the current workspace.  We do
-     * absolutely nothing with icons, but this is how other
-     * window managers deal with workspaces, so we shouldn't
-     * confuse the client.  FIXME: not true
-     * The state is 'NormalState' whenever the window is mapped.
+     * The state is never 'Iconic', not even when the window
+     * asks to be iconized (which is perfectly OK by ICCCM)
+     * The state is 'NormalState' whenever the window is mapped
+     * or unmapped because it is not in the current workspace.
      */
     int state;
 

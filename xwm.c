@@ -250,6 +250,7 @@ int main(int argc, char **argv)
     keyboard_bind("Control | Alt | Shift | l", KEYBOARD_DEPRESS,
                   mark, NULL);
 #endif
+#if 0
     keyboard_bind("Control | Alt | Shift | t", KEYBOARD_DEPRESS,
                   run_program, "xterm");
     keyboard_bind("Control | Alt | Shift | n", KEYBOARD_DEPRESS,
@@ -295,6 +296,7 @@ int main(int argc, char **argv)
                   workspace_goto_bindable, (void *)7);
     keyboard_bind("Control | Alt | Shift | q", KEYBOARD_RELEASE,
                   keyboard_quote, NULL);
+#endif
     mouse_bind("Alt | Button1", MOUSE_DEPRESS, MOUSE_FRAME,
                move_client, NULL);
     mouse_bind("Alt | Button3", MOUSE_DEPRESS, MOUSE_FRAME,
@@ -372,10 +374,13 @@ static void scan_windows()
 }
 
 /* standard double fork trick, don't leave zombies */
+/* FIXME:  this should move out of xwm.c perhaps misc.c */
 void run_program(XEvent *e, void *arg)
 {
     pid_t pid;
-    
+
+    fflush(stdout);
+    fflush(stderr);
     if ( (pid = fork()) == 0) {
         close(ConnectionNumber(dpy));
         if (fork() == 0) {
@@ -389,6 +394,20 @@ void run_program(XEvent *e, void *arg)
     }
 }
 
+void xwm_quit(XEvent *e, void *arg)
+{
+#ifdef DEBUG
+    printf("XWM: xwm_quit called, quitting\n");
+    fflush(stdout);
+#endif
+    exit(0);
+}
+
+void xwm_nop(XEvent *e, void *arg)
+{
+    /* just eat event */
+}
+
 #ifdef DEBUG
 /* make it easier to parse debug output */
 void mark(XEvent *e, void *arg)
@@ -400,7 +419,7 @@ void mark(XEvent *e, void *arg)
 #endif
 
 #ifndef HAVE_STRDUP
-/* 'autoscan' tells me 'strdup()' isn't portable (?) */
+/* 'autoscan' tells me 'strdup()' isn't portable */
 char *strdup(char *s)
 {
     char *n;

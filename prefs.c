@@ -30,6 +30,9 @@
  * FIXME:  need to figure out some way to allow keybinding changes at
  * any time without binding/unbinding keys all the time.  May need to
  * make caller specify what has changed in some way.  sucks.
+ * 
+ * For now, only allow bindings to happen in the global context.
+ * App-specific bindings added later.
  */
 
 #include "config.h"
@@ -45,6 +48,11 @@
 #include "parser.h"
 #include "debug.h"
 #include "workspace.h"
+#include "keyboard-mouse.h"
+#include "focus.h"
+#include "kill.h"
+#include "move-resize.h"
+
 
 #define CHECK_BOOL(x) ((x)->type_type == BOOLEAN ? True : False)
 #define CHECK_STRING(x) ((x)->type_type == STRING ? True : False)
@@ -76,6 +84,8 @@ static void keyunbinding_apply(client_t *client, keyunbinding *kb);
 static void mousebinding_apply(client_t *client, mousebinding *kb);
 static void mouseunbinding_apply(client_t *client, mouseunbinding *kb);
 static void prefs_apply_internal(client_t *client, line *block, prefs *p);
+static void globally_bind(line *lp);
+static void globally_unbind(line *lp);
 
 static line *defaults, *contexts;
 int pref_no_workspaces = 7;
@@ -124,9 +134,17 @@ void prefs_init()
                 }
                 last_context = lp;
                 break;
+            case KEYBINDING:
+            case MOUSEBINDING:
+                globally_bind(lp);
+                break;
+            case KEYUNBINDING:
+            case MOUSEUNBINDING:
+                globally_unbind(lp);
+                break;
             case OPTION:
                 switch (lp->line_value.option->option_name) {
-                    case DISPLAYTITLEBAR: /* FIXMENOW:  not DISPLAYTITLEBAR??? */
+                    case DISPLAYTITLEBAR:
                         get_bool(lp->line_value.option->option_value,
                                  &pref_display_titlebar);
                         break;
@@ -610,3 +628,83 @@ static void mouseunbinding_apply(client_t *client, mouseunbinding *kb)
     /* FIXME */
 }
 
+/* FIXME:  this should probably get its own module */
+/* in addition, this is pretty ugly */
+/* could prolly just move all this into the parser */
+key_fn fn_table[] = {
+/* 1  */    workspace_client_moveto_bindable,
+/* 2  */    workspace_goto_bindable,
+/* 3  */    focus_alt_tab,
+/* 4  */    kill_nicely,
+/* 5  */    kill_with_extreme_prejudice,
+/* 6  */    run_program,
+/* 7  */    NULL, /* focus function, only for mouse binding */
+/* 8  */    resize_maximize,
+/* 9  */    xwm_nop,
+/* 10 */    keyboard_quote,
+/* 11 */    move_client,
+/* 12 */    resize_client,
+/* 13 */    NULL, /* non-interactive move/resize, must implement */
+/* 14 */    xwm_quit,
+/* 15 */    NULL, /* beep */
+/* 16 */    NULL, /* invoke, different from launch? */
+/* 17 */    NULL, /* expansion for menu system */
+/* 18 */    NULL, /* refresh */
+};
+
+/* FIXE: consolidate into next function */
+static void get_binding_vals(line *lp, char **ks, key_fn *fn,
+                             void **arg, int *location)
+{
+    keybinding *kb;
+    mousebinding *mb;
+    
+    if (lp->line_type == KEYBINDING) {
+        kb = lp->line_value.keybinding;
+        *ks = kb->keybinding_string;
+        printf("function_type = %d\n", kb->keybinding_function->function_type);
+        *fn = fn_table[kb->keybinding_function->function_type];
+        *arg = NULL; /* FIXME: punt for now */
+        *location = MOUSE_NOWHERE;
+    } else if (lp->line_type == MOUSEBINDING) {
+        mb = lp->line_value.mousebinding;
+        *ks = mb->mousebinding_string;
+        *fn = fn_table[mb->mousebinding_function->function_type];
+        *location = mb->mousebinding_location;
+        *arg = NULL; /* FIXME */
+    }
+}
+
+/*
+ * FIXME:  bindable functions as written take only one argument;
+ * multiple args packed into struct.  Need to write conversion
+ * routines to take parser-gened 'arglist' and put that into some
+ * structure.  Gets ugly.
+ */
+static void globally_bind(line *lp)
+{
+    char *keystring;
+    key_fn fn;
+    void *arg;
+    int location;
+
+    get_binding_vals(lp, &keystring, &fn, &arg, &location);
+    if (lp->line_type == KEYBINDING && fn != NULL) {
+        printf("Binding '%s'\n", keystring);
+        keyboard_bind(keystring, KEYBOARD_RELEASE, fn, arg);
+    } else if (lp->line_type == MOUSEBINDING && fn != NULL) {
+        mouse_bind(keystring, MOUSE_RELEASE, location, fn, arg);
+    }
+}
+
+static void globally_unbind(line *lp)
+{
+    if (lp->line_type == KEYUNBINDING) {
+        keyboard_unbind(lp->line_value.keyunbinding->keyunbinding_string,
+                        KEYBOARD_RELEASE);
+    } else if (lp->line_type == MOUSEUNBINDING) {
+        mouse_unbind(lp->line_value.mouseunbinding->mouseunbinding_string,
+                     MOUSE_RELEASE,
+                     lp->line_value.mouseunbinding->mouseunbinding_location);
+    }
+}

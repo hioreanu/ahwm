@@ -139,11 +139,10 @@ client_t *client_create(Window w)
 
     prefs_apply(client);
     
-    client->frame_event_mask = SubstructureRedirectMask | EnterWindowMask
-        | LeaveWindowMask | FocusChangeMask | StructureNotifyMask;
-    client->window_event_mask = xwa.your_event_mask | StructureNotifyMask
-        | PropertyChangeMask;
-    XSelectInput(dpy, client->window, client->window_event_mask);
+    XSelectInput(dpy, client->window,
+                 xwa.your_event_mask
+                 | StructureNotifyMask
+                 | PropertyChangeMask);
 
     requested_geometry.x = xwa.x;
     requested_geometry.y = xwa.y;
@@ -220,8 +219,9 @@ static void client_create_frame(client_t *client, position_size *win_position)
     xswa.cursor = cursor_normal;
     xswa.background_pixmap = None;
     xswa.background_pixel = black;
-    xswa.event_mask = client->frame_event_mask;
     xswa.override_redirect = True;
+    xswa.event_mask =  SubstructureRedirectMask | EnterWindowMask
+        | LeaveWindowMask | FocusChangeMask | StructureNotifyMask;
 
     client_get_position_size_hints(client, &ps);
     memcpy(&ps, win_position, sizeof(position_size));
