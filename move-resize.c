@@ -502,9 +502,10 @@ void resize_client(XEvent *xevent, void *v)
         x_start = xevent->xbutton.x_root;
         y_start = xevent->xbutton.y_root;
         init_button = xevent->xbutton.button;
-        resize_direction =
-            get_direction(client, xevent->xbutton.x_root,
-                          xevent->xbutton.y_root);
+        if (client != NULL)
+            resize_direction =
+                get_direction(client, xevent->xbutton.x_root,
+                              xevent->xbutton.y_root);
     } else if (xevent->type == KeyPress) {
         have_mouse = 0;
         client = client_find(xevent->xkey.window);
