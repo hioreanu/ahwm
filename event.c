@@ -260,7 +260,7 @@ static void event_unmap(XUnmapEvent *xevent)
     client_print("Unmap:", client);
 #endif /* DEBUG */
     if (client == NULL) return;
-    client->state = UNMAPPED;
+    client->state = NormalState; /* FIXME: right? */
     if (client->frame != None)
         XUnmapWindow(dpy, client->frame);
     focus_remove(client);

@@ -17,6 +17,10 @@ dep:
 depend: dep
 tags: dep
 
+wordcount:
+	@cat *.c *.h | fgrep -v '#include' | cpp -E - | egrep -v '^[ \t]*$$' | wc -l
+wc: wordcount
+
 clean:
 	@rm -f *.o *~ *core xwm TAGS
 
