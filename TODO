@@ -1,5 +1,6 @@
 TODO before release:
 - set workspace_current from _NET_CURRENT_DESKTOP, for restarting
+- remove titlebars on normal exit, for restarting
 - transient for self means something?  Directory property window in konq
 - use XInternAtoms for ewmh.c
 - figure out what the hell 'sticky' means to EWMH

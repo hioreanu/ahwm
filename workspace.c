@@ -92,14 +92,14 @@ void workspace_goto(unsigned int new_workspace)
      * the windows have contrasting colors; therefore we map a
      * temporary window to cover up our actions.
      * Little things like this make a big difference. */
-    xswa.background_pixel = black; /* FIXME: get root background color */
     xswa.override_redirect = True;
+    xswa.background_pixmap = ParentRelative;
     stacking_hiding_window = XCreateWindow(dpy, root_window, 0, 0,
                                            scr_width, scr_height,
                                            0, DefaultDepth(dpy, scr),
                                            InputOutput,
                                            DefaultVisual(dpy, scr),
-                                           CWBackPixel | CWOverrideRedirect,
+                                           CWBackPixmap | CWOverrideRedirect,
                                            &xswa);
     XMapRaised(dpy, stacking_hiding_window);
     XClearWindow(dpy, stacking_hiding_window);
