@@ -29,6 +29,7 @@ typedef struct _client_t {
     int       height;
     int       workspace;
     int       state;
+    Bool      wants_focus;
     /* state is one of {WithdrawnState, NormalState, IconicState} */
     /* we ignore this since we don't deal with icons */
     struct _client_t *prevfocus;
@@ -36,11 +37,10 @@ typedef struct _client_t {
 
 client_t *client_create(Window);
 client_t *client_find(Window);
+void client_delete(client_t *);
 
-void client_release(client_t *);
 void client_deactivate(client_t *);
 void client_activate(client_t *);
-void client_kill(client_t *);
 void client_hide(client_t *);
 
 #if 0
