@@ -34,6 +34,11 @@ static mousebinding *bindings = NULL;
 static int figure_button(char *, unsigned int *);
 static int get_location(Window w);
 
+void mouse_ignore(XEvent *xevent, void *v)
+{
+    XUngrabPointer(dpy, CurrentTime);
+}
+
 void mouse_grab_buttons(client_t *client)
 {
     mousebinding *mb;
