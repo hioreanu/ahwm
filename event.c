@@ -56,7 +56,6 @@
 Time event_timestamp = CurrentTime;
 
 static void event_enter(XCrossingEvent *);
-static void event_create(XCreateWindowEvent *);
 static void event_destroy(XDestroyWindowEvent *);
 static void event_unmap(XUnmapEvent *);
 static void event_maprequest(XMapRequestEvent *);
@@ -68,6 +67,7 @@ static void event_circulaterequest(XCirculateRequestEvent *);
 static void event_expose(XExposeEvent *);
 static void event_focusin(XFocusChangeEvent *);
 static void event_map(XMapEvent *);
+static void configure_nonclient(XConfigureRequestEvent *xevent);
 
 #ifdef SHAPE
 static void event_shape(XShapeEvent *);
@@ -235,9 +235,7 @@ void event_dispatch(XEvent *event)
 /*        case NoExpose: */     /* ignored */
 /*        case VisibilityNotify: */ /* TODO */
             
-        case CreateNotify:      /* root SubstructureNotifyMask, xwm.c */
-            event_create(&event->xcreatewindow);
-            break;
+/*        case CreateNotify: */ /* ignored */
             
         case DestroyNotify:     /* client StructureNotifyMask, client.c */
             event_destroy(&event->xdestroywindow);
@@ -362,24 +360,6 @@ static void event_enter(XCrossingEvent *xevent)
 }
 
 /*
- * create client structure, basically manage the window
- */
-
-static void event_create(XCreateWindowEvent *xevent)
-{
-    client_t *client;
-
-    if (xevent->override_redirect) {
-        debug(("\tWindow %#lx has override_redirect, ignoring\n",
-               (unsigned int)xevent->window));
-        return;
-    }
-
-    client = client_create(xevent->window);
-    client_print("Create:", client);
-}
-
-/*
  * remove client structure
  */
 
@@ -481,6 +461,7 @@ static void event_unmap(XUnmapEvent *xevent)
 }
 
 /*
+ * Create client if not already created
  * Map the client and the frame, update WM_STATE on the client window
  */
 
@@ -492,8 +473,12 @@ static void event_maprequest(XMapRequestEvent *xevent)
     client = client_find(xevent->window);
     client_print("Map Request:", client);
     if (client == NULL) {
-        fprintf(stderr, "XWM: unable to find client, shouldn't happen\n");
-        return;
+        debug(("\tCreating client\n"));
+        client = client_create(xevent->window);
+        if (client == NULL) {
+            debug(("\tCould not create client, ignoring event\n"));
+            return;
+        }
     }
     if (client->state == NormalState) {
         /* This should never happen as XMapWindow on an already-mapped
@@ -558,9 +543,7 @@ static void event_configurerequest(XConfigureRequestEvent *xevent)
     client = client_find(xevent->window);
 
     if (client == NULL) {
-        fprintf(stderr,
-                "XWM: Got ConfigureRequest from unknown client, "
-                "shouldn't happen\n");
+        configure_nonclient(xevent);
         return;
     }
 
@@ -675,6 +658,28 @@ static void event_configurerequest(XConfigureRequestEvent *xevent)
 }
 
 /*
+ * We'll get this when the client is changing something before
+ * the initial mapping (we create the client on the initial
+ * mapping).  We just grant the request.
+ */
+
+static void configure_nonclient(XConfigureRequestEvent *xevent)
+{
+    XWindowChanges xwc;
+    long mask;
+
+    xwc.x = xevent->x;
+    xwc.y = xevent->y;
+    xwc.width = xevent->width;
+    xwc.height = xevent->height;
+    xwc.border_width = xevent->border_width;
+    xwc.sibling = xevent->above;
+    xwc.stack_mode = xevent->detail;
+    
+    XConfigureWindow(dpy, xevent->window, xevent->value_mask, &xwc);
+}
+
+/*
  * window property changed, update client structure
  */
 
@@ -730,8 +735,8 @@ static void event_colormap(XColormapEvent *xevent)
 }
 
 /*
- * The only thing we look for here is if the window wishes to iconize
- * itself as per ICCCM 4.1.4
+ * 1. see if the window wishes to iconize itself as per ICCCM 4.1.4
+ * 2. see if EWMH can grok the message
  */
 
 static void event_clientmessage(XClientMessageEvent *xevent)

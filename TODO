@@ -3,7 +3,6 @@ TODO before release:
 - colormaps
 - user-settable font, global option
 - titlebar height depends on font height or user pref, experiment
-- manage client on first maprequest, not window creation
 - deal with build problems on Debian and Solaris 8
 - test with a modern version of Sun's X implementation
 - test final build with various options at least two weeks before initial release
@@ -133,6 +132,7 @@ Finished, no longer TODO:
 - remove ewmh rants from code
 - option WorkspaceSendTransients (boolean)
 - use stacking_desktop_{window|frame} for EWMH
+- manage client on first maprequest, not window creation
 
 Abandoned, no longer TODO:
 - "stop" focus, detect when pointer stops in a window (no timeout) -
