@@ -569,7 +569,8 @@ Bool mouse_handle_event(XEvent *xevent)
     } else if (grabbed_button == 0) {
         XUngrabPointer(dpy, event_timestamp);
     }
-    return False;
+    if (set_focus) return True;
+    else return False;
 }
 
 /* counterpart of keyboard_quote, does not need to be public */

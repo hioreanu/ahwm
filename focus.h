@@ -77,6 +77,11 @@ void focus_ensure(Time);
  * modify the stack until Alt is released.  The keyboard is grabbed in
  * this function, and no window will actually receive the input focus
  * until user lets go of Alt.
+ * 
+ * If the user strikes a key or clicks a button during this function,
+ * it will invoke a bound function if something is bound to that
+ * key/button; otherwise it will attempt to pass the key/button event
+ * to a client window by sending a synthetic event.
  */
 
 void focus_alt_tab(XEvent *, void *);
