@@ -23,8 +23,8 @@
  * SUCH DAMAGE.
  */
 
-#ifndef XWM_H
-#define XWM_H
+#ifndef AHWM_H
+#define AHWM_H
 
 #include "config.h"
 
@@ -50,7 +50,7 @@ extern GC extra_gc1;            /* GC which changes */
 extern GC extra_gc2;            /* GC which changes */
 extern GC extra_gc3;            /* GC which changes */
 extern GC extra_gc4;            /* GC which changes */
-extern char *xwm_fontname;      /* name of out font */
+extern char *ahwm_fontname;      /* name of out font */
 extern XFontStruct *fontstruct; /* our font */
 extern Atom WM_STATE;           /* various atoms used throughout */
 extern Atom WM_CHANGE_STATE;
@@ -65,7 +65,7 @@ extern int shape_event_base;
 #endif
 
 /*
- * xwm.c also contains main(), which does the following:
+ * ahwm.c also contains main(), which does the following:
  * 1.  Parse command line
  * 2.  Open X display
  * 3.  Select X event mask on root window
@@ -77,14 +77,14 @@ extern int shape_event_base;
  */
 
 /*
- * These two are bindable functions, put in xwm.c for lack of a better
- * place.  Predeclaring struct _arglist to avoid header loop on xwm.h
+ * These two are bindable functions, put in ahwm.c for lack of a better
+ * place.  Predeclaring struct _arglist to avoid header loop on ahwm.h
  * and prefs.h.
  */
 
 struct _arglist;
 void run_program(XEvent *e, struct _arglist *args);
-void xwm_quit(XEvent *e, struct _arglist *ignored);
-void xwm_restart(XEvent *e, struct _arglist *ignored);
+void ahwm_quit(XEvent *e, struct _arglist *ignored);
+void ahwm_restart(XEvent *e, struct _arglist *ignored);
 
-#endif /* XWM_H */
+#endif /* AHWM_H */
