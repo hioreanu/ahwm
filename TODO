@@ -25,6 +25,8 @@ Wishlist:
 - contact author of 'kpager', figure out what the problem is
 - allow binding to click and drag on same place
 - use XInternAtoms for ewmh.c
+- external title bar, resized to title width
+- keep windows in "frames" like old sawfish config
 - 'mouse' map_policy placement algorithm - map window under mouse
 - finish support for DontRaise for CycleBehaviour
 - for focus click, grab all combinations of click and modifier?
