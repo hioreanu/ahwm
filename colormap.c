@@ -146,7 +146,7 @@ Bool colormap_handle_clientmessage(XClientMessageEvent *xevent)
         /* I've never seen this code running, so I want to hear
          * about it if someone uses this. */
         fprintf(stderr,
-                "XWM: Client '%s' is using ICCCM 2.0 colormap "
+                "AHWM: Client '%s' is using ICCCM 2.0 colormap "
                 "installation procedures.\n"
                 "Please contact hioreanu+ahwm@uchicago.edu\n",
                 client == NULL ? "unknown" : client->name);

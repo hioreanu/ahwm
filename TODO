@@ -1,15 +1,13 @@
 TODO before release:
+- xwm -> ahwm
+- 'make install' should work and 'make clean' shouldn't remove parser.c
+- placement, use corner with least overlap first
 - _NET_WORKAREA and STRUT
 - keep _WM_STATE, _WIN_LAYER updated
 - implement "ping" protocol
 - transient for self means something?  Directory property window in konq
 - use XInternAtoms for ewmh.c
 - figure out what the hell 'sticky' means to EWMH
-- deal with build problems on Solaris
-  - on orcus (solaris 7):
-    doesn't find shape extension
-    need -lsocket on Sun machines
-    gets wrong /opt/X11R6 instead of /usr/lib/X11, /usr/include/X11
 - zombies on FreeBSD
 - start xwm from an xterm, that xterm doesn't get _NET_DESKTOP prop
 - test with a modern version of Sun's X implementation
@@ -147,7 +145,7 @@ Finished, no longer TODO:
 - save focus stacks in some property for restarting
 - proxy clicks for GNOME
 - ask about KEEP_ON_TOP WM_STATE
-- deal with autoconf problems on Debian
+- deal with autoconf problems on Debian and Solaris
 
 Abandoned, no longer TODO:
 - "stop" focus, detect when pointer stops in a window (no timeout) -

@@ -53,7 +53,7 @@
 #include "client.h"
 
 /*
- * The largest "ascent" member from the font.  Set by xwm.c.
+ * The largest "ascent" member from the font.  Set by ahwm.c.
  */
 
 extern int paint_ascent;
@@ -71,6 +71,7 @@ void paint_init();
 
 void paint_calculate_colors(client_t *client, char *normal, char *focused,
                             char *text, char *focused_text);
+
 /*
  * Adds a button to be displayed on the titlebar.  NB, you also need
  * to use keyboard_add_button() to make the button work.  IMAGE is one
@@ -78,6 +79,8 @@ void paint_calculate_colors(client_t *client, char *normal, char *focused,
  * button is added to the left; if false, the button is added to the
  * left.  The button positions are determined by the order in which
  * this function is called.
+ *
+ * This is not currently used, but is here for when I implement buttons.
  */
 
 void paint_add_button(char *image, Bool left);

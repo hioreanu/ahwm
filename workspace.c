@@ -43,7 +43,7 @@ void workspace_goto_bindable(XEvent *e, arglist *args)
     if (args != NULL && args->arglist_arg->type_type == INTEGER) {
         workspace_goto(args->arglist_arg->type_value.intval);
     } else {
-        fprintf(stderr, "XWM: type error\n"); /* FIXME */
+        fprintf(stderr, "AHWM: type error\n"); /* FIXME */
     }
 }
 
@@ -79,7 +79,7 @@ void workspace_goto(unsigned int new_workspace)
     XSetWindowAttributes xswa;
 
     if (new_workspace < 1 || new_workspace > nworkspaces) {
-        fprintf(stderr, "XWM:  attempt to go to invalid workspace %d\n",
+        fprintf(stderr, "AHWM:  attempt to go to invalid workspace %d\n",
                 new_workspace);
         return;
     }
@@ -153,12 +153,12 @@ void workspace_client_moveto_bindable(XEvent *xevent, arglist *args)
     if (args != NULL && args->arglist_arg->type_type == INTEGER) {
         ws = args->arglist_arg->type_value.intval;
     } else {
-        fprintf(stderr, "XWM: type error\n"); /* FIXME */
+        fprintf(stderr, "AHWM: type error\n"); /* FIXME */
         return;
     }
     if (client == NULL) {
         fprintf(stderr,
-                "XWM: can't move client to workspace %d, can't find client\n",
+                "AHWM: can't move client to workspace %d, can't find client\n",
                 ws);
         return;
     }
@@ -168,7 +168,7 @@ void workspace_client_moveto_bindable(XEvent *xevent, arglist *args)
 void workspace_client_moveto(client_t *client, unsigned int ws)
 {
     if (ws < 1 || ws > nworkspaces) {
-        fprintf(stderr, "XWM:  attempt to move to invalid workspace %d\n", ws);
+        fprintf(stderr, "AHWM:  attempt to move to invalid workspace %d\n", ws);
         return;
     }
     

@@ -27,7 +27,7 @@
 
 #include <stdio.h>
 
-#include "xwm.h"
+#include "ahwm.h"
 #include "malloc.h"
 
 #ifdef DEBUG
@@ -39,7 +39,7 @@ void malloc_openfile()
     if (malloc_file == NULL) {
         malloc_file = fopen("./malloc-out", "w");
         if (malloc_file == NULL) {
-            perror("XWM: fopen \"./malloc-out\" for writing");
+            perror("AHWM: fopen \"./malloc-out\" for writing");
             exit(1);
         }
         /* set line buffered */
@@ -53,6 +53,8 @@ void *my_malloc(size_t size, int line, char *file)
     
     malloc_openfile();
     retval = malloc(size);
+    /* "%p" format is not portable, but DEBUG builds are meant
+     * only for me */
     fprintf(malloc_file, "MALLOC %d FROM %s:%d RETURNS %p\n",
             size, file, line, retval);
     return retval;

@@ -103,8 +103,8 @@ void focus_init()
     focus_contexts = malloc(nworkspaces * sizeof(XContext));
     focus_stacks = malloc(nworkspaces * sizeof(focus_node *));
     if (focus_contexts == NULL || focus_stacks == NULL) {
-        perror("XWM: focus_init: malloc");
-        fprintf(stderr, "XWM: this is a fatal error, quitting.\n");
+        perror("AHWM: focus_init: malloc");
+        fprintf(stderr, "AHWM: this is a fatal error, quitting.\n");
         exit(1);
     }
     for (i = 0; i < nworkspaces; i++) {
@@ -176,7 +176,7 @@ void focus_add(client_t *client, Time timestamp)
     if (client->omnipresent) {
         node = Malloc(nworkspaces * sizeof(focus_node));
         if (node == NULL) {
-            fprintf(stderr, "XWM: out of memory while focusing client\n");
+            fprintf(stderr, "AHWM: out of memory while focusing client\n");
             return;
         }
         debug(("\tOmnipresent node = %#lx\n", node));
@@ -187,7 +187,7 @@ void focus_add(client_t *client, Time timestamp)
     } else {
         node = Malloc(sizeof(focus_node));
         if (node == NULL) {
-            fprintf(stderr, "XWM: out of memory while focusing client\n");
+            fprintf(stderr, "AHWM: out of memory while focusing client\n");
             return;
         }
         node->client = client;
@@ -224,7 +224,7 @@ static void focus_add_internal(focus_node *node, int ws, Time timestamp)
     }
     if (XSaveContext(dpy, node->client->window,
                      focus_contexts[ws - 1], (void *)node) != 0) {
-        fprintf(stderr, "XWM: XSaveContext failed, could not save window\n");
+        fprintf(stderr, "AHWM: XSaveContext failed, could not save window\n");
     }
 }
 
@@ -337,7 +337,7 @@ static void focus_set_internal(focus_node *node, Time timestamp,
     
     p = focus_stacks[node->client->workspace - 1];
     if (p == NULL) {
-        fprintf(stderr, "XWM: current focus list is empty, shouldn't be\n");
+        fprintf(stderr, "AHWM: current focus list is empty, shouldn't be\n");
         return;
     }
     do {
@@ -355,7 +355,7 @@ static void focus_set_internal(focus_node *node, Time timestamp,
         }
         p = p->next;
     } while (p != focus_stacks[node->client->workspace - 1]);
-    fprintf(stderr, "XWM: client not found on focus list, shouldn't happen\n");
+    fprintf(stderr, "AHWM: client not found on focus list, shouldn't happen\n");
 }
 
 /*

@@ -27,7 +27,7 @@
  * Please note:  this file was written by Alex Hioreanu and is
  * Copyright (C) Alex Hioreanu 2001.  It was not copied from a
  * commercial Motif distribution, OpenMotif or LessTif.  All of these
- * have licenses which are not compatible with XWM.  OpenMotif has a
+ * have licenses which are not compatible with AHWM.  OpenMotif has a
  * particularly nasty license, and I want nothing to do with that.  I
  * put this together from stuff gleaned from mailings lists and google
  * searches.  IANAL, but as I understand it, you can't copyright

@@ -36,7 +36,7 @@
 #include <string.h>
 
 #include "compat.h"
-#include "xwm.h"
+#include "ahwm.h"
 
 #ifdef DEBUG
 

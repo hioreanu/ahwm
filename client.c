@@ -92,7 +92,7 @@ client_t *client_create(Window w)
 
     client = Malloc(sizeof(client_t));
     if (client == NULL) {
-        fprintf(stderr, "XWM: Malloc failed, unable to allocate client\n");
+        fprintf(stderr, "AHWM: Malloc failed, unable to allocate client\n");
         return NULL;
     }
     memset(client, 0, sizeof(client_t));
@@ -204,14 +204,14 @@ client_t *client_create(Window w)
     requested_geometry.height = xwa.height;
     client_create_frame(client, &requested_geometry);
     if (client->frame == None) {
-        fprintf(stderr, "XWM: Could not create frame\n");
+        fprintf(stderr, "AHWM: Could not create frame\n");
         Free(client);
         return NULL;
     }
     if (client->has_titlebar) client_add_titlebar_internal(client);
 
     if (XSaveContext(dpy, w, window_context, (void *)client) != 0) {
-        fprintf(stderr, "XWM: XSaveContext failed, could not save window\n");
+        fprintf(stderr, "AHWM: XSaveContext failed, could not save window\n");
         Free(client);
         return NULL;
     }
@@ -315,7 +315,7 @@ static void client_create_frame(client_t *client, position_size *win_position)
 
     if (XSaveContext(dpy, client->frame,
                      frame_context, (void *)client) != 0) {
-        fprintf(stderr, "XWM: XSaveContext failed, could not save frame\n");
+        fprintf(stderr, "AHWM: XSaveContext failed, could not save frame\n");
     }
 }
 
@@ -371,7 +371,7 @@ static void client_add_titlebar_internal(client_t *client)
         if (XSaveContext(dpy, client->titlebar,
                          title_context, (void *)client) != 0) {
             fprintf(stderr,
-                    "XWM: XSaveContext failed, could not save titlebar\n");
+                    "AHWM: XSaveContext failed, could not save titlebar\n");
         }
     }
 
@@ -556,7 +556,7 @@ void client_set_xsh(client_t *client)
 
     client->xsh = XAllocSizeHints();
     if (client->xsh == NULL) {
-        fprintf(stderr, "XWM: Couldn't allocate Size Hints structure\n");
+        fprintf(stderr, "AHWM: Couldn't allocate Size Hints structure\n");
         return;
     }
     if (XGetWMNormalHints(dpy, client->window,
@@ -624,7 +624,7 @@ void client_set_transient_for(client_t *client)
     c = leader = client_find(new_transient_for);
     while (c != NULL) {
         if (c == client) {
-            fprintf(stderr, "XWM: The application '%s' has a "
+            fprintf(stderr, "AHWM: The application '%s' has a "
                     "TRANSIENT_FOR cycle.\n"
                     "This is a serious bug, and you should contact "
                     "the author of this program.\n", client->name);

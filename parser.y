@@ -221,7 +221,7 @@ line: option TOK_SEMI { $$ = make_line(OPTION, $1); }
     | error TOK_SEMI
       {
           extern int line_number;
-          fprintf(stderr, "XWM: parse error on line %d.  Ignoring statement.\n",
+          fprintf(stderr, "AHWM: parse error on line %d.  Ignoring statement.\n",
                   line_number);
           $$ = make_line(INVALID_LINE, NULL);
       }

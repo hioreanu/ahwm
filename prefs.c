@@ -55,7 +55,7 @@
 #include "move-resize.h"
 #include "malloc.h"
 
-#include "default-xwmrc.h"
+#include "default-ahwmrc.h"
 
 #define CHECK_BOOL(x) ((x)->type_type == BOOLEAN ? True : False)
 #define CHECK_STRING(x) ((x)->type_type == STRING ? True : False)
@@ -146,7 +146,7 @@ static void mouseunbinding_apply(client_t *client, mouseunbinding *kb);
 static void prefs_apply_internal(client_t *client, line *block, prefs *p);
 static void globally_bind(line *lp);
 static void globally_unbind(line *lp);
-static int no_config(char *xwmrc_path);
+static int no_config(char *ahwmrc_path);
 static void invoke(XEvent *e, arglist *args);
 static void focus(XEvent *e, arglist *args);
 
@@ -161,14 +161,14 @@ void prefs_init()
 
     home = getenv("HOME");
     if (home == NULL) {
-        fprintf(stderr, "XWM: Could not get home directory; "
+        fprintf(stderr, "AHWM: Could not get home directory; "
                 "configuration file not found.\n");
         return;
     }
-    snprintf(buf, PATH_MAX, "%s/.xwmrc", home);
+    snprintf(buf, PATH_MAX, "%s/.ahwmrc", home);
     yyin = fopen(buf, "r");
     if (yyin == NULL) {
-        fprintf(stderr, "XWM: Could not open configuration file '%s': %s\n",
+        fprintf(stderr, "AHWM: Could not open configuration file '%s': %s\n",
                 buf, strerror(errno));
         if (no_config(buf) == 0) {
             return;
@@ -208,14 +208,14 @@ void prefs_init()
                     get_int(lp->line_value.option->option_value, &i);
                     if (i < 1) {
                         fprintf(stderr,
-                                "XWM: NumberOfWorkspaces must be at least one\n");
+                                "AHWM: NumberOfWorkspaces must be at least one\n");
                     } else {
                         nworkspaces = i;
                     }
                 } else if (lp->line_value.option->option_name == TITLEBARFONT) {
                     /* another global-only option */
                     get_string(lp->line_value.option->option_value,
-                               &xwm_fontname);
+                               &ahwm_fontname);
                 } else {
                     option_apply(NULL, lp->line_value.option, &defaults);
                 }
@@ -244,7 +244,7 @@ static void make_definition(definition *def)
         definitions = Malloc(sizeof(definition));
         if (definitions == NULL) {
             fprintf(stderr,
-                    "XWM: parsing definition of %s: malloc: %s\n",
+                    "AHWM: parsing definition of %s: malloc: %s\n",
                     def->identifier, strerror(errno));
             return;
         }
@@ -255,7 +255,7 @@ static void make_definition(definition *def)
         if (tmp == NULL) {
             ndefinitions--;
             fprintf(stderr,
-                    "XWM: parsing definitions of %s: realloc: %s\n",
+                    "AHWM: parsing definitions of %s: realloc: %s\n",
                     def->identifier, strerror(errno));
             return;
         }
@@ -323,27 +323,27 @@ static Bool type_check_context(context *cntxt)
     
     if (cntxt->context_selector & SEL_HASTRANSIENT
         && cntxt->context_selector & SEL_TRANSIENTFOR) {
-        fprintf(stderr, "XWM: error\n");
+        fprintf(stderr, "AHWM: error\n");
         retval = False;
     } else if (cntxt->context_selector & SEL_ISSHAPED) {
         if ( (retval = CHECK_BOOL(cntxt->context_value)) == False) {
-            fprintf(stderr, "XWM: error\n");
+            fprintf(stderr, "AHWM: error\n");
         }
     } else if (cntxt->context_selector & SEL_INWORKSPACE) {
         if ( (retval = CHECK_INT(cntxt->context_value)) == False) {
-            fprintf(stderr, "XWM: error\n");
+            fprintf(stderr, "AHWM: error\n");
         }
     } else if (cntxt->context_selector & SEL_WINDOWNAME) {
         if ( (retval = CHECK_STRING(cntxt->context_value)) == False) {
-            fprintf(stderr, "XWM: error\n");
+            fprintf(stderr, "AHWM: error\n");
         }
     } else if (cntxt->context_selector & SEL_WINDOWCLASS) {
         if ( (retval = CHECK_STRING(cntxt->context_value)) == False) {
-            fprintf(stderr, "XWM: error\n");
+            fprintf(stderr, "AHWM: error\n");
         }
     } else if (cntxt->context_selector & SEL_WINDOWINSTANCE) {
         if ( (retval = CHECK_STRING(cntxt->context_value)) == False) {
-            fprintf(stderr, "XWM: error\n");
+            fprintf(stderr, "AHWM: error\n");
         }
     } else {
         retval = False;
@@ -365,7 +365,7 @@ static Bool option_check_helper(type *typ, int expected, char *tok)
         } else if (expected == STRING) {
             s = "string";
         }
-        fprintf(stderr, "XWM: %s not given %s value\n", tok, s);
+        fprintf(stderr, "AHWM: %s not given %s value\n", tok, s);
         return False;
     }
 }
@@ -400,7 +400,7 @@ static Bool type_check_option(option *opt)
             if (opt->option_value->type_type == FOCUS_ENUM) {
                 retval = True;
             } else {
-                fprintf(stderr, "XWM:  Unknown value for FocusPolicy\n");
+                fprintf(stderr, "AHWM:  Unknown value for FocusPolicy\n");
                 retval = False;
             }
             break;
@@ -418,7 +418,7 @@ static Bool type_check_option(option *opt)
             break;
         case CYCLEBEHAVIOUR:
             if (opt->option_value->type_type != CYCLE_ENUM) {
-                fprintf(stderr, "XWM:  Unknown value for CycleBehaviour\n");
+                fprintf(stderr, "AHWM:  Unknown value for CycleBehaviour\n");
                 retval = False;
             } else {
                 retval = True;
@@ -454,7 +454,7 @@ static Bool type_check_option(option *opt)
             break;
         case TITLEPOSITION:
             if (opt->option_value->type_type != POSITION_ENUM) {
-                fprintf(stderr, "XWM:  Unknown value for TitlePosition\n");
+                fprintf(stderr, "AHWM:  Unknown value for TitlePosition\n");
                 retval = False;
             } else {
                 retval = True;
@@ -465,7 +465,7 @@ static Bool type_check_option(option *opt)
                                          BOOLEAN, "KeepTransientsOnTop");
             break;
         default:
-            fprintf(stderr, "XWM: unknown option type found...\n");
+            fprintf(stderr, "AHWM: unknown option type found...\n");
             retval = False;
             break;
     }
@@ -1041,12 +1041,12 @@ key_fn fn_table[] = {
 /* 13 */    move_client,
 /* 14 */    resize_client,
 /* 15 */    NULL, /* non-interactive move/resize, must implement */
-/* 16 */    xwm_quit,
+/* 16 */    ahwm_quit,
 /* 17 */    NULL, /* beep */
 /* 18 */    invoke,
 /* 19 */    NULL, /* expansion for menu system */
 /* 20 */    NULL, /* refresh/reset */
-/* 21 */    xwm_restart,
+/* 21 */    ahwm_restart,
 };
 
 static void globally_bind(line *lp)
@@ -1090,25 +1090,25 @@ static void globally_unbind(line *lp)
 }
 
 /*
- * When the user has no .xwmrc, we try to create one and pop up an
+ * When the user has no .ahwmrc, we try to create one and pop up an
  * explanatory message.
  */
 
-static int no_config(char *xwmrc_path)
+static int no_config(char *ahwmrc_path)
 {
     extern FILE *yyin;
     int i;
 
-    fprintf(stderr, "XWM: Creating default configuration file\n");
-    yyin = fopen(xwmrc_path, "w+b");
+    fprintf(stderr, "AHWM: Creating default configuration file\n");
+    yyin = fopen(ahwmrc_path, "w+b");
     if (yyin == NULL) {
         fprintf(stderr,
-                "XWM: Could not create default configuration file: %s\n",
+                "AHWM: Could not create default configuration file: %s\n",
                 strerror(errno));
         return 0;
     }
-    for (i = 0; i < DEFAULT_XWMRC_NLINES; i++) {
-        fprintf(yyin, "%s\n", default_xwmrc[i]);
+    for (i = 0; i < DEFAULT_AHWMRC_NLINES; i++) {
+        fprintf(yyin, "%s\n", default_ahwmrc[i]);
     }
     fseek(yyin, 0, SEEK_SET);
     return 1;

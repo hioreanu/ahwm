@@ -72,7 +72,7 @@ DIGIT [0-9]
         } else if (c == '\n') {
             line_number++;
         } else {
-            fprintf(stderr, "XWM: unterminated C-style comment on line %d\n",
+            fprintf(stderr, "AHWM: unterminated C-style comment on line %d\n",
                     line_number);
             break;
         }
@@ -207,10 +207,10 @@ Define { return TOK_DEFINE; }
 [ \v\t\r]+ {;}
 
 [a-zA-Z_][-a-zA-Z0-9]* {
-    fprintf(stderr, "XWM: Unrecognized keyword '%s' on line %d\n",
+    fprintf(stderr, "AHWM: Unrecognized keyword '%s' on line %d\n",
             yytext, line_number);
 }
-. { fprintf(stderr, "XWM: Unrecognized character '%s' on line %d\n",
+. { fprintf(stderr, "AHWM: Unrecognized character '%s' on line %d\n",
             yytext, line_number); }
 
 %%

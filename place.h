@@ -37,7 +37,8 @@
 /*
  * First, we try each of the four corners.  Then we put it where it
  * would have the least amount of overlap with the other windows on
- * screen.
+ * screen.  Algorithm is not "perfect" but is fast and has acceptable
+ * results.
  */
 
 void place(client_t *client);

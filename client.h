@@ -27,7 +27,7 @@
 
 #include "config.h"
 
-#include "xwm.h"
+#include "ahwm.h"
 
 /* height of the titlebar, should probably be configurable */
 //#define TITLE_HEIGHT 15

@@ -29,7 +29,7 @@
 #include <X11/cursorfont.h>
 
 #include "cursor.h"
-#include "xwm.h"
+#include "ahwm.h"
 
 Cursor cursor_normal = None;
 Cursor cursor_moving = None;

@@ -63,32 +63,32 @@
 #undef HAVE_SYSERRLIST
 
 #ifndef HAVE_SYS_WAIT_H
-# error "XWM needs porting to your system (no sys/wait.h); please contact the author."
+# error "AHWM needs porting to your system (no sys/wait.h); please contact the author."
 #endif
 
 #ifndef HAVE_UNISTD_H
-# error "XWM needs porting to your system (no unistd.h); please contact the author."
+# error "AHWM needs porting to your system (no unistd.h); please contact the author."
 #endif
 
 #ifndef HAVE_FCNTL_H
-# error "XWM needs porting to your system (no fcntl.h); please contact the author."
+# error "AHWM needs porting to your system (no fcntl.h); please contact the author."
 #endif
 
 #ifndef HAVE_LIMITS_H
-# error "XWM needs porting to your system (need PATH_MAX in limits.h); please contact the author."
+# error "AHWM needs porting to your system (need PATH_MAX in limits.h); please contact the author."
 #endif
 
 /* Could try to work around this, but I want to see every line
  * of code in action before I put it in a distribution. */
 #ifdef SETVBUF_REVERSED
-# error "XWM needs porting to your system (setvbuf reversed); please contact the author."
+# error "AHWM needs porting to your system (setvbuf reversed); please contact the author."
 #endif
 
 #ifndef HAVE_SELECT
 # ifdef HAVE_POLL
-#  error "XWM needs porting to your system (use poll instead of select); please contact the author."
+#  error "AHWM needs porting to your system (use poll instead of select); please contact the author."
 # else
-#  error "XWM needs porting to your system (no poll or select); please contact the author."
+#  error "AHWM needs porting to your system (no poll or select); please contact the author."
 # endif
 #endif
 
@@ -105,6 +105,6 @@
 # ifdef HAVE_SYSERRLIST
 #  define HOMEGROWN_STRERROR
 # else
-#  error "XWM needs porting to your system (no strerror); please contact the author."
+#  error "AHWM needs porting to your system (no strerror); please contact the author."
 # endif
 #endif

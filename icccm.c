@@ -30,7 +30,7 @@
 #include <stdio.h>
 
 #include "compat.h"
-#include "xwm.h"
+#include "ahwm.h"
 #include "icccm.h"
 #include "debug.h"
 
@@ -182,7 +182,7 @@ void icccm_selection_request(XSelectionRequestEvent *xevent)
 
 static void failure(char *selection)
 {
-    fprintf(stderr, "XWM: "
+    fprintf(stderr, "AHWM: "
             "It appears that some other window is the owner of the '%s'\n"
             "selection on this screen.  This usually means that another\n"
             "window manager is running.\n"

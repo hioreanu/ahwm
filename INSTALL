@@ -3,17 +3,17 @@ To install, all you need to do is:
 ./configure
 make
 sudo make install
-man xwm
+man ahwm
 
 The configure script has no special options.  If one of the above steps
 fails, contact me (Alex Hioreanu, hioreanu+ahwm@uchicago.edu).
 
 If you do not have root access to the machine on which you wish to install
-xwm, you can use './configure --prefix=$HOME' instead of './configure'; the
-'make install' step only installs the xwm binary and a couple of man pages.
+AHWM, you can use './configure --prefix=$HOME' instead of './configure'; the
+'make install' step only installs the AHWM binary and a couple of man pages.
 
 After you've installed the program, you will need to change your window
-manager to be XWM.  The way this is done wholly depends on how your
+manager to be AHWM.  The way this is done wholly depends on how your
 system is set up; use one of the following guidelines:
 
 1. If you use XDM (or any XDM clone which provides a graphical login prompt),
@@ -24,7 +24,7 @@ system is set up; use one of the following guidelines:
 
    Change this line to read:
 
-   exec xwm
+   exec ahwm
 
 3. If you use 'startx' or 'xinit' to start up X after you have logged in
    via a textual login prompt, you will probably need to edit the file
@@ -39,7 +39,7 @@ system is set up; use one of the following guidelines:
 
    exec "$WINDOW_MANAGER"
 
-   You can change this line to read "exec xwm" in order to use XWM, but
+   You can change this line to read "exec ahwm" in order to use AHWM, but
    this will break your graphical-window-manager-chooser-utility.  If you
    don't want to break your graphical-window-manager-chooser-utility,
    you're on your own.

@@ -37,7 +37,7 @@ void kill_nicely(XEvent *xevent, arglist *ignored)
 
     client = client_find(xevent->xbutton.window);
     if (client == NULL) {
-        fprintf(stderr, "XWM: Unable to kill client, client not found\n");
+        fprintf(stderr, "AHWM: Unable to kill client, client not found\n");
         return;
     }
     if (client->protocols & PROTO_DELETE_WINDOW) {
@@ -56,7 +56,7 @@ void kill_with_extreme_prejudice(XEvent *xevent, arglist *ignored)
 
     client = client_find(xevent->xbutton.window);
     if (client == NULL) {
-        fprintf(stderr, "XWM: Unable to kill client, client not found\n");
+        fprintf(stderr, "AHWM: Unable to kill client, client not found\n");
         return;
     }
     debug(("\tCommiting windicide\n"));

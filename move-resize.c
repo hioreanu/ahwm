@@ -41,7 +41,7 @@
 #include "client.h"
 #include "cursor.h"
 #include "event.h"
-#include "xwm.h"
+#include "ahwm.h"
 #include "malloc.h"
 #include "debug.h"
 #include "focus.h"
@@ -298,11 +298,11 @@ void move_client(XEvent *xevent, arglist *ignored)
         client = focus_current;
         have_mouse = 0;
     } else {
-        fprintf(stderr, "XWM: Error, move_client called incorrectly\n");
+        fprintf(stderr, "AHWM: Error, move_client called incorrectly\n");
         return;
     }
     if (client == NULL) {
-        fprintf(stderr, "XWM: Not moving a non-client\n");
+        fprintf(stderr, "AHWM: Not moving a non-client\n");
         debug(("Ungrabbing pointer 4\n"));
         XUngrabPointer(dpy, CurrentTime);
         return;
@@ -364,7 +364,7 @@ void move_client(XEvent *xevent, arglist *ignored)
                 compress_motion(xevent);
                 if (client == NULL) {
                     fprintf(stderr,
-                            "XWM: error, null client while moving\n");
+                            "AHWM: error, null client while moving\n");
                     action = DONE;
                     break;
                 }
@@ -885,7 +885,7 @@ void resize_client(XEvent *xevent, arglist *al)
                 compress_motion(xevent);
 
                 if (client == NULL) {
-                    fprintf(stderr, "XWM: error, null client in resize\n");
+                    fprintf(stderr, "AHWM: error, null client in resize\n");
                     action = RESET;
                     break;
                 }
@@ -897,7 +897,7 @@ void resize_client(XEvent *xevent, arglist *al)
             case ButtonRelease:
                 if (have_mouse && xevent->xbutton.button == init_button) {
                     if (client == NULL) {
-                        fprintf(stderr, "XWM: error, null client in resize\n");
+                        fprintf(stderr, "AHWM: error, null client in resize\n");
                         action = RESET;
                         break;
                     }

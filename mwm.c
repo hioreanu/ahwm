@@ -27,7 +27,7 @@
 
 #include <X11/Xlib.h>
 
-#include "xwm.h"
+#include "ahwm.h"
 #include "mwm.h"
 #include "MwmUtil.h"
 #include "client.h"
@@ -70,7 +70,7 @@ void mwm_apply(client_t *client)
            hints->flags & MWM_FLAGS_INPUT_MODE ? "input_mode " : "",
            hints->flags & MWM_FLAGS_STATUS ? "status " : ""));
 
-    /* XWM does not have a window menu, so we ignore the "functions"
+    /* AHWM does not have a window menu, so we ignore the "functions"
      * member.  The only decoration we have is a titlebar, so that's
      * the only 'decorations' member we don't ignore */
 

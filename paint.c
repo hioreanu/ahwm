@@ -26,7 +26,7 @@
 #include "config.h"
 
 #include "paint.h"
-#include "xwm.h"
+#include "ahwm.h"
 #include "client.h"
 #include "debug.h"
 #include "malloc.h"
@@ -108,8 +108,8 @@ void paint_init()
 {
     colors = Malloc(sizeof(unsigned long) * NCOLORS);
     if (colors == NULL) {
-        perror("XWM: Failed to allocate default colors: malloc:");
-        fprintf(stderr, "XWM: This is a fatal error, quitting.\n");
+        perror("AHWM: Failed to allocate default colors: malloc:");
+        fprintf(stderr, "AHWM: This is a fatal error, quitting.\n");
         exit(1);
     }
 
@@ -134,7 +134,7 @@ void paint_add_button(char *image, Bool left)
 
     b = malloc(sizeof(button));
     if (b == NULL) {
-        perror("XWM: add_button: malloc");
+        perror("AHWM: add_button: malloc");
         return;
     }
     b->next = NULL;
@@ -233,7 +233,7 @@ static unsigned long calc(unsigned long orig, XColor exact, long offset,
     }
     if (XAllocColor(dpy, DefaultColormap(dpy, scr), &usable) == 0) {
         fprintf(stderr,
-                "XWM: Could not allocate %shighlight of color \"%s\"\n",
+                "AHWM: Could not allocate %shighlight of color \"%s\"\n",
                 (offset < 0 ? "dark " : ""),
                 color_text);
         return orig;
@@ -266,7 +266,7 @@ void paint_calculate_colors(client_t *client, char *normal,
     if (normal != NULL) {
         if (XAllocNamedColor(dpy, DefaultColormap(dpy, scr), normal,
                              &usable, &exact) == 0) {
-            fprintf(stderr, "XWM: Could not get color \"%s\"\n", normal);
+            fprintf(stderr, "AHWM: Could not get color \"%s\"\n", normal);
         } else {
             new_dquad[NORMAL] = usable.pixel;
             xc_normal = exact;
@@ -275,7 +275,7 @@ void paint_calculate_colors(client_t *client, char *normal,
     if (focused != NULL) {
         if (XAllocNamedColor(dpy, DefaultColormap(dpy, scr), focused,
                              &usable, &exact) == 0) {
-            fprintf(stderr, "XWM: Could not get color \"%s\"\n", focused);
+            fprintf(stderr, "AHWM: Could not get color \"%s\"\n", focused);
         } else {
             new_dquad[FOCUSED] = usable.pixel;
             xc_focused = exact;
@@ -284,7 +284,7 @@ void paint_calculate_colors(client_t *client, char *normal,
     if (text != NULL) {
         if (XAllocNamedColor(dpy, DefaultColormap(dpy, scr), text,
                              &usable, &exact) == 0) {
-            fprintf(stderr, "XWM: Could not get color \"%s\"\n", text);
+            fprintf(stderr, "AHWM: Could not get color \"%s\"\n", text);
         } else {
             new_dquad[TEXT] = usable.pixel;
         }
@@ -292,7 +292,7 @@ void paint_calculate_colors(client_t *client, char *normal,
     if (focused_text != NULL) {
         if (XAllocNamedColor(dpy, DefaultColormap(dpy, scr), focused_text,
                              &usable, &exact) == 0) {
-            fprintf(stderr, "XWM: Could not get color \"%s\"\n", focused_text);
+            fprintf(stderr, "AHWM: Could not get color \"%s\"\n", focused_text);
         } else {
             new_dquad[FOCUSED_TEXT] = usable.pixel;
         }
@@ -310,7 +310,7 @@ void paint_calculate_colors(client_t *client, char *normal,
     /* allocate another entry */
     tmp = Realloc(colors, (nallocated + 1) * NCOLORS * sizeof(unsigned long));
     if (tmp == NULL) {
-        perror("XWM:  realloc:");
+        perror("AHWM:  realloc:");
         client->color_index = 0;
         return;
     }
@@ -361,7 +361,7 @@ void paint_titlebar(client_t *client)
     debug(("index = %d, nallocated = %d\n", ndx, nallocated));
     if (ndx >= nallocated) {
         fprintf(stderr,
-                "XWM:  Assertion failed: client->color_index >= nallocated\n");
+                "AHWM:  Assertion failed: client->color_index >= nallocated\n");
         /* *client most likely corrupted, but attempt to continue anyway */
         ndx = 0;
     }
@@ -450,7 +450,7 @@ void paint_titlebar(client_t *client)
             tmp_segptr = Realloc(button_hilights,
                                  (nbutton_hilights + 2) * sizeof(XSegment));
             if (tmp_segptr == NULL) {
-                perror("XWM: paint_titlebar: realloc");
+                perror("AHWM: paint_titlebar: realloc");
                 continue;
             } else {
                 button_hilights = tmp_segptr;
@@ -458,7 +458,7 @@ void paint_titlebar(client_t *client)
             tmp_segptr = Realloc(button_lolights,
                                  (nbutton_hilights + 2) * sizeof(XSegment));
             if (tmp_segptr == NULL) {
-                perror("XWM: paint_titlebar: realloc");
+                perror("AHWM: paint_titlebar: realloc");
                 continue;
             } else {
                 button_lolights = tmp_segptr;
@@ -498,7 +498,7 @@ void paint_titlebar(client_t *client)
             tmp_segptr = Realloc(button_hilights,
                                  (nbutton_hilights + 2) * sizeof(XSegment));
             if (tmp_segptr == NULL) {
-                perror("XWM: paint_titlebar: realloc");
+                perror("AHWM: paint_titlebar: realloc");
                 continue;
             } else {
                 button_hilights = tmp_segptr;
@@ -506,7 +506,7 @@ void paint_titlebar(client_t *client)
             tmp_segptr = Realloc(button_lolights,
                                  (nbutton_hilights + 2) * sizeof(XSegment));
             if (tmp_segptr == NULL) {
-                perror("XWM: paint_titlebar: realloc");
+                perror("AHWM: paint_titlebar: realloc");
                 continue;
             } else {
                 button_lolights = tmp_segptr;

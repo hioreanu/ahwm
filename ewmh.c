@@ -31,7 +31,7 @@
 #include <stdio.h>
 
 #include "compat.h"
-#include "xwm.h"
+#include "ahwm.h"
 #include "ewmh.h"
 #include "malloc.h"
 #include "debug.h"
@@ -180,8 +180,8 @@ void ewmh_init()
 
     l = malloc(4 * nworkspaces * sizeof(long));
     if (l == NULL) {
-        perror("XWM: ewmh_init: malloc");
-        fprintf(stderr, "XWM: this is a fatal error, quitting.\n");
+        perror("AHWM: ewmh_init: malloc");
+        fprintf(stderr, "AHWM: this is a fatal error, quitting.\n");
         exit(1);
     }
     _NET_CURRENT_DESKTOP = XInternAtom(dpy, "_NET_CURRENT_DESKTOP", False);
@@ -335,7 +335,7 @@ void ewmh_init()
                     (unsigned char *)&ewmh_window, 1);
     XChangeProperty(dpy, ewmh_window, _NET_WM_NAME,
                     UTF8_STRING, 8, PropModeReplace,
-                    (unsigned char *)"XWM", 4);
+                    (unsigned char *)"AHWM", 4);
     XChangeProperty(dpy, root_window, _WIN_DESKTOP_BUTTON_PROXY,
                     XA_CARDINAL, 32, PropModeReplace,
                     (unsigned char *)&ewmh_window, 1);
@@ -802,7 +802,7 @@ void ewmh_to_desktop(client_t *client)
     }
     if (stacking_desktop_window != None
         || stacking_desktop_frame != None) {
-        fprintf(stderr, "XWM: Client '%s' wants to be a desktop,\n"
+        fprintf(stderr, "AHWM: Client '%s' wants to be a desktop,\n"
                 "but you already have a desktop window.\n", client->name);
     } else {
         stacking_desktop_window = client->window;
@@ -1131,14 +1131,14 @@ void ewmh_client_list_add(client_t *client)
         if (ewmh_client_list == NULL) {
             ewmh_client_list = Malloc((nclients + 1) * sizeof(Window));
             if (ewmh_client_list == NULL) {
-                perror("XWM: malloc EWMH client list");
+                perror("AHWM: malloc EWMH client list");
                 return;
             }
             nwindows_allocated = nclients + 1;
         } else {
             tmp = Realloc(ewmh_client_list, 2*nwindows_allocated*sizeof(Window));
             if (tmp == NULL) {
-                perror("XWM: realloc EWMH client list");
+                perror("AHWM: realloc EWMH client list");
                 return;
             }
             ewmh_client_list = tmp;

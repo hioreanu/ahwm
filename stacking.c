@@ -39,7 +39,7 @@
  * tried to do this with linked lists, but I was not happy with the
  * performance - we have to convert to arrays of windows anyway to use
  * XRestackWindows and ewmh requires arrays of windows.  In addition,
- * the list implementation was very ugly and this is elegant IMHO.
+ * the list implementation was very ugly and this is more elegant IMHO.
  * 
  * "frames" contains the frame windows, which we use for XRestackWindows()
  * 
@@ -111,7 +111,7 @@ void stacking_add(client_t *client)
     int i;
     
     if (grow() == False) {
-        perror("XWM: stacking_add");
+        perror("AHWM: stacking_add: grow");
         client->stacking = -1;
     }
 
@@ -327,14 +327,14 @@ static void restack(client_t *client, Bool move_up)
     }
     /* I want a bug report if you see either of these */
     if (i > nused - 1) {
-        fprintf(stderr, "XWM: restack: assertion failed: i=%d, nused=%d\n",
+        fprintf(stderr, "AHWM: restack: assertion failed: i=%d, nused=%d\n",
                 i, nused);
         fprintf(stderr, "name = %s\n", client->name);
         return;
     }
     if (client != clients[i]) {
         fprintf(stderr,
-                "XWM: restack: assertion failed: clients != clients[i]\n");
+                "AHWM: restack: assertion failed: clients != clients[i]\n");
     }
 
     if (move_up) c = 0;
