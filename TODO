@@ -1,4 +1,5 @@
 TODO before release:
+- implement MoveResize()
 - resize and restart bound to same key
 - placement, use corner with least overlap first
 - _NET_WORKAREA and STRUT

@@ -1,0 +1,93 @@
+AHWM is written to cooperate with KDE and the next versions of GNOME.
+
+KDE is made up of a number of distinct programs.  You can run these programs
+separately.  To "run KDE," you must decide which parts of KDE you want.
+This discussion applies to KDE 2.2, but newer versions of KDE are probably
+very similar.
+
+"kwin" is the KDE window manager.  You cannot run both kwin and ahwm
+at the same time since you can only use one window manager at a time.
+To run kwin, see the instructions for changing your window manager in the
+INSTALL file and use "startkde" instead of "ahwm."  NB, you will probably
+not be very happy if you run just "kwin" but you should instead run the
+"startkde" program which starts up a bunch of other programs in addition
+to kwin.
+
+"kicker" is the KDE taskbar (the thing with the "K" menu).  This is
+probably the most visible component of KDE.  You can use this with ahwm
+if you wish.  Please note that the KDE 2.2 version of kicker has some
+problems running under AHWM: most notably, it may reposition itself
+off-screen when you move it from the bottom of the screen to the top.
+This version of kicker has these problems running under all window
+managers I've tried except for kwin, so it will probably be fixed soon.
+
+"kdesktop" is the KDE desktop window.  This allows you to have icons on
+your desktop, a menu when you click on the desktop, and various background
+wallpapers on your desktop.  You can use this with ahwm if you wish.
+This application has no known issues running under AHWM.
+
+"kpager" is the KDE pager (which allows you to visually change workspaces
+and focus windows).  You can use this with ahwm if you wish.  Please note
+that the KDE 2.2 version of kicker has some problems running under AHWM:
+most notably, it will sometimes not display a miniwindow and will not
+move a miniwindow when the window it represents changes its workspace.
+I have been unable to determine the cause of these problems.
+
+All three of the above programs set various hints, among them asking
+to be omnipresent (visible on all workspaces).  If you want, you can
+override these hints and only have one workspace that has KDE in it by
+putting this in your .xwmrc:
+
+WindowName "KDE Desktop" {
+    Omnipresent is! False;
+    DefaultWorkspace is! 3;
+}
+WindowInstance "kicker" {
+    Omnipresent is! False;
+    DefaultWorkspace is! 3;
+}
+WindowInstance "kpager" {
+    Omnipresent is! False;
+    DefaultWorkspace is! 3;
+}
+
+Using this idea, you can have one workspace running KDE, one running
+GNOME, and so on.  See the AHWM manuals for more information.
+
+In addition, the KDE 2.2 version of "kpager" does not remember its size and
+position across invocations and will sometimes start up with an odd size or
+position.  This is a problem because "kpager" sets a hint which indicates
+that it is not to be moved or resized.  You can enable moving and resizing
+by overriding this hint as follows:
+
+WindowInstance "kpager" {
+    Sticky is! False;
+}
+
+So, in short to use AHWM, install AHWM as in the INSTALL file, and make your
+.xinitrc or .xsession look like this:
+
+kicker > /dev/null 2>&1
+kpager > /dev/null 2>&1
+ahwm
+
+The "> /dev/null 2>&1" stuff redirects all the output of the these KDE
+applications to nowhere.  I do this because these programs are extremely
+noisy - they produce output that is meaningful only to the programs'
+authors.  Do not redirect the output of AHWM:  AHWM only outputs something
+if there is a serious problem that you need to know about.
+
+If you also want desktop icons (which I don't like), use this instead:
+
+kdesktop > /dev/null 2>&1
+kicker > /dev/null 2>&1
+kpager > /dev/null 2>&1
+ahwm
+
+You can also try this instead, to see which one has better performance or
+behaviour (they should be pretty much the same):
+
+kdesktop --x-root > /dev/null 2>&1
+kicker > /dev/null 2>&1
+kpager > /dev/null 2>&1
+ahwm
