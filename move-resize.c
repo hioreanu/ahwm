@@ -35,6 +35,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <X11/keysym.h>
+#include <X11/Xutil.h>
 
 #include "compat.h"
 #include "move-resize.h"
@@ -266,6 +267,72 @@ void resize_maximize_horizontally(XEvent *xevent, arglist *ignored)
     client = client_find(xevent->xbutton.window);
     if (client == NULL) return;
     resize_maximize_client(client, MAX_HORIZ, MAX_TOGGLE);
+}
+
+void move_resize(XEvent *xevent, arglist *al)
+{
+    client_t *client;
+    char *user_geom;
+    int x, y, width, height, gravity, mask;
+    XSizeHints xsh, *xsh_p;
+    static char def_geom[80];
+
+    client = client_find(xevent->xany.window);
+    if (client == NULL) return;
+    user_geom = al->arglist_arg->type_value.stringval;
+
+    /* we fill in a string for the "def_geom" parameter so XWMGeometry()
+     * knows the width of the window and doesn't reset it to the minimum */
+    x = client->x;
+    y = client->y;
+    width = client->width;
+    height = client->height;
+    if (client->titlebar != None) {
+        height -= TITLE_HEIGHT;
+    }
+    height /= get_height_resize_inc(client);
+    width /= get_width_resize_inc(client);
+    snprintf(def_geom, 80, "%dx%d+%d+%d", width, height, x, y);
+    debug(("def_geom = %s\n", def_geom));
+
+    /* XWMGeometry() loses when you pass it NULL for size hints */
+    if (client->xsh != NULL) {
+        xsh_p = client->xsh;
+    } else {
+        xsh.flags = 0;
+        xsh_p = &xsh;
+    }
+    
+    mask = XWMGeometry(dpy, scr, user_geom, def_geom, 0, xsh_p,
+                       &x, &y, &width, &height, &gravity);
+    debug(("Set: %s %s %s %s %s %s; x = %d, y = %d, width = %d, height = %d\n",
+           mask & XValue ? "XValue" : "",
+           mask & YValue ? "YValue" : "",
+           mask & WidthValue ? "WidthValue" : "",
+           mask & HeightValue ? "HeightValue" : "",
+           mask & XNegative ? "XNegative" : "",
+           mask & YNegative ? "YNegative" : "",
+           x, y, width, height));
+    if (client->titlebar != None) {
+        if (mask & YNegative) {
+            y -= TITLE_HEIGHT;
+        }
+        height += TITLE_HEIGHT;
+    }
+    if (mask & XValue) {
+        client->x = x;
+    }
+    if (mask & YValue) {
+        client->y = y;
+    }
+    if (mask & WidthValue) {
+        client->width = width;
+    }
+    if (mask & HeightValue) {
+        client->height = height;
+    }
+    XMoveResizeWindow(dpy, client->frame, client->x, client->y,
+                      client->width, client->height);
 }
 
 /*

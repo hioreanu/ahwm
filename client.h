@@ -30,6 +30,7 @@
 #include "ahwm.h"
 
 /* height of the titlebar, should probably be configurable */
+/* FIXME */
 //#define TITLE_HEIGHT 15
 extern int TITLE_HEIGHT;
 

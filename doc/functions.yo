@@ -126,6 +126,12 @@ not resized.
 tt(MoveResize("100x200+300+400")) nl()
 This has the effect of combining the above two examples; the window is
 both moved and resized.
+
+tt(MoveResize("-0-0")) nl()
+This moves the window to the bottom-right corner of the screen, without
+changing the size of the window.  Positive positions are counted starting
+from the top and left; negative positions are counted starting from the
+bottom and right.
 function(Nop)(void)
 Do nothing.  You can bind this function to a keystroke, and then the
 keystroke will be lq()eaten+rq() by AHWM.

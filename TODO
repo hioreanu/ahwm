@@ -1,6 +1,6 @@
 TODO before release:
-- run autoscan again
 - implement MoveResize()
+- move-resize.c, current window is focus window or clicked window
 - resize and restart bound to same key
 - placement, use corner with least overlap first
 - _NET_WORKAREA and STRUT

@@ -192,7 +192,7 @@ static key_fn fn_table[] = {
 /* 12 */    keyboard_quote,
 /* 13 */    move_client,
 /* 14 */    resize_client,
-/* 15 */    NULL, /* non-interactive move/resize, must implement */
+/* 15 */    move_resize, /* non-interactive move/resize, must implement */
 /* 16 */    ahwm_quit,
 /* 17 */    NULL, /* beep */
 /* 18 */    invoke,

@@ -106,4 +106,10 @@ void resize_maximize_client(client_t *client,
                             enum max_horiz_vert hv,
                             enum max_toggle_ensure toggle_ensure);
 
+/*
+ * Non-interactive move/resize; see user manual
+ */
+
+void move_resize(XEvent *xevent, arglist *al);
+
 #endif /* MOVE_RESIZE_H */
