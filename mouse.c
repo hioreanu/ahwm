@@ -258,7 +258,7 @@ void mouse_move_client(XEvent *xevent)
         event1.xconfigure.event = client->window;
         event1.xconfigure.window = client->window;
         event1.xconfigure.x = client->x;
-        event1.xconfigure.y = client->y - TITLE_HEIGHT;
+        event1.xconfigure.y = client->y + TITLE_HEIGHT;
         event1.xconfigure.width = client->width;
         event1.xconfigure.height = client->height - TITLE_HEIGHT;
         event1.xconfigure.border_width = 0;
@@ -278,7 +278,6 @@ void mouse_move_client(XEvent *xevent)
     XUngrabKeyboard(dpy, CurrentTime);
 }
     
-
 /*
  * WARNING:  this gets really, really ugly from here on
  */
