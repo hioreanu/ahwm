@@ -46,7 +46,7 @@
 #define NTIMERS 8
 
 struct _timer_t {
-    enum { ACTIVE, FREE } state;
+    enum { FREE, ACTIVE } state;
     struct timeval tv;
     timer_fn fn;
     void *arg;
@@ -66,6 +66,7 @@ static int minimum = -1;
 
 static int in_timer_run = 0;
 
+/* FIXME: have this called */
 void timer_init()
 {
     int i;
@@ -148,7 +149,7 @@ int timer_next_time(struct timeval *tv)
     tv->tv_sec = array[minimum].tv.tv_sec - now.tv_sec;
     if (now.tv_usec > array[minimum].tv.tv_usec) {
         now.tv_usec -= 1000000;
-        tv->tv_sec++;
+        tv->tv_sec--;
     }
     tv->tv_usec = array[minimum].tv.tv_usec - now.tv_usec;
     return 1;
