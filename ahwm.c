@@ -103,7 +103,6 @@ static int tmp_error_handler(Display *dpy, XErrorEvent *error);
 static int error_handler(Display *dpy, XErrorEvent *error);
 static void scan_windows();
 static void reposition(Window w);
-static void remove_titlebars();
 static void sigterm(int signo);
 static void sigsegv(int signo);
 static void crash_handler();
@@ -323,7 +322,6 @@ int main(int argc, char **argv)
                                  | GCPlaneMask | GCSubwindowMode,
                                  &xgcv);
 
-    atexit(remove_titlebars);
     atexit(focus_save_stacks);
     signal(SIGTERM, sigterm);
     signal(SIGSEGV, sigsegv);
@@ -493,7 +491,6 @@ void ahwm_quit(XEvent *e, struct _arglist *ignored)
 void ahwm_restart(XEvent *e, struct _arglist *ignored)
 {
     focus_save_stacks();
-    remove_titlebars();
     fflush(stderr);
     fflush(stdout);
     execlp(argv0, argv0, NULL);
@@ -502,30 +499,6 @@ void ahwm_restart(XEvent *e, struct _arglist *ignored)
             "absolute pathname and the ahwm binary is not in your PATH.\n");
     fflush(stderr);
     _exit(1);
-}
-
-static void remove_titlebars()
-{
-    static int exiting = 0;
-    int i, n;
-    Window *wins, junk;
-    client_t *client;
-
-    return;
-    if (exiting == 1) _exit(1);
-    exiting = 1;
-
-    XQueryTree(dpy, root_window, &junk, &junk, &wins, &n);
-    for (i = 0; i < n; i++) {
-        client = client_find(wins[i]);
-        if (client != NULL) {
-            client_remove_titlebar(client);
-        }
-    }
-    /* 'wins' may be junk if connection already closed */
-    /* if (wins != NULL) XFree(wins); */
-    XCloseDisplay(dpy);
-    close(ConnectionNumber(dpy));
 }
 
 /*
@@ -697,7 +670,6 @@ static void crash_handler()
 
         if (ev.xany.type == ButtonPress) {
             if (ev.xbutton.window == button3) {
-                remove_titlebars();
                 execlp(argv0, argv0, NULL);
                 _exit(1);
             } else if (ev.xbutton.window == button2) {
