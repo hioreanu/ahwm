@@ -164,7 +164,7 @@ void place_least_overlap(client_t *client)
                 state |= SEEN_BOTTOM;
             } else {
                 /* seen both top and bottom */
-                A = A->next_stacking;
+                A = A->prev_stacking;
                 state &= ~(SEEN_TOP | SEEN_BOTTOM);
                 if (A == NULL) break;
             }
@@ -185,7 +185,7 @@ void place_least_overlap(client_t *client)
                     x_test = B->x + B->width;
                     state |= SEEN_RIGHT;
                 } else {
-                    B = B->next_stacking;
+                    B = B->prev_stacking;
                     state &= ~(SEEN_LEFT | SEEN_RIGHT);
                     if (B == NULL) break;
                 }
@@ -196,7 +196,7 @@ void place_least_overlap(client_t *client)
             overlap_test = 0;
             client->x = x_test;
             client->y = y_test;
-            for (C = stacking_top(); C != NULL; C = C->next_stacking) {
+            for (C = stacking_top(); C != NULL; C = C->prev_stacking) {
                 if (C->workspace == workspace_current
                     && C->state == NormalState) {
                     overlap_test += find_overlap(C, client);

@@ -49,8 +49,15 @@ void workspace_goto_bindable(XEvent *e, void *v)
 
 static Bool unmap(client_t *client, void *v)
 {
+    XSetWindowAttributes xswa;
+    
     if (client->prefs.omnipresent) {
         client->workspace = (unsigned int)v;
+        if (client->titlebar != None) {
+            xswa.background_pixel =
+                workspace_darkest_highlight[client->workspace - 1];
+            XChangeWindowAttributes(dpy, client->titlebar, CWBackPixel, &xswa);
+        }
     } else {
         XUnmapWindow(dpy, client->frame);
         debug(("\tUnmapping frame 0x%08X in workspace_goto\n",
@@ -104,58 +111,18 @@ void workspace_goto(unsigned int new_workspace)
     
     /* unmap windows in current workspace */
     focus_forall(unmap, (void *)new_workspace);
-#if 0
-    client = focus_stacks[workspace_current - 1];
-    if (client != NULL) {
-        if (client->prefs.omnipresent) {
-            client->workspace = new_workspace;
-        } else {
-            XUnmapWindow(dpy, client->frame);
-            debug(("\tUnmapping frame 0x%08X in workspace_goto\n",
-                   client->frame));
-            ewmh_client_list_remove(client);
-        }
-        tmp = client;
-        for (client = tmp->next_focus;
-             client != tmp;
-             client = client->next_focus) {
-            if (client->prefs.omnipresent) {
-                client->workspace = new_workspace;
-            } else {
-                XUnmapWindow(dpy, client->frame);
-                debug(("\tUnmapping frame 0x%08X in workspace_goto\n",
-                       client->frame));
-                ewmh_client_list_remove(client);
-            }
-        }
-    }
-#endif
+    
     workspace_current = new_workspace;
     workspace_update_color();
 
     /* map windows in new workspace */
     focus_forall(map, NULL);
-#if 0
-    client = focus_stacks[workspace_current - 1];
-    if (client != NULL) {
-        tmp = client;
-        for (client = tmp->prev_focus;
-             client != tmp;
-             client = client->prev_focus) {
-            debug(("\tRemapping 0x%08X ('%.10s')\n", client, client->name));
-            XMapWindow(dpy, client->frame);
-        }
-        debug(("\tRemapping 0x%08X ('%.10s')\n", client, client->name));
-        XMapWindow(dpy, client->frame);
-    }
-#endif
     
     XUnmapWindow(dpy, stacking_hiding_window);
     XDestroyWindow(dpy, stacking_hiding_window);
     stacking_hiding_window = None;
-    
-//    focus_current = focus_stacks[workspace_current - 1]; /* FIXME */
-    focus_ensure(event_timestamp);
+
+    focus_workspace_changed(event_timestamp);
     ewmh_current_desktop_update();
 }
 

@@ -71,14 +71,17 @@ void focus_init()
 {
     int i;
 
-    for (i = 0; i < NO_WORKSPACES; i++)
+    for (i = 0; i < NO_WORKSPACES; i++) {
         focus_contexts[i] = XUniqueContext();
+        focus_stacks[i] = NULL;
+    }
 }
 
 static focus_node *find_node(client_t *client)
 {
     focus_node *node;
 
+    if (client == NULL) return NULL;
     if (XFindContext(dpy, client->window,
                      focus_contexts[client->workspace - 1],
                      (void *)&node) != 0) {
@@ -100,6 +103,18 @@ Bool focus_forall(forall_fn fn, void *v)
     return True;
 }
 
+void focus_workspace_changed(Time timestamp)
+{
+    focus_node *n;
+    
+    n = focus_stacks[workspace_current - 1];
+    if (n == NULL)
+        focus_current = NULL;
+    else
+        focus_current = n->client;
+    focus_ensure(timestamp);
+}
+
 /*
  * This will:
  * update pointers
@@ -113,18 +128,25 @@ void focus_add(client_t *client, Time timestamp)
     int i;
     focus_node *node;
 
+    if ( (node = find_node(client)) != NULL)
+        focus_remove(client, CurrentTime);
     if (client->prefs.omnipresent) {
         node = Malloc(NO_WORKSPACES * sizeof(focus_node));
         if (node == NULL) {
             fprintf(stderr, "XWM: out of memory while focusing client\n");
             return;
         }
+        debug(("\tOmnipresent node = 0x%lx\n", node));
         for (i = 0; i < NO_WORKSPACES; i++) {
             node[i].client = client;
             focus_add_internal(&node[i], i + 1, timestamp);
         }
     } else {
         node = Malloc(sizeof(focus_node));
+        if (node == NULL) {
+            fprintf(stderr, "XWM: out of memory while focusing client\n");
+            return;
+        }
         node->client = client;
         focus_add_internal(node, client->workspace, timestamp);
     }
@@ -134,21 +156,19 @@ static void focus_add_internal(focus_node *node, int ws, Time timestamp)
 {
     focus_node *old;
 
-    focus_remove_internal(node, ws, timestamp);
     old = focus_stacks[ws - 1];
     if (old == NULL) {
-        debug(("\tsetting focus stack of workspace %d to 0x%08X ('%.10s')\n",
-               ws, node->client->window, node->client->name));
         node->next = node;
         node->prev = node;
-        focus_stacks[ws - 1] = node;
     } else {
         node->next = old;
         node->prev = old->prev;
         old->prev->next = node;
         old->prev = node;
-        focus_stacks[ws - 1] = node;
     }
+    debug(("\tSetting focus stack of workspace %d to 0x%08X ('%.10s')\n",
+           ws, node->client->window, node->client->name));
+    focus_stacks[ws - 1] = node;
     if (ws == workspace_current) {
         focus_change_current(node->client, timestamp, True);
     }
@@ -171,57 +191,72 @@ void focus_remove(client_t *client, Time timestamp)
     int i;
     focus_node *node;
 
-    node = find_node(client);
-    if (node == NULL) return;
     if (client->prefs.omnipresent) {
-        for (i = 0; i < NO_WORKSPACES; i++) {
-            focus_remove_internal(&node[i], i, timestamp);
+        for (i = NO_WORKSPACES - 1; i >= 0; i--) {
+            if (XFindContext(dpy, client->window, focus_contexts[i],
+                             (void *)&node) != 0)
+                continue;
+            debug(("\tOmnipresent, i = %d, node = 0x%lx\n\n", i, node));
+            focus_remove_internal(node, i + 1, timestamp);
         }
     } else {
-        focus_remove_internal(node, client->workspace - 1, timestamp);
+        node = find_node(client);
+        if (node == NULL) return;
+        focus_remove_internal(node, client->workspace, timestamp);
     }
     free(node);
 }
 
-/* FIXME: unhash */
 static void focus_remove_internal(focus_node *node, int ws, Time timestamp)
 {
-    focus_node *stack, *orig;
-
-    stack = orig = focus_stacks[ws - 1];
-    if (stack == NULL) return;
-    do {
-        if (stack == node) {
-            /* remove from list */
-            node->prev->next = node->next;
-            node->next->prev = node->prev;
-            /* if was focused for workspace, update workspace pointer */
-            if (focus_stacks[ws - 1] == node) {
-                debug(("\tSetting focus stack of workspace "
-                       "%d to 0x%08X ('%.10s')\n",
-                       ws, get_next(node)->client->window,
-                       get_next(node)->client->name));
-                focus_stacks[ws - 1] = get_next(node);
-            }
-            /* if only client left on workspace, set to NULL */
-            if (node->next == node) {
-                debug(("\tSetting focus stack of workspace %d to null\n",
-                       ws));
-                focus_stacks[ws - 1] = NULL;
-                node->next = NULL;
-                node->prev = NULL;
-            }
-            /* if removed was focused window, refocus now */
-            if (node->client == focus_current) {
-                focus_change_current(focus_stacks[ws - 1]->client,
-                                     timestamp, True);
-            }
-            XDeleteContext(dpy, node->client->window,
-                           focus_contexts[ws - 1]);
-            return;
+    /* remove from list */
+    node->prev->next = node->next;
+    node->next->prev = node->prev;
+    /* if was focused for workspace, update workspace pointer */
+    if (focus_stacks[ws - 1] == node) {
+        debug(("\tSetting focus stack of workspace "
+               "%d to 0x%08X ('%.10s')\n",
+               ws, get_next(node)->client->window,
+               get_next(node)->client->name));
+        focus_stacks[ws - 1] = get_next(node);
+    }
+    /* if only client left on workspace, set to NULL */
+    if (node->next == node) {
+        debug(("\tSetting focus stack of workspace %d to null\n", ws));
+        focus_stacks[ws - 1] = NULL;
+        node->next = NULL;
+        node->prev = NULL;
+    }
+    /* if removed focused window, refocus now */
+    if (node->client == focus_current && ws == workspace_current) {
+        if (focus_stacks[ws - 1] == NULL) {
+            focus_change_current(NULL, timestamp, True);
+        } else {
+            focus_change_current(focus_stacks[ws - 1]->client,
+                                 timestamp, True);
         }
-        stack = stack->next;
-    } while (stack != orig);
+    }
+    XDeleteContext(dpy, node->client->window,
+                   focus_contexts[ws - 1]);
+}
+
+/*
+ * This will:
+ * update pointers
+ * update the focus stack
+ * update the clients' titlebars 
+ * call XSetInputFocus
+ */
+
+void focus_set(client_t *client, Time timestamp)
+{
+    focus_node *node, *old;
+
+    node = find_node(client);
+    old = find_node(focus_current);
+    focus_set_internal(node, timestamp, True);
+    if (old != NULL && node != NULL)
+        permute(old, node);
 }
 
 /*
@@ -265,25 +300,6 @@ static void focus_set_internal(focus_node *node, Time timestamp,
         p = p->next;
     } while (p != focus_stacks[node->client->workspace - 1]);
     fprintf(stderr, "XWM: client not found on focus list, shouldn't happen\n");
-}
-
-/*
- * This will:
- * update pointers
- * update the focus stack
- * update the clients' titlebars 
- * call XSetInputFocus
- */
-
-void focus_set(client_t *client, Time timestamp)
-{
-    focus_node *node, *old;
-
-    node = find_node(client);
-    old = find_node(focus_current);
-    focus_set_internal(node, timestamp, True);
-    if (old != NULL && node != NULL)
-        permute(old, node);
 }
 
 /*
@@ -367,25 +383,6 @@ static void focus_change_current(client_t *new, Time timestamp,
     XFlush(dpy);
 }
 
-#ifdef DEBUG
-void dump_focus_list()
-{
-    client_t *client, *orig;
-
-    orig = client = focus_current;
-
-    printf("STACK: ");
-    do {
-        if (client == NULL) break;
-        printf("\t'%s'\n", client->name);
-        client = client->next_focus;
-    } while (client != orig);
-    printf("\n");
-}
-#else
-#define dump_focus_list() /* */
-#endif
-
 /*
  * After extensive experimentation, I determined that this is the best
  * way for this function to behave.
@@ -436,10 +433,9 @@ void focus_alt_tab(XEvent *xevent, void *v)
     }
     debug(("\tEntering alt-tab\n"));
     in_alt_tab = True;
-    orig_focus = find_node(focus_current);
+    orig_focus = focus_stacks[workspace_current - 1];
     debug(("\torig_focus = '%s'\n",
            orig_focus ? orig_focus->client->name : "NULL"));
-    dump_focus_list();
     action_keycode = xevent->xkey.keycode;
     keycode_Alt_L = XKeysymToKeycode(dpy, XK_Alt_L);
     keycode_Alt_R = XKeysymToKeycode(dpy, XK_Alt_R);
@@ -451,7 +447,7 @@ void focus_alt_tab(XEvent *xevent, void *v)
         switch (xevent->type) {
             case KeyPress:
                 if (xevent->xkey.keycode == action_keycode) {
-                    node = find_node(focus_current);
+                    node = focus_stacks[workspace_current - 1];
                     if (xevent->xkey.state & ShiftMask) {
                         node = get_prev(node);
                     } else {
@@ -479,7 +475,7 @@ void focus_alt_tab(XEvent *xevent, void *v)
         if (state == CONTINUE) event_get(ConnectionNumber(dpy), xevent);
     }
 
-    node = find_node(focus_current);
+    node = focus_stacks[workspace_current - 1];
     if (state != QUIT && node != NULL && orig_focus != NULL) {
         permute(orig_focus, node);
     }
@@ -499,7 +495,6 @@ void focus_alt_tab(XEvent *xevent, void *v)
     
     debug(("\tfocus_current = '%.10s'\n",
            focus_current ? focus_current->name : "NULL"));
-    dump_focus_list();
     debug(("\tLeaving alt-tab\n"));
 }
 

@@ -234,6 +234,7 @@ int main(int argc, char **argv)
     frame_context = XUniqueContext();
     title_context = XUniqueContext();
 
+    focus_init();
     cursor_init();
     icccm_init();
     ewmh_init();

@@ -64,6 +64,8 @@ Bool focus_forall(forall_fn fn, void *);
  */
 void focus_ensure(Time);
 
+void focus_workspace_changed(Time);
+
 /*
  * A function to bind to a key which behaves similarly to the Alt-Tab
  * action in Microsoft Windows.  This behaves like in Windows because
