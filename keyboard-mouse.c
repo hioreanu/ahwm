@@ -18,7 +18,7 @@
 #include <string.h>
 #include <ctype.h>
 
-#include "keyboard.h"
+#include "keyboard-mouse.h"
 #include "client.h"
 #include "malloc.h"
 #include "workspace.h"

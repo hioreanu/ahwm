@@ -31,32 +31,31 @@ clean:
 
 # DO NOT DELETE
 
-client.o: client.h xwm.h workspace.h keyboard.h mouse.h cursor.h focus.h
-client.o: event.h malloc.h debug.h
+client.o: client.h xwm.h workspace.h keyboard-mouse.h cursor.h focus.h
+client.o: event.h malloc.h debug.h ewmh.h move-resize.h
 colormap.o: colormap.h client.h xwm.h
 cursor.o: cursor.h xwm.h
 debug.o: debug.h
 error.o: error.h xwm.h
-event.o: xwm.h event.h client.h focus.h workspace.h keyboard.h mouse.h xev.h
+event.o: xwm.h event.h client.h focus.h workspace.h keyboard-mouse.h xev.h
 event.o: error.h malloc.h move-resize.h debug.h ewmh.h
-ewmh.o: xwm.h ewmh.h client.h malloc.h debug.h
-focus.o: focus.h client.h xwm.h workspace.h debug.h event.h
+ewmh.o: xwm.h ewmh.h client.h malloc.h debug.h focus.h workspace.h
+focus.o: focus.h client.h xwm.h workspace.h debug.h event.h ewmh.h
 icccm.o: xwm.h icccm.h
-keyboard-test.o: keyboard.h client.h xwm.h
-keyboard.o: keyboard.h client.h xwm.h malloc.h
+keyboard-mouse.o: keyboard-mouse.h client.h xwm.h malloc.h workspace.h
+keyboard-mouse.o: debug.h event.h focus.h cursor.h
 kill.o: kill.h client.h xwm.h event.h debug.h
 malloc.o: malloc.h
-mouse.o: mouse.h client.h xwm.h move-resize.h cursor.h malloc.h
 move-resize.o: move-resize.h client.h xwm.h cursor.h event.h malloc.h debug.h
-workspace.o: workspace.h client.h xwm.h focus.h event.h debug.h
+workspace.o: workspace.h client.h xwm.h focus.h event.h debug.h ewmh.h
 xev.o: malloc.h
-xwm.o: xwm.h event.h client.h keyboard.h focus.h workspace.h cursor.h mouse.h
+xwm.o: xwm.h event.h client.h keyboard-mouse.h focus.h workspace.h cursor.h
 xwm.o: move-resize.h error.h kill.h icccm.h ewmh.h
 client.o: xwm.h
 colormap.o: client.h xwm.h
 ewmh.o: client.h xwm.h
 focus.o: client.h xwm.h workspace.h
-keyboard.o: client.h xwm.h
+keyboard-mouse.o: client.h xwm.h
 kill.o: client.h xwm.h
-mouse.o: client.h xwm.h
+place.o: client.h xwm.h
 workspace.o: client.h xwm.h

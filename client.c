@@ -18,8 +18,7 @@
 
 #include "client.h"
 #include "workspace.h"
-#include "keyboard.h"
-#include "mouse.h"
+#include "keyboard-mouse.h"
 #include "cursor.h"
 #include "focus.h"
 #include "event.h"
