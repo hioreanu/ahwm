@@ -84,6 +84,10 @@ typedef struct _client_t {
 #define PROTO_SAVE_YOURSELF 02
 #define PROTO_DELETE_WINDOW 04
 
+typedef struct _position_size {
+    int x, y, width, height;
+} position_size;
+
 /*
  * we store the data associated with each window using Xlib's XContext
  * mechanism (which has nothing to do with X itself, it's just a hash
@@ -190,11 +194,10 @@ void client_inform_state(client_t *);
  * is going to have a titlebar, else False.
  */
 
-void client_reparent(client_t *, Bool);
+void client_reparent(client_t *, Bool, position_size *);
 
-typedef struct _position_size {
-    int x, y, width, height;
-} position_size;
+void client_add_titlebar(client_t *);
+void client_remove_titlebar(client_t *);
 
 /*
  * Sets the position_size argument to the position and size that a
@@ -206,6 +209,18 @@ typedef struct _position_size {
  */
 
 void client_frame_position(client_t *, position_size *);
+
+/*
+ * Sets the position_size argument to the position and size
+ * that the application asked for and would have been given
+ * had it not been reparented.  This is the exact inverse
+ * of client_frame_position().  Anything passed in to the
+ * position_size argument will be ignored and overwritten
+ * since we already have the frame's position in the client
+ * structure.
+ */
+
+void client_position_noframe(client_t *, position_size *);
 
 /*
  * Set the postion_size argument to the client's desired position and

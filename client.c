@@ -26,13 +26,12 @@ XContext window_context;
 XContext frame_context;
 XContext title_context;
 
-static void client_add_titlebar(client_t *client);
-
 client_t *client_create(Window w)
 {
     client_t *client;
     XWindowAttributes xwa;
     Bool has_titlebar = True;
+    position_size requested_geometry;
 
     if (XGetWindowAttributes(dpy, w, &xwa) == 0) return NULL;
     if (xwa.override_redirect) {
@@ -86,69 +85,38 @@ client_t *client_create(Window w)
         else printf("NOT SHAPED\n");
     }
 #endif /* SHAPE */
-    
-    client_reparent(client, has_titlebar);
+
+    requested_geometry.x = xwa.x;
+    requested_geometry.y = xwa.y;
+    requested_geometry.width = xwa.width;
+    requested_geometry.height = xwa.height;
+    client_reparent(client, has_titlebar, &requested_geometry);
     if (client->frame == None) {
         fprintf(stderr, "Could not reparent window\n");
         free(client);
         return NULL;
     }
     if (has_titlebar) client_add_titlebar(client);
-    
-    if (focus_canfocus(client)) focus_add(client);
 
     if (XSaveContext(dpy, w, window_context, (void *)client) != 0) {
         fprintf(stderr, "XWM: XSaveContext failed, could not save window\n");
         free(client);
         return NULL;
     }
-#ifdef DEBUG
-    printf("\tCreated an entry for window 0x%08X at 0x%08X\n",
-           (unsigned int)w, (unsigned int)client);
-#endif /* DEBUG */
-
-    if (XSaveContext(dpy, client->frame,
-                     frame_context, (void *)client) != 0) {
-        XDeleteContext(dpy, client->window, window_context);
-        free(client);
-        fprintf(stderr, "XWM: XSaveContext failed, could not save frame\n");
-        return NULL;
-    }
-    if (client->titlebar != None) {
-        if (XSaveContext(dpy, client->titlebar,
-                         title_context, (void *)client) != 0) {
-            XDeleteContext(dpy, client->window, window_context);
-            XDeleteContext(dpy, client->frame, frame_context);
-            free(client);
-            fprintf(stderr,
-                    "XWM: XSaveContext failed, could not save titlebar\n");
-            return NULL;
-        }
-    }
     
     return client;
 }
 
-/*
- * FIXME:  should figure a way around calling XGetWindowAttributes
- * twice when creating a client and remapping window
- */
-
-void client_reparent(client_t *client, Bool has_titlebar)
+void client_reparent(client_t *client, Bool has_titlebar,
+                     position_size *win_position)
 {
     XSetWindowAttributes xswa;
-    XWindowAttributes xwa;
     XWindowChanges xwc;
     int mask;
     Window w;
     position_size ps;
 
     w = client->window;
-    if (XGetWindowAttributes(dpy, w, &xwa) == 0) {
-        fprintf(stderr,
-                "XWM: XGetWindowAttributes failed in a very inconvenient place\n");
-        return;
-    }
     mask = CWBackPixmap | CWBackPixel | CWCursor
            | CWEventMask | CWOverrideRedirect;
     xswa.cursor = cursor_normal;
@@ -157,13 +125,10 @@ void client_reparent(client_t *client, Bool has_titlebar)
     xswa.event_mask = client->frame_event_mask;
     xswa.override_redirect = True;
 
-    ps.x = xwa.x;
-    ps.y = xwa.y;
-    ps.width = xwa.width;
-    ps.height = xwa.height;
     client_get_position_size_hints(client, &ps);
     /* client_frame_position checks for the titlebar which
      * has not yet been created - I'd rather not change the api */
+    memcpy(&ps, win_position, sizeof(position_size));
     if (has_titlebar) {
         client->titlebar = client->window;
         client_frame_position(client, &ps);
@@ -201,11 +166,6 @@ void client_reparent(client_t *client, Bool has_titlebar)
         XConfigureWindow(dpy, client->frame, mask, &xwc);
     }
 
-#ifdef DEBUG
-    printf("\tReparenting client 0x%08X (window 0x%08X) to 0x%08X\n",
-           (unsigned int)client, (unsigned int)w, (unsigned int)client->frame);
-#endif /* DEBUG */
-
     XClearWindow(dpy, client->frame);
     /* ignore the map and unmap events caused by the reparenting: */
     XSelectInput(dpy, w, client->window_event_mask & ~StructureNotifyMask);
@@ -215,9 +175,14 @@ void client_reparent(client_t *client, Bool has_titlebar)
         XReparentWindow(dpy, w, client->frame, 0, 0);
     }
     XSelectInput(dpy, w, client->window_event_mask);
+
+    if (XSaveContext(dpy, client->frame,
+                     frame_context, (void *)client) != 0) {
+        fprintf(stderr, "XWM: XSaveContext failed, could not save frame\n");
+    }
 }
 
-static void client_add_titlebar(client_t *client)
+void client_add_titlebar(client_t *client)
 {
     XSetWindowAttributes xswa;
     int mask;
@@ -235,6 +200,36 @@ static void client_add_titlebar(client_t *client)
                                      TITLE_HEIGHT, 0, DefaultDepth(dpy, scr),
                                      CopyFromParent, DefaultVisual(dpy, scr),
                                      mask, &xswa);
+    if (client->titlebar != None) {
+        if (XSaveContext(dpy, client->titlebar,
+                         title_context, (void *)client) != 0) {
+            fprintf(stderr,
+                    "XWM: XSaveContext failed, could not save titlebar\n");
+        }
+    }
+}
+
+void client_remove_titlebar(client_t *client)
+{
+    position_size ps;
+    
+    if (client->titlebar == None)
+        return;
+    client_position_noframe(client, &ps);
+    XUnmapWindow(dpy, client->titlebar);
+    XDestroyWindow(dpy, client->titlebar);
+    XDeleteContext(dpy, client->titlebar, title_context);
+    client->titlebar = None;
+    XReparentWindow(dpy, client->window, root_window, ps.x, ps.y);
+    XUnmapWindow(dpy, client->frame);
+    XDestroyWindow(dpy, client->frame);
+    XDeleteContext(dpy, client->frame, frame_context);
+    client->frame = None;
+    client->x = ps.x;
+    client->y = ps.y;
+    client->width = ps.width;
+    client->height = ps.height;
+    client_reparent(client, False, &ps);
 }
 
 client_t *client_find(Window w)
@@ -372,6 +367,12 @@ void client_get_position_size_hints(client_t *client, position_size *ps)
     }
 }
 
+/*
+ * I think this is the only window manager I've seen that
+ * actually follows ICCCM 4.1.2.3 to the letter, specifically
+ * with EastGravity and WestGravity.
+ */
+
 void client_frame_position(client_t *client, position_size *ps)
 {
     int gravity;
@@ -405,9 +406,9 @@ void client_frame_position(client_t *client, position_size *ps)
         case CenterGravity:
         case EastGravity:
         case WestGravity:
-            y_win_ref = ps->height / 2;
-            y_frame_ref = (ps->height + TITLE_HEIGHT) / 2;
-            ps->y += (y_frame_ref - y_win_ref);
+            y_win_ref = (ps->height - TITLE_HEIGHT) / 2;
+            y_frame_ref = ps->height / 2;
+            ps->y -= (y_frame_ref - y_win_ref);
 #ifdef DEBUG
             printf("\tGravity is like center\n");
 #endif /* DEBUG */
@@ -425,6 +426,47 @@ void client_frame_position(client_t *client, position_size *ps)
     printf("\tframe positioned at %dx%d+%d+%d\n",
            ps->x, ps->y, ps->height, ps->width);
 #endif /* DEBUG */
+}
+
+void client_position_noframe(client_t *client, position_size *ps)
+{
+    int gravity;
+    int y_win_ref, y_frame_ref;
+
+    ps->x = client->x;
+    ps->y = client->y;
+    ps->width = client->width;
+    ps->height = client->height;
+    
+    if (client->titlebar == None) return;
+    gravity = NorthWestGravity;
+    
+    if (client->xsh != NULL) {
+        if (client->xsh->flags & PWinGravity)
+            gravity = client->xsh->win_gravity;
+    }
+
+    ps->height -= TITLE_HEIGHT;
+    switch (gravity) {
+        case StaticGravity:
+        case SouthEastGravity:
+        case SouthGravity:
+        case SouthWestGravity:
+            ps->y += TITLE_HEIGHT;
+            break;
+        case CenterGravity:
+        case EastGravity:
+        case WestGravity:
+            y_win_ref = ps->height / 2;
+            y_frame_ref = (ps->height + TITLE_HEIGHT) / 2;
+            ps->y += (y_frame_ref - y_win_ref);
+            break;
+        case NorthGravity:
+        case NorthEastGravity:
+        case NorthWestGravity:
+        default:                /* assume NorthWestGravity */
+            break;
+    }
 }
 
 void client_print(char *s, client_t *client)

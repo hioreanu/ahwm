@@ -18,7 +18,7 @@
  * The window which contains the current input focus.  This may become
  * invalid after you call any of the functions in this header; call
  * 'focus_ensure()' to ensure that this is current and that this
- * window is mapped.
+ * window is raised.
  */
 
 extern client_t *focus_current;
@@ -27,32 +27,33 @@ extern client_t *focus_current;
  * Add a client to the top of the focus stack for its workspace
  */
 
-void focus_add(client_t *);
+void focus_add(client_t *, Time);
 
 /*
- * Remove a client from the list of currently focusable
- * windows for its workspace
+ * Remove a client from the list of currently focusable windows for
+ * its workspace
  */
 
-void focus_remove(client_t *);
+void focus_remove(client_t *, Time);
 
 /*
- * Move a client from somewhere in the focus stack to the top of the stack
+ * Move a client from somewhere in the focus stack to the top of the
+ * stack
  */
 
-void focus_set(client_t *);
+void focus_set(client_t *, Time);
 
 /*
  * Set the input focus to the next on the ring
  */
 
-void focus_next();
+void focus_next(Time);
 
 /*
  * Set the input focus to the previous on the ring
  */
 
-void focus_prev();
+void focus_prev(Time);
 
 /*
  * Ensure some window in the current workspace is focused if possible;

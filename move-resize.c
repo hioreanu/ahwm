@@ -158,6 +158,7 @@ void move_client(XEvent *xevent)
         XUngrabPointer(dpy, CurrentTime);
         return;
     }
+    
     moving = 1;
     orig_x = client->x;
     orig_y = client->y;
@@ -1329,12 +1330,15 @@ static void draw_arrowhead(int x, int y, resize_direction_t direction)
 /*
  * changes the client's titlebar display to the geometry prefixed by a
  * given string
+ * 
+ * We want to avoid a malloc/free on each tiny movement, so we keep
+ * around a buffer and some pointers....
  */
 
 static void display_geometry(char *s, client_t *client)
 {
-    static char *titlebar_display = NULL;
     int width, height;
+    static char *titlebar_display = NULL;
 
     if (client->titlebar == None) return;
     width = client->width / get_width_resize_inc(client);
@@ -1342,7 +1346,7 @@ static void display_geometry(char *s, client_t *client)
     if (client->name != titlebar_display) {
         titlebar_display = malloc(256); /* arbitrary, whatever */
         if (titlebar_display == NULL) return;
-        free(client->name);
+        if (client->name != NULL) free(client->name);
         client->name = titlebar_display;
     }
     snprintf(client->name, 256, "%dx%d+%d+%d [%s %s]",

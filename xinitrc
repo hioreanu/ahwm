@@ -12,6 +12,7 @@ xsetroot -cursor_name left_ptr
 #exec /home/ach/tmp/wmaker-inst/bin/wmaker
 #exec ./9wm
 #exec wmaker
+export MALLOC_CHECK_=2
 exec ./xwm
 
 exit 1

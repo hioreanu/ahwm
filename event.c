@@ -25,6 +25,8 @@
 #include <X11/extensions/shape.h>
 #endif /* SHAPE */
 
+Time event_timestamp;
+
 static void event_enter_leave(XCrossingEvent *);
 static void event_create(XCreateWindowEvent *);
 static void event_destroy(XDestroyWindowEvent *);
@@ -37,6 +39,8 @@ static void event_clientmessage(XClientMessageEvent *);
 static void event_circulaterequest(XCirculateRequestEvent *);
 static void event_expose(XExposeEvent *);
 static void event_focus(XFocusChangeEvent *);
+
+static Time figure_timestamp(XEvent *event);
 
 #ifdef SHAPE
 static void event_shape(XShapeEvent *);
@@ -130,6 +134,8 @@ void event_dispatch(XEvent *event)
     xev_print(event);
 #endif /* DEBUG */
 
+    event_timestamp = figure_timestamp(event);
+    
     /* check the event number, jump to appropriate function */
     switch(event->type) {
         case 0:                 /* can't happen */
@@ -264,9 +270,8 @@ static void event_enter_leave(XCrossingEvent *xevent)
     if (xevent->detail == NotifyInferior) return;
 
     client = client_find(xevent->window);
-    if (client != NULL && focus_canfocus(client)) {
-        focus_set(client);      /* focus.c */
-        focus_ensure(event_timestamp((XEvent *)xevent));
+    if (client != NULL) {
+        focus_set(client, event_timestamp);
     }
 }
 
@@ -308,8 +313,8 @@ static void event_destroy(XDestroyWindowEvent *xevent)
     if (client == NULL) {
         return;
     }
-    focus_remove(client);
-    focus_ensure(event_timestamp((XEvent *)xevent));
+    if (client->titlebar == xevent->window) return;
+    focus_remove(client, event_timestamp);
     client_destroy(client);
 }
 
@@ -364,8 +369,7 @@ static void event_unmap(XUnmapEvent *xevent)
     client_inform_state(client);
     error_unignore(BadWindow, X_ChangeProperty);
 
-    focus_remove(client);
-    focus_ensure(event_timestamp((XEvent *)xevent));
+    focus_remove(client, event_timestamp);
 }
 
 /*
@@ -375,6 +379,7 @@ static void event_unmap(XUnmapEvent *xevent)
 static void event_maprequest(XMapRequestEvent *xevent)
 {
     client_t *client;
+    Bool addfocus;
     
     client = client_find(xevent->window);
 #ifdef DEBUG
@@ -385,9 +390,10 @@ static void event_maprequest(XMapRequestEvent *xevent)
         return;
     }
     if (client->state == NormalState) {
-        /* already mapped, remove from focus list since it will
-         * be added again at end of function */
-        focus_remove(client);
+        /* already mapped, don't focus again */
+        addfocus = False;
+    } else {
+        addfocus = True;
     }
 
     if (client->xwmh != NULL && client->state == WithdrawnState) {
@@ -407,8 +413,7 @@ static void event_maprequest(XMapRequestEvent *xevent)
         }
         keyboard_grab_keys(client);
         mouse_grab_buttons(client);
-        focus_set(client);
-        focus_ensure(event_timestamp((XEvent *)xevent));
+        if (addfocus) focus_add(client, event_timestamp);
     } else {
 #ifdef DEBUG
         printf("\tsigh...client->state = %d\n", client->state);
@@ -552,8 +557,7 @@ static void event_clientmessage(XClientMessageEvent *xevent)
             XUnmapWindow(dpy, client->window);
             client->state = IconicState;
             client_inform_state(client);
-            focus_remove(client);
-            focus_ensure(event_timestamp((XEvent *)xevent));
+            focus_remove(client, event_timestamp);
         }
     }
 }
@@ -582,12 +586,20 @@ static void event_expose(XExposeEvent *xevent)
  */
 static void event_focus(XFocusChangeEvent *xevent)
 {
+    client_t *client;
+    
     printf("FOCUS EVENT (%d,%d)\n", xevent->mode, xevent->detail);
-    if (xevent->type == FocusIn &&
-//        xevent->mode == NotifyNormal &&
-        xevent->detail == NotifyNonlinearVirtual) {
-        printf("RAISING WINDOW\n");
-        XMapRaised(dpy, xevent->window);
+    if (xevent->type == FocusIn
+        && xevent->mode == NotifyNormal
+        && xevent->detail == NotifyNonlinearVirtual) {
+        /* someone stole our focus without asking for permission
+         * or is using funky input focus model (eg, Globally Active) */
+        client = client_find(xevent->window);
+        if (client == NULL) {
+            fprintf(stderr, "Could not find client on FocusIn event\n");
+            return;
+        }
+        focus_set(client, event_timestamp);
     }
 }
 
@@ -596,24 +608,22 @@ static void event_shape(XShapeEvent *xevent)
 {
     XRectangle *rectangles;
     int n_rects, junk;
+    client_t *client;
 
-    if (XShapeGetRectangles(dpy, xevent->window, ShapeBounding,
-                            &n_rects, &junk) == NULL)
+    client = client_find(xevent->window);
+    if (client == NULL) return;
+    if ( (rectangles = XShapeGetRectangles(dpy, xevent->window,
+                                           ShapeBounding, &n_rects,
+                                           &junk)) == NULL)
         return;
     XFree(rectangles);
     if (n_rects <= 1)
         return;
     if (client->titlebar != None) {
-        XUnmapWindow(client->titlebar);
-        XDestroyWindow(client->titlebar);
-        client->titlebar = None;
+        client_remove_titlebar(client);
     }
-        
-        
-    
-
-
-    
+    XShapeCombineShape(dpy, client->frame, ShapeBounding, 0, 0,
+                       client->window, ShapeBounding, ShapeSet);
 }
 #endif /* SHAPE */
 
@@ -632,8 +642,7 @@ Window event_window(XEvent *event)
 }
 
 /* not all events have a timestamp, some have it in the same place */
-/* FIXME: verify, read all the manual pages */
-Time event_timestamp(XEvent *event)
+static Time figure_timestamp(XEvent *event)
 {
     switch (event->type) {
         case ButtonPress:
@@ -652,6 +661,10 @@ Time event_timestamp(XEvent *event)
         case SelectionNotify:
             return event->xselection.time;
         default:
+#ifdef SHAPE
+            if (event->type == shape_event_base + ShapeNotify)
+                return ((XShapeEvent *)event)->time;
+#endif /* SHAPE */
             return CurrentTime;
     }
 }

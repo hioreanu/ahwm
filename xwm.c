@@ -238,14 +238,12 @@ static void scan_windows()
 
 void alt_tab(XEvent *e)
 {
-    focus_next();
-    focus_ensure(event_timestamp(e));
+    focus_next(event_timestamp);
 }
 
 void alt_shift_tab(XEvent *e)
 {
-    focus_prev();
-    focus_ensure(event_timestamp(e));
+    focus_prev(event_timestamp);
 }
 
 void control_alt_shift_t(XEvent *e)

@@ -26,7 +26,7 @@ wordcount:
 wc: wordcount
 
 clean:
-	@rm -f *.o *~ *core xwm TAGS
+	@rm -f *.o *~ *core xwm # TAGS
 
 # DO NOT DELETE
 

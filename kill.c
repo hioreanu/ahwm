@@ -20,7 +20,7 @@ void kill_nicely(XEvent *xevent)
 #ifdef DEBUG
         printf("\tPolitely requesting window to die\n");
 #endif /* DEBUG */
-        client_sendmessage(client, WM_DELETE_WINDOW, event_timestamp(xevent),
+        client_sendmessage(client, WM_DELETE_WINDOW, event_timestamp,
                            0, 0, 0);
     } else {
 #ifdef DEBUG
