@@ -57,19 +57,18 @@ int cursor_init()
     XQueryColor(dpy, DefaultColormap(dpy, scr), &fg);
     XQueryColor(dpy, DefaultColormap(dpy, scr), &bg);
 
-    /* cut-and-paste start */
+    /* FIXME:  why are the args to XCreatePixmapCursor in different order? */
     black = XCreateBitmapFromData(dpy, root_window, ew_cursor_black_bits,
                                    ew_cursor_black_width, ew_cursor_black_height);
     white = XCreateBitmapFromData(dpy, root_window, ew_cursor_white_bits,
                                    ew_cursor_white_width, ew_cursor_white_height);
     if (black == None || white == None)
         return 0;
-    cursor_sizing_e_w = XCreatePixmapCursor(dpy, black, white, &fg, &bg,
+    cursor_sizing_e_w = XCreatePixmapCursor(dpy, white, black, &fg, &bg,
                                             ew_cursor_black_x_hot,
                                             ew_cursor_black_y_hot);
     XFreePixmap(dpy, black);
     XFreePixmap(dpy, white);
-    /* cut-and-paste end */
     
     black = XCreateBitmapFromData(dpy, root_window, ne_cursor_black_bits,
                                    ne_cursor_black_width, ne_cursor_black_height);
@@ -89,7 +88,7 @@ int cursor_init()
                                    ns_cursor_white_width, ns_cursor_white_height);
     if (black == None || white == None)
         return 0;
-    cursor_sizing_n_s = XCreatePixmapCursor(dpy, black, white, &fg, &bg,
+    cursor_sizing_n_s = XCreatePixmapCursor(dpy, white, black, &fg, &bg,
                                             ns_cursor_black_x_hot,
                                             ns_cursor_black_y_hot);
     XFreePixmap(dpy, black);
