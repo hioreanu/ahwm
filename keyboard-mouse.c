@@ -153,7 +153,7 @@ void keyboard_init()
     j = 0;
     for (i = 0; i < 8; i++) {
         if (keyboard_is_lock[i]) {
-            AllLocksMask &= (1 << i);
+            AllLocksMask |= (1 << i);
             j *= j + 1;
             if (j == 0) j = 1;
         }
@@ -209,8 +209,8 @@ static void modifier_combinations_helper(unsigned int state,
 
     if (!keyboard_is_lock[bit]) return;
 
-    state &= (1 << bit);
-    modifier_combinations[*n++] = state;
+    state |= (1 << bit);
+    modifier_combinations[(*n)++] = state;
     for (i = bit + 1; i < 8; i++) {
         modifier_combinations_helper(state, n, i);
     }
@@ -226,6 +226,53 @@ unsigned int *keyboard_modifier_combinations(unsigned int mods, int *n)
         modifier_combinations_helper(mods, n, i);
     }
     return modifier_combinations;
+}
+
+/*
+ * FIXME:  figure out if this should even be here, not used right now
+ */
+
+KeySym keyboard_event_to_keysym(XKeyEvent *xevent)
+{
+    int index;
+
+    if (ModeMask != 0 && xevent->state & ModeMask)
+        index = 2;
+    else
+        index = 0;
+
+/*
+ * Xlib docs say that this function is supposed to work like this from
+ * here on out:
+ * 
+ * if (numlock is on AND second keysym is a keypad keysym (XK_KP_)):
+ *     if (shift is on OR (lock is on AND lock is shiftlock):
+ *         return first keysym
+ *     else:
+ *         return second keysym
+ * else if (shift is off AND lock is off):
+ *     return first keysym
+ * else if (shift is off AND lock is on AND lock is capslock):
+ *     if (first keysym is lowercase alphabetic):
+ *         return uppercase of first keysym
+ *     else:
+ *         return first keysym
+ * else if (shift is on AND lock is on AND lock is capslock):
+ *     if (second keysym is lowercase alphabetic):
+ *         return lowercase of second keysym
+ *     else:
+ *         return second keysym
+ * else if (shift is on OR (lock is on and lock is shiftlock)):
+ *     return second keysym
+ * 
+ * This is fine and good for applications that want to change the key
+ * event into some displayable text, but is not well-suited for our
+ * purposes, which is to bind a function to a distinguishable key
+ * event.  We will ignore all the various locks and shifts, and only
+ * worry about the mode switch key.
+ */
+    
+    return XKeycodeToKeysym(dpy, xevent->keycode, index);
 }
 
 void keyboard_grab_keys(client_t *client)
@@ -259,11 +306,12 @@ void keyboard_process(XKeyEvent *xevent)
            xevent->state, XKeysymToString(ks));
 #endif /* DEBUG */
 
+    printf("AllLocksMask = %02X, state = %02X\n", AllLocksMask, xevent->state);
     code = xevent->keycode;
 
     for (kb = bindings; kb != NULL; kb = kb->next) {
         if (kb->keycode == code) {
-            if (kb->modifiers == xevent->state
+            if (kb->modifiers == (xevent->state & (~AllLocksMask))
                 && (kb->depress & xevent->type) == xevent->type) {
                 (*kb->function)((XEvent *)xevent, kb->arg);
                 return;

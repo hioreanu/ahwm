@@ -9,14 +9,79 @@
 #include <X11/Xlib.h>
 #include "client.h"
 
+/*
+ * Array of booleans specifying whether a given bit is a 'locking'
+ * modifier bit - for example, if XK_Num_Lock generates Mod3 (Mod3Mask
+ * == 0x20, bit 5 set), then keyboard_is_lock[5] == True.
+ */
+
 extern Bool keyboard_is_lock[8];
+
+/*
+ * Modifier masks which may be arbitrarily mapped by the user
+ */
 
 extern unsigned int MetaMask, SuperMask, HyperMask, AltMask, ModeMask;
 
+/*
+ * Mask of all 'locking' modifiers
+ */
+
 extern unsigned int AllLocksMask;
+
+/*
+ * initialize or reinitialize keyboard module's internals (called at
+ * startup and whenever keyboard mapping changed)
+ */
 
 void keyboard_init();
 
+/*
+ * This will return an array of all the posible combinations of MODS
+ * and the various 'lock' modifiers the user has mapped.  The number
+ * of elements in the array is put in N and the array should not be
+ * freed or otherwise messed with.
+ * 
+ * For example, if the user has XK_Caps_Lock generating the 'lock'
+ * modifier, XK_Num_Lock generating the 'Mod3' modifier and
+ * XK_Num_Lock generating 'Mod4', and the argument passed in is
+ * 'Mod1Mask', this will return:
+ * 
+ * Mod1Mask | LockMask
+ * Mod1Mask | LockMask | Mod3Mask
+ * Mod1Mask | LockMask | Mod3Mask | Mod4Mask
+ * Mod1Mask | Mod3Mask
+ * Mod1Mask | Mod3Mask | Mod4Mask
+ * Mod1Mask | Mod4Mask
+ * 
+ * Note that the original modifiers (without locking modifiers ORed
+ * in) is not returned.  Of course, this takes an exponential amount
+ * of time and space (specifically factorial of the number of locking
+ * modifiers, which is exponential), so hopefully the user doesn't
+ * have six locking modifiers.  I am considering the following keysyms
+ * 'locking' modifiers (based purely upon the fact that they end with
+ * '_Lock'):
+ * 
+ *      XK_Scroll_Lock
+ *      XK_Num_Lock
+ *      XK_Caps_Lock
+ *      XK_Shift_Lock
+ *      XK_Kana_Lock
+ *      XK_ISO_Lock
+ *      XK_ISO_Level3_Lock
+ *      XK_ISO_Group_Lock
+ *      XK_ISO_Next_Group_Lock
+ *      XK_ISO_Prev_Group_Lock
+ *      XK_ISO_First_Group_Lock
+ *      XK_ISO_Last_Group_Lock
+ * 
+ * The only reason this mess is exported is because the mousebinding
+ * module needs to use it.
+ */
+
+unsigned int *keyboard_modifier_combinations(unsigned int mods, int *n);
+
+/* FIXME */
 KeySym keyboard_event_to_keysym(XKeyEvent *);
 
 /* Functions which are called in response to keyboard events: */
@@ -126,8 +191,7 @@ void keyboard_set_function(char *keystring, int depress,
 
 /*
  * Do a "soft" grab on all the keys that are of interest to us - this
- * should be called once when the window is mapped (before the client
- * has a chance to call XGrabKeys on the newly-created window).
+ * should be called once when the window is mapped.
  */
 
 void keyboard_grab_keys(client_t *client);

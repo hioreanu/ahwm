@@ -43,16 +43,31 @@ void mouse_ignore(XEvent *xevent, void *v)
 void mouse_grab_buttons(client_t *client)
 {
     mousebinding *mb;
+    unsigned int *combs;
+    int i, n;
 
     for (mb = bindings; mb != NULL; mb = mb->next) {
-        if (mb->location & MOUSE_FRAME)
+        combs = keyboard_modifier_combinations(mb->modifiers, &n);
+        if (mb->location & MOUSE_FRAME) {
             XGrabButton(dpy, mb->button, mb->modifiers, client->frame,
                         True, mb->depress, GrabModeSync, GrabModeAsync,
                         None, cursor_normal);
-        if (mb->location & MOUSE_TITLEBAR && client->titlebar != None)
+            for (i = 0; i < n; i++) {
+                XGrabButton(dpy, mb->button, combs[i], client->frame,
+                            True, mb->depress, GrabModeSync, GrabModeAsync,
+                            None, cursor_normal);
+            }
+        }
+        if (mb->location & MOUSE_TITLEBAR && client->titlebar != None) {
             XGrabButton(dpy, mb->button, mb->modifiers, client->titlebar,
                         True, mb->depress, GrabModeSync, GrabModeAsync,
                         None, cursor_normal);
+            for (i = 0; i < n; i++) {
+                XGrabButton(dpy, mb->button, combs[i], client->titlebar,
+                            True, mb->depress, GrabModeSync, GrabModeAsync,
+                            None, cursor_normal);
+            }
+        }
     }
 }
 
@@ -65,7 +80,7 @@ void mouse_handle_event(XEvent *xevent)
     unsigned int button, state;
 
     button = xevent->xbutton.button;
-    state = xevent->xbutton.state & (~ANYBUTTONMASK);
+    state = xevent->xbutton.state & (~(ANYBUTTONMASK | AllLocksMask));
 
     for (mb = bindings; mb != NULL; mb = mb->next) {
         if (button == mb->button) {
