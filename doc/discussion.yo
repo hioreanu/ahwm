@@ -13,9 +13,9 @@ item(Workspaces)
 label(workspaces)
 
 AHWM supports bf(workspaces).  Each workspace contains a number of
-windows and each window is belongs to one workspace.  Only the windows
-in the em(current workspace) are visible; thus, you can use workspaces
-to organize windows for easier access.
+windows and each window belongs to one workspace.  Only the windows in
+the em(current workspace) are visible; thus, you can use workspaces to
+organize windows for easier access.
 
 Unlike some other window managers, workspaces are indivisible emdash()
 AHWM does not support "viewports" into workspaces and a window may not
@@ -119,10 +119,10 @@ the targets for initiating a double-edge resize.  The most common case
 is that a user wishes to resize a window both horizontally and
 vertically, so this design causes a number of mis-clicks and forces
 greater precision in placing the initial click.  With AHWM, you can
-hold down a modifier and drag out a size very quickly without precisely
-positioning the mouse.  If you want to precisely control the window's
-size, you can use the keyboard, as the keyboard is a much more precise
-device for such actions.
+hold down a modifier and drag out an approximate size very quickly
+without precisely positioning the mouse.  If you want to precisely
+control the window's size, you can use the keyboard, as the keyboard is
+a much more precise device for such actions.
 
 AHWM also provides a keystroke to change which edges are movable
 during a resize.  You can use this key (the space bar) if you wish to
@@ -171,7 +171,8 @@ mouse is called the em(focus policy).
 
 X11 also has a notion of the em(topmost) window, or the window which is
 on top of all other windows.  Note that the two notions (focus and
-topmost) are separate.
+topmost) are separate; you can type into a window which is obscured by
+another window.
 
 AHWM supports two focus policies:  em(click-to-focus) and em(sloppy
 focus).  You can change the focus policy on a per-window or
@@ -269,7 +270,7 @@ however, some windows claim they accept keyboard input, but then ignore
 all keyboard input.  The em(SkipCycle) setting is intended to allow you
 to deal with those windows.
 
-item(Quoting)
+item(Quoting Actions)
 label(quoting)
 
 Sometimes you may wish to send an application a keystroke but you've
@@ -358,5 +359,212 @@ space.  AHWM never attempts to second-guess you.
 
 NB: if you are looking for an easier way to crash AHWM, the docs(Crash)
 function may be of interest.  See also manlink(kill)(1)(1).
+
+item(Killing Windows)
+label(killing)
+
+Killing a window refers to quitting applications or forcing application
+instances to end.  Killing windows in X11 is problematic due to the
+network-transparent and portable nature of X11, and AHWM gives you many
+options for killing windows.
+
+I.  XKillClient
+    A. introduce Invisible
+    B. introduce No shutdown
+    C. introduce No Confirmation
+
+II.  WM_DELETE_WINDOW
+     A. Solves No shutdown, No confirmation
+     B. voluntary
+     C. introduce No Hung
+
+III. Introduce timeout idea
+     A. solves No Hung
+     B. mention No Confirmation
+
+IV.  Introduce _NET_WM_PING
+     A. solves No hung, No shutdown, No confirmation
+     B. voluntary
+     C. Mention invisible
+
+V.  Describe how cli apps don't have these problems
+    A. solves invisible, no confirmation, no shutdown, no hung
+    B. Not possible, need machine and PID
+
+VI.  Introduce _NET_WM_PID, WM_CLIENT_MACHINE
+     A. solves invisible, no confirmation, no shutdown, no hung
+     B. voluntary
+     C. Wrong machine problem
+
+VII. Summary
+
+VIII. AHWM implementation
+
+
+
+
+
+
+
+
+
+
+
+
+The usual algorithm for stopping a command-line application in Unix is
+to first hit Control-C if the application is a foreground application,
+or use the manlink(kill)(1)(1) program with a TERM argument (the
+default for manlink(kill)(1)(1)).  The manlink(kill)(1)(1) program uses
+the manlink(kill)(2)(2) system call, which sends the application a
+signal.  The application can catch the TERM signal and perform any
+necessary shutdown actions before exiting (such as flushing buffers and
+ensuring saved files are in a consistent state).  In a similar fashion,
+Control-C can be intercepted, allowing an interactive program to
+perform any shutdown actions, or even to request confirmation that the
+user wishes to exit.  If the application hangs upon receiving the TERM
+signal, the second step of the algorithm is to send the application the
+KILL signal (signal 9), which cannot be intercepted and immediately
+kills the process.
+
+There are two reasons why X11 window managers cannot use
+manlink(kill)(2)(2) to kill applications.  First, due to the
+network-transparent nature of X11, a client application may be running
+on a different computer than the window manager.  Second, the
+manlink(kill)(2)(2) system call requires a PID (process ID).  Due to
+the portable nature of X11, the client computer might not be running on
+a unix-like host, and non-unix operating systems might not have any
+equivalent of a PID.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+The usual way to kill an command-line application in Unix is to use the
+manlink(kill)(1)(1) program or shell builtin, which in turn invokes the
+manlink(kill)(2)(2) system call.  However, under X11, client
+applications may not be running on the same host as AHWM.  If this is
+the case, AHWM cannot use the manlink(kill)(2)(2) system call, even if
+AHWM has the client's PID (process ID).  The second problem is X11's
+portable nature; X11 runs on non-unix operating systems, which might
+have no equivalent of a PID.  Thus, any facility to determine an X11
+application's PID is necessarily non-portable.  These two problems
+combine to make it difficult, if not impossible, to use the traditional
+and reliable manlink(kill)(2)(2) system call.
+
+The second problem (bf(PROBLEM 2)) is X11's graphical nature.  Many
+times, a graphical application will pop up a confirmation dialog upon
+receiving a quit request (asking you, for instance, if you would like
+to save the current document).  Thus, an application which does not
+immediately respond to a quit command is either completely hung (in
+which case it will not respond to any commands, including a quit
+command), or it is awaiting user input on a confirmation dialog.
+Distinguishing between these two cases is not straightforward.
+
+AHWM allows you to deal with these two problems through four methods.
+The first method is by giving you access to the standard X11 method
+manlink(XKillClient)(3)(3x) (bf(METHOD: XKillClient)).
+manlink(XKillClient)(3)(3x) disconnects a client application from the X
+server.  When a client is disconnected from the X server, all the
+application's X resources are released (thus, the client's windows will
+be destroyed since windows are X resources).  After a client has been
+forcefully disconnected from the X server, the client's next X request
+will fail.  Usually, when an application receives an unexpected X
+error, the application will quit.  Thus, in most cases, using
+manlink(XKillClient)(3)(3x) on a client application will cause the
+client application to quit.
+
+This introduces a third problem, however (bf(PROBLEM 3)): if an
+application is em(completely) hung, it will no longer process X events;
+it will therefore not receive an X error and it will not exit.
+Although this application's windows and other X resources have been
+destroyed, the application will continue to run invisibly in its hung
+state.  Netscape Navigator has the tendency to do exactly this.
+
+The second method to kill a window is using the relatively standard X11
+q(WM_DELETE_WINDOW) protocol (bf(METHOD: WM_DELETE_WINDOW)).  An
+application which wishes to participate in this protocol tells AHWM it
+can handle q(WM_DELETE_WINDOW); when AHWM wants to kill the
+application, AHWM sends the application a message asking the
+application to quit.  This protocol sometimes works, but it is prone to
+PROBLEM 3 and it does not address PROBLEM 2.
+
+The third method (bf(METHOD: Timeout)) is a response to PROBLEM 2.  The
+application is first sent asked to quit using METHOD:
+WM_DELETE_WINDOW.  If the application does not exit after a certain
+period of time, the window manager assumes the application is hung and
+resorts to using METHOD: XKillClient.  This method has the disadvantage
+that it will forcefully kill applications with confirmation dialogs (it
+does not deal gracefully with PROBLEM 2); in some poorly-written
+applications, this may cause you to lose your work.
+
+The fourth method is a response to PROBLEM 2.  This is the new and
+relatively untested q(_NET_WM_PING) protocol (bf(METHOD:
+_NET_WM_PING)).  Any application which supports this protocol announces
+so to the window manager.  When the user initiates a quit action, the
+window manager first uses METHOD: WM_DELETE_WINDOW to ask the
+application to quit.  The window manager then asks the client
+application "Are you there?" and awaits a response.  If the application
+responds "Yes, I am here," the window manager assumes the application
+is showing a quit-confirmation dialog and continues waiting.  If the
+application does not respond within a set period of time, the window
+manager assumes the application is hung and uses METHOD: XKillClient.
+This method is still susceptible to PROBLEM 3.
+
+The fifth method is a response to PROBLEM 3.
+
+
+
+
+Summary:
+
+PROBLEMS:
+
+bf(Invisible): Not using the reliable manlink(kill)(2)(2) system call
+and leaving invisibly hung programs nl()
+bf(No Confirmation): Not allowing applications to use confirmation dialogs nl()
+bf(No Shutdown): Not allowing applications to shut down gracefully nl()
+bf(No Hung): Not closing hung clients nl()
+bf(Wrong Process): Killing the wrong process
+
+METHODS:
+
+bf(XKillClient): nl()
+Invisible, No Confirmation, No Shutdown
+
+bf(WM_DELETE_WINDOW): nl()
+Invisible, No Hung
+
+bf(Timeout) after bf(WM_DELETE_WINDOW), then bf(XKillClient): nl()
+Invisible, No Confirmation
+
+bf(_NET_WM_PING) with bf(Timeout) after bf(WM_DELETE_WINDOW), then
+bf(XKillClient): nl()
+Invisible
+
+bf(_NET_WM_PID) with bf(XKillClient): nl()
+No Confirmation, No Shutdown, Wrong Process
+
+bf(Timeout) after bf(WM_DELETE_WINDOW), then bf(_NET_WM_PID) with
+bf(XKillClient): nl()
+No Confirmation, No Shutdown, Wrong Process
+
+bf(_NET_WM_PING) with bf(Timeout) after bf(WM_DELETE_WINDOW), then
+bf(_NET_WM_PID) with bf(XKillClient): nl()
+Wrong Process
+
+NB that bf(WM_DELETE_WINDOW), bf(_NET_WM_PING) and bf(_NET_WM_PID) are
+voluntary methods; applications have to be specifically written to
+support these methods.  Few applications have, at this time,
+implemented bf(_NET_WM_PING) and bf(_NET_WM_PID), but most have
+implemented bf(WM_DELETE_WINDOW).
 
 enditem()

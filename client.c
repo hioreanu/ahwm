@@ -292,20 +292,21 @@ static void client_create_frame(client_t *client, position_size *win_position)
     xswa.event_mask =  SubstructureRedirectMask | EnterWindowMask
         | LeaveWindowMask | FocusChangeMask | StructureNotifyMask;
 
-    client_get_position_size_hints(client, &ps);
     memcpy(&ps, win_position, sizeof(position_size));
+    client_get_position_size_hints(client, &ps);
     client_frame_position(client, &ps);
     client->x = ps.x;
     client->y = ps.y;
     client->width = ps.width;
     client->height = ps.height;
-    
+
     if (client->frame == None) {
         client->frame = XCreateWindow(dpy, root_window, ps.x, ps.y,
                                       ps.width, ps.height, 0,
                                       DefaultDepth(dpy, scr), CopyFromParent,
                                       DefaultVisual(dpy, scr),
                                       mask, &xswa);
+        debug(("\tClient %#lx now has frame %#lx\n", client, client->frame));
     } else {
         /* if the client already has a frame, assume that we need to
          * update the frame as if it were the first time we are creating
@@ -322,7 +323,7 @@ static void client_create_frame(client_t *client, position_size *win_position)
         XConfigureWindow(dpy, client->frame, mask, &xwc);
     }
 
-    XClearWindow(dpy, client->frame); /* FIXME:  ??? */
+//    XClearWindow(dpy, client->frame); /* FIXME:  ??? */
 
     if (XSaveContext(dpy, client->frame,
                      frame_context, (void *)client) != 0) {

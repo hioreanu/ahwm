@@ -31,8 +31,11 @@ Application-set hints override normal user-set hints.  However, instead
 of using q(=) to set an option, you can use q(is!).  When you use
 q(is!), the option cannot be changed by the application.  This is
 useful in when you do not like the hints an application sets.  All
-hint-definable behaviour is also user-definable.
+hint-definable behaviour is also user-definable.  For more information
+on options, see docs(Options).
 
 Other directives are available for binding keystrokes and mouse clicks
 and for defining aggregations of actions for binding to keystrokes and
-mouse clicks.
+mouse clicks.  See the docs(Examples) section for examples of binding
+to keystrokes or mouse actions; see the docs(Functions) section for the
+list of all functions you can bind to a keystroke or mouse action.

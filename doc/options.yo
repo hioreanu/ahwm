@@ -1,3 +1,4 @@
+label(Options)
 This section describes all the available em(options) emdash() an option
 changes the way AHWM behaves.  Each option has a em(type), which is
 indicated after the option name.  Options may be defined globally, or

@@ -13,3 +13,8 @@ endit()
 
 This manual is comprehensive.  If you're low on time, you may want to
 try the default configuration file first.
+
+whenman(If you're only looking for a reference for functions and
+options, use your pager to search for FUNCTIONS and OPTIONS.)
+whenhtml(If you're only looking for a reference for functions and
+options, go to the sections docs(Functions) and docs(Options))

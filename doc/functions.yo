@@ -1,3 +1,4 @@
+label(Functions)
 This section describes all the available em(functions) emdash() a
 function is an action which one can bind to a mouse click or a
 keystroke.  A function may have zero or more parameters, each with a

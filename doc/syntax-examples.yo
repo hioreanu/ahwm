@@ -1,3 +1,4 @@
+label(Examples)
 Bindings look like this:
 verbatim(\
 BindKey "Control | Shift | Meta | t" Launch("xterm");

@@ -70,6 +70,7 @@ static void event_circulaterequest(XCirculateRequestEvent *);
 static void event_expose(XExposeEvent *);
 static void event_focusin(XFocusChangeEvent *);
 static void event_map(XMapEvent *);
+static void event_reparentnotify(XReparentEvent *);
 static void configure_nonclient(XConfigureRequestEvent *xevent);
 static void raise_on_timeout(timer *t, void *v);
 static void set_raise_timer(unsigned int milliseconds);
@@ -178,7 +179,7 @@ void event_dispatch(XEvent *event)
         "UnmapNotify",          /* YES */
         "MapNotify",            /* YES */
         "MapRequest",           /* YES */
-        "ReparentNotify",       /* TODO */
+        "ReparentNotify",       /* YES */
         "ConfigureNotify",      /* TODO */
         "ConfigureRequest",     /* YES */
         "GravityNotify",        /* TODO */
@@ -264,7 +265,9 @@ void event_dispatch(XEvent *event)
             event_maprequest(&event->xmaprequest);
             break;
             
-/*        case ReparentNotify: */ /* TODO */
+        case ReparentNotify:
+            event_reparentnotify(&event->xreparent);
+            break;
             
         case ConfigureNotify:
             update_ignore_enternotify_hack(event);
@@ -419,15 +422,16 @@ static void event_destroy(XDestroyWindowEvent *xevent)
  * Which means that we simply set the state to Withdrawn if we receive
  * any kind of unmap request.  Most other window managers also
  * reparent the window to the root window when it's unmapped so that
- * it doesn't get mapped again if the window manager exits.  I'm not
- * going to deal with that since I don't use X that way (window
- * manager crashes = you're screwed).
+ * it doesn't get mapped again if the window manager exits.  That
+ * sounds like something nice to do, so I'll do it like that.
  */
 
 static void event_unmap(XUnmapEvent *xevent)
 {
     client_t *client;
-    
+    Window junk, parent, *junk2;
+    int junk3;
+        
     client = client_find(xevent->window);
 
     client_print("Unmap:", client);
@@ -480,8 +484,48 @@ static void event_unmap(XUnmapEvent *xevent)
     }
     /* FIXME: maybe reset client->workspace? */
     client->state = WithdrawnState;
-    debug(("\tUnreparenting\n"));
-    client_unreparent(client);
+
+    /*
+     * Race condition:
+     * 
+     * KJAS (KDE Java Applet Server) is used by Konqueror to embed Java
+     * applets as follows (kdelibs/khtml/java/javaembed.cpp in KDE):
+     * 
+     * 1. Java applet is created as a normal top-level window with a special name
+     * 2. Java window maps itself (AHWM reparents window into a frame at this step)
+     * 3. Konqueror withdraws Java window (XWithdrawWindow)
+     * 4. Konqueror loops until window is actually withdrawn
+     * 5. Konqueror reparents Java window to itself ("swallows" or "embeds" it)
+     * 6. Konqueror remaps Java window
+     * 
+     * When running under kwin, the Java window is never actually displayed
+     * (Konqueror tells kwin the name of the window using some KDE-specific IPC).
+     * 
+     * When running under window managers that reparent withdrawn windows to
+     * root (such as AHWM), there is a race condition:  the Java window may be
+     * reparented to the root window after Konqueror has already reparented
+     * it.  Thus, you get inconsistent behaviour:  sometimes Java applets will
+     * be correctly embedded within Konqueror and sometimes they'll end up as
+     * top-level windows.
+     * 
+     * Pretty nasty stuff.
+     * 
+     * Anyway, I deal with it by ensuring we reparent only while the
+     * window still has an AHWM frame as parent and that our
+     * reparenting request is processed before anyone else has a
+     * chance to reparent.  The only way to do this correctly is by
+     * grabbing the server - something I don't like doing.
+     */
+
+    XGrabServer(dpy);
+    XSync(dpy, False);
+    XQueryTree(dpy, client->window, &junk, &parent, &junk2, &junk3);
+    if (parent == client->frame) {
+        debug(("\tUnreparenting\n"));
+        client_unreparent(client);
+        XSync(dpy, False);
+    }
+    XUngrabServer(dpy);
     
     client_inform_state(client);
 }
@@ -647,24 +691,13 @@ static void event_configurerequest(XConfigureRequestEvent *xevent)
     xwc.y = title_height;
     xwc.height -= title_height;
     xwc.x = 0;
+
     if (new_mask != 0) {
         XConfigureWindow(xevent->display, client->window, new_mask, &xwc);
-    } else {
-        debug(("\tSending fake ConfigureNotify\n"));
-        ev.type = ConfigureNotify;
-        ev.xconfigure.display = dpy;
-        ev.xconfigure.event = client->window;
-        ev.xconfigure.window = client->window;
-        ev.xconfigure.x = client->x;
-        ev.xconfigure.y = client->y + title_height;
-        ev.xconfigure.width = client->width;
-        ev.xconfigure.height = client->height - title_height;
-        ev.xconfigure.border_width = client->orig_border_width;
-        ev.xconfigure.above = None;
-        XSendEvent(dpy, client->window, True, NoEventMask, &ev);
     }
 
-#if 0                           /* FIXME */
+    debug(("Orig border width = %d\n", client->orig_border_width));
+    
     if (xevent->value_mask & CWStackMode) {
         /* FIXME:  deal with the sibling, Opposite correctly */
         /* we will completely ignore stacking requests for
@@ -685,10 +718,47 @@ static void event_configurerequest(XConfigureRequestEvent *xevent)
             debug(("\tIgnoring stacking request %d for client %#lx (%s)\n",
                    xevent->detail, (unsigned int)client, client->name));
         }
+    } else if (new_mask == 0) {
+        debug(("\tSending fake ConfigureNotify\n"));
+        ev.type = ConfigureNotify;
+        ev.xconfigure.display = dpy;
+        ev.xconfigure.event = client->window;
+        ev.xconfigure.window = client->window;
+        ev.xconfigure.x = client->x;
+        ev.xconfigure.y = client->y + title_height;
+        ev.xconfigure.width = client->width;
+        ev.xconfigure.height = client->height - title_height;
+        ev.xconfigure.border_width = client->orig_border_width;
+        ev.xconfigure.above = None;
+        XSendEvent(dpy, client->window, True, NoEventMask, &ev);
     }
-#endif
+
     debug(("\tAfter: %dx%d+%d+%d\n", client->width, client->height,
            client->x, client->y));
+}
+
+static void event_reparentnotify(XReparentEvent *xevent)
+{
+    client_t *client, *client2;
+
+    client = client_find(xevent->window);
+    if (client == NULL || xevent->override_redirect) {
+        debug(("\tignoring event\n"));
+        return;
+    }
+    if (xevent->parent == root_window ||
+        xevent->parent == client->frame) {
+        
+        debug(("\tnormal reparenting, ignoring event\n"));
+        return;
+    }
+    client2 = client_find(xevent->parent);
+    debug(("\tClient %#lx (%s) was reparented to %#lx (%s)\n",
+           xevent->window, client->name, xevent->parent,
+           (client2 == NULL ? "non-client window" :
+            client2->name)));
+    debug(("\tdestroying client\n"));
+    client_destroy(client);
 }
 
 /*
@@ -708,7 +778,16 @@ static void configure_nonclient(XConfigureRequestEvent *xevent)
     xwc.border_width = xevent->border_width;
     xwc.sibling = xevent->above;
     xwc.stack_mode = xevent->detail;
-    
+    debug(("\tNonclient is changing "));
+    if (xevent->value_mask & CWX) debug(("X "));
+    if (xevent->value_mask & CWY) debug(("Y "));
+    if (xevent->value_mask & CWWidth) debug(("Width "));
+    if (xevent->value_mask & CWHeight) debug(("Height "));
+    if (xevent->value_mask & CWBorderWidth) debug(("Border width "));
+    if (xevent->value_mask & CWSibling) debug(("sibling "));
+    if (xevent->value_mask & CWStackMode) debug(("stack mode "));
+    debug(("\n"));
+
     XConfigureWindow(dpy, xevent->window, xevent->value_mask, &xwc);
 }
 
@@ -845,11 +924,11 @@ static void event_focusin(XFocusChangeEvent *xevent)
             || xevent->detail == NotifyDetailNone)) {
         /* one of our XSetInputFocus calls barfed,
          * try it again */
-        debug(("Setting focus to %#lx in event_focusin",
-               focus_current->window));
         if (focus_current != NULL) {
             XSetInputFocus(dpy, focus_current->window,
                            RevertToPointerRoot, CurrentTime);
+            debug(("Setting focus to %#lx in event_focusin",
+                   focus_current->window));
         }
     }
 #if 0 /* FIXME */

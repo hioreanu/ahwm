@@ -30,6 +30,7 @@
 #include <sys/utsname.h>
 #include <signal.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include <X11/Xlib.h>
 #include <X11/Xproto.h>         /* for CARD32 */
@@ -126,7 +127,7 @@ Bool kill_using_net_wm_pid(client_t *client)
                            &actual, &fmt, &nitems, &bytes_after_return,
                            (unsigned char **)&pid) != Success) {
         debug(("XGetWindowProperty(_NET_WM_PID) failed\n"));
-        return;
+        return False;
     }
     if (pid == NULL || actual != XA_CARDINAL || fmt != 32 || nitems != 1) {
         
@@ -139,7 +140,7 @@ Bool kill_using_net_wm_pid(client_t *client)
                            &actual, &fmt, &nitems, &bytes_after_return,
                            (unsigned char **)&their_hostname) != Success) {
         debug(("XGetWindowProperty(_NET_WM_PID) failed\n"));
-        return;
+        return False;
     }
     if (their_hostname == NULL || actual != XA_STRING || fmt != 8) {
         
