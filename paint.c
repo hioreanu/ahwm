@@ -235,6 +235,7 @@ void paint_calculate_colors(client_t *client, char *normal,
     debug(("Allocated new entry: %d\n", nallocated-1));
     /* FIXME:  should investigate changing window's background
      * color in case X decides to show that at some point */
+    /* FIXME:  might also need to repaint right now */
 }
 
 void paint_titlebar(client_t *client)

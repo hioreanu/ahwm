@@ -97,22 +97,23 @@ struct _context {
 #define SEL_TRANSIENTFOR 0100   /* may be ORed with others */
 #define SEL_HASTRANSIENT 0200   /* may be ORed with others */
 
-/* To add an option, follow the ADDOPT comments through *.y *.l *.c *.h */
-/* ADDOPT 3 */
+/* To add an option, follow the ADDOPT comments through *.l *.y *.h *.c */
+/* ADDOPT 4: internal representation of parsed file */
 struct _option {
     enum { DISPLAYTITLEBAR,
            OMNIPRESENT,
            DEFAULTWORKSPACE,
            FOCUSPOLICY,
-           NUMBEROFWORKSPACES,
            ALWAYSONTOP,
-           PASSFOCUSCLICK,
            ALWAYSONBOTTOM,
+           PASSFOCUSCLICK,
            CYCLEBEHAVIOUR,
            COLORTITLEBAR,
            COLORTITLEBARFOCUSED,
            COLORTEXT,
-           COLORTEXTFOCUSED } option_name;
+           COLORTEXTFOCUSED,
+           NWORKSPACES } option_name;
+    option_setting option_setting;
     type *option_value;
 };
 
@@ -159,6 +160,8 @@ struct _function {
            INVOKE = 15,
            SHOWMENU = 16,
            REFRESH = 17,
+           MAXIMIZE_V = 18,
+           MAXIMIZE_H = 19,
     } function_type;
     arglist *function_args;
 };

@@ -1,30 +1,26 @@
 TODO before release:
-- variable number of workspaces to config file
-- some options (nworkspaces) must be global
 - option WorkspaceSendTransients (boolean)
 - clean up the AltTab() crap, see .xwmrc for ideas
 - on alt tab, delay between titlebar color change and raise, mebbe stacking_raise()
-- differentiate between hint-based, user-based, and overridden options
-  perhaps have a token EQUALS_UNCONDITIONALLY "=!" or something
 - transient for self means something?  Directory property window in konq
 - colormaps
+- user-settable font, global option
+- titlebar height depends on font height or user pref, experiment
 - deal with build problems on Debian and Solaris 8
 - test with a modern version of Sun's X implementation
 - test final build with various options at least two weeks before initial release
 
 Wishlist:
-- Raise() function, like Focus() function
+- Raise() function, like Focus() function, compose for titlebar click
 - GotoNextWorkspace(integer)
 - CycleNextWorkspaces() (like AltTab())
-- Name the workspaces "Workspace 1", ewmh
 - options DontBindKeys, DontBindMouse (boolean)
-- maximize vertical, horizontal
+- root mouse event proxying for GNOME
 - no need to grab buttons for titlebar binds, just listen for events
 - unbindings don't work at all
 - function composition
-- shading
+- shading, perhaps with an optional animation
 - may need fake client struct for revert_to window for dynamic bindings
-- on resize, don't allow mouse to move past end of window - sucks
 - allow binding to click and drag on same place
 - allow window titles to be centered and right-aligned
 - 'mouse' map_policy placement algorithm - map window under mouse
@@ -48,12 +44,12 @@ Wishlist:
 - remove any R6isms
 - compress ConfigureRequest events, and others if possible
 - buttons on titlebars
-- optional window frame?
-- config file, perhaps with gui frontend....
+- optional window sizing frame?
+- gui frontend for .xwmrc
 - window positions persist across sessions
 - have a "reset" function that resets colormap installation, etc.
 - add saveunder option (where would I use this?)
-- keep bottom 1 pixel free of windows, bind menu there
+- keep bottom 1 pixel free of windows, bind menu there (separate program?)
 - profile, optimize, create benchmarks
 
 Finished, no longer TODO:
@@ -111,6 +107,7 @@ Finished, no longer TODO:
 - transient for root means something special?
 - use autoconf
 - test with XFree86 3.3 and 4.0
+- config file
 - shaped windows with titlebar
 - check for strerror in configure.in
 - supply bogus snprintf and strerror if none available
@@ -125,6 +122,12 @@ Finished, no longer TODO:
 - line numbers in error messages of parser.y are off
 - motif hints, looks simple enough
 - close .xwmrc fd
+- name the workspaces "Workspace %d", ewmh
+- variable number of workspaces to config file
+- framework for global options (nworkspaces)
+- differentiate between hint-based, user-based, and overridden options
+- on resize to move, don't allow mouse to be outside window
+- maximize vertical, horizontal
 
 Abandoned, no longer TODO:
 - "stop" focus, detect when pointer stops in a window (no timeout) -
@@ -201,16 +204,17 @@ BUG - when switching to a workspace which has no windows, no longer
 getting keyboard events - FIXED: all the key-handling stuff depends on the
 'revert_to' window in focus.c.
 
-BUG - sometimes when xterm loses focus, it doesn't update its cursor; looks
-like an xterm bug, other window managers do same thing
-
 BUG - when switching to a workspace which has transients in it,
 getting multiple EnterNotify events for the transients, causes input focus
-to jump about wildly for a bit of time
-
-BUG - strange interaction in window moving edge-resistance, sometimes
-pointer leaves window when moving quickly, can't reproduce
+to jump about wildly for a bit of time - FIXED: haven't observed in months
 
 BUG - resize xterm off-screen using "echo -ne '\033[8;120;120t'" - resize
 code no longer seems to honor client's height/width increment hints.
-Looks like xterm bug off-hand, need to check.
+Looks like xterm bug off-hand, need to check - FIXED: problem seems
+gone on recent builds
+
+BUG - sometimes when xterm loses focus, it doesn't update its cursor; looks
+like an xterm bug, other window managers do same thing
+
+BUG - strange interaction in window moving edge-resistance, sometimes
+pointer leaves window when moving quickly, can't reproduce

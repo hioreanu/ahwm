@@ -46,13 +46,12 @@
 #define parse_debug(x) /* */
 #endif
 
-/* ADDOPT 1.5 FIXME:  renumber */
+/* ADDOPT 2: define token */
 %}
 
 %token TOK_DISPLAYTITLEBAR
 %token TOK_OMNIPRESENT
 %token TOK_DEFAULTWORKSPACE
-%token TOK_NUMBEROFWORKSPACES
 %token TOK_FOCUS_POLICY
 %token TOK_ALWAYSONTOP
 %token TOK_ALWAYSONBOTTOM
@@ -62,6 +61,7 @@
 %token TOK_COLORTITLEBARFOCUSED
 %token TOK_COLORTEXT
 %token TOK_COLORTEXTFOCUSED
+%token TOK_NWORKSPACES
 
 %token TOK_SLOPPY_FOCUS
 %token TOK_CLICK_TO_FOCUS
@@ -110,6 +110,8 @@
 %token TOK_LAUNCH
 %token TOK_FOCUS
 %token TOK_MAXIMIZE
+%token TOK_MAXIMIZE_HORIZONTALLY
+%token TOK_MAXIMIZE_VERTICALLY
 %token TOK_NOP
 %token TOK_QUOTE
 %token TOK_MOVEINTERACTIVELY
@@ -123,6 +125,7 @@
 
 %token TOK_SEMI
 %token TOK_EQUALS
+%token TOK_SET_UNCONDITIONALLY
 %token TOK_LBRACE
 %token TOK_RBRACE
 %token TOK_COMMA
@@ -210,15 +213,27 @@ option: option_name TOK_EQUALS type
             if (opt != NULL) {
                 opt->option_name = $1;
                 opt->option_value = $3;
+                opt->option_setting = UserSet;
+            }
+            $$ = opt;
+        }
+      | option_name TOK_SET_UNCONDITIONALLY type
+        {
+            option *opt;
+            parse_debug("OPTION\n");
+            opt = malloc(sizeof(option));
+            if (opt != NULL) {
+                opt->option_name = $1;
+                opt->option_value = $3;
+                opt->option_setting = UserOverridden;
             }
             $$ = opt;
         }
 
-/* ADDOPT 2 */
+/* ADDOPT 3: define as option */
 option_name: TOK_DISPLAYTITLEBAR { $$ = DISPLAYTITLEBAR; }
            | TOK_OMNIPRESENT { $$ = OMNIPRESENT; }
            | TOK_DEFAULTWORKSPACE { $$ = DEFAULTWORKSPACE; }
-           | TOK_NUMBEROFWORKSPACES { $$ = NUMBEROFWORKSPACES; }
            | TOK_FOCUS_POLICY { $$ = FOCUSPOLICY; }
            | TOK_ALWAYSONTOP { $$ = ALWAYSONTOP; }
            | TOK_ALWAYSONBOTTOM { $$ = ALWAYSONBOTTOM; }
@@ -228,6 +243,7 @@ option_name: TOK_DISPLAYTITLEBAR { $$ = DISPLAYTITLEBAR; }
            | TOK_COLORTITLEBARFOCUSED { $$ = COLORTITLEBARFOCUSED; }
            | TOK_COLORTEXT { $$ = COLORTEXT; }
            | TOK_COLORTEXTFOCUSED { $$ = COLORTEXTFOCUSED; }
+           | TOK_NWORKSPACES { $$ = NWORKSPACES; }
 
 type: boolean
       {
@@ -439,6 +455,8 @@ function_name: TOK_SENDTOWORKSPACE { $$ = SENDTOWORKSPACE; }
              | TOK_LAUNCH { $$ = LAUNCH; }
              | TOK_FOCUS { $$ = FOCUS; }
              | TOK_MAXIMIZE { $$ = MAXIMIZE; }
+             | TOK_MAXIMIZE_HORIZONTALLY { $$ = MAXIMIZE_H; }
+             | TOK_MAXIMIZE_VERTICALLY { $$ = MAXIMIZE_V; }
              | TOK_NOP { $$ = NOP; }
              | TOK_QUOTE { $$ = QUOTE; }
              | TOK_MOVEINTERACTIVELY { $$ = MOVEINTERACTIVELY; }

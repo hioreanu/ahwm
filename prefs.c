@@ -59,22 +59,53 @@
 #define CHECK_STRING(x) ((x)->type_type == STRING ? True : False)
 #define CHECK_INT(x) ((x)->type_type == INTEGER ? True : False)
 
-/* ADDOPT 4 */
+/* ADDOPT 5: add to internal representation of option aggregations */
 typedef struct _prefs {
     Bool titlebar;
+    option_setting titlebar_set;
     Bool omnipresent;
+    option_setting omnipresent_set;
     int workspace;
+    option_setting workspace_set;
     int focus_policy;
+    option_setting focus_policy_set;
     Bool always_on_top;
+    option_setting always_on_top_set;
     Bool always_on_bottom;
+    option_setting always_on_bottom_set;
     Bool pass_focus_click;
+    option_setting pass_focus_click_set;
     int cycle_behaviour;
+    option_setting cycle_behaviour_set;
     char *titlebar_color;
+    option_setting titlebar_color_set;
     char *titlebar_focused_color;
+    option_setting titlebar_focused_color_set;
     char *titlebar_text_color;
+    option_setting titlebar_text_color_set;
     char *titlebar_text_focused_color;
+    option_setting titlebar_text_focused_color_set;
 } prefs;
 
+/* ADDOPT 6: set default value */
+static prefs defaults = {
+    True, UnSet,                /* titlebar */
+    False, UnSet,               /* omnipresent */
+    0, UnSet,                   /* workspace */
+    TYPE_SLOPPY_FOCUS, UnSet,   /* focus_policy */
+    False, UnSet,               /* always_on_top */
+    False, UnSet,               /* always_on_bottom */
+    True, UnSet,                /* pass_focus_click */
+    TYPE_RAISE_IMMEDIATELY, UnSet, /* cycle_behaviour */
+    NULL, UnSet,                /* titlebar_color */
+    NULL, UnSet,                /* titlebar_focused_color */
+    NULL, UnSet,                /* titlebar_text_color */
+    NULL, UnSet,                /* titlebar_text_focused_color */
+};
+
+static line *contexts;
+
+static void set_default(option *opt);
 static void get_int(type *typ, int *val);
 static void get_string(type *typ, char **val);
 static void get_bool(type *typ, Bool *val);
@@ -96,23 +127,6 @@ static void prefs_apply_internal(client_t *client, line *block, prefs *p);
 static void globally_bind(line *lp);
 static void globally_unbind(line *lp);
 static int no_config(char *xwmrc_path);
-
-static line *defaults, *contexts;
-
-/* ADDOPT 5 */
-int pref_no_workspaces = 7;
-Bool pref_display_titlebar = True;
-Bool pref_omnipresent = False;
-int pref_default_workspace = 0;
-int pref_default_focus_policy = TYPE_SLOPPY_FOCUS;
-Bool pref_default_on_top = False;
-Bool pref_default_on_bottom = False;
-Bool pref_pass_focus_click = False;
-int pref_default_cycle_behaviour = TYPE_RAISE_IMMEDIATELY;
-char *pref_default_titlebar_color = NULL;
-char *pref_default_titlebar_focused_color = NULL;
-char *pref_default_titlebar_text_color = NULL;
-char *pref_default_titlebar_text_focused_color = NULL;
 
 void prefs_init()
 {
@@ -165,61 +179,7 @@ void prefs_init()
                 globally_unbind(lp);
                 break;
             case OPTION:
-                /* ADDOPT 6 */
-                switch (lp->line_value.option->option_name) {
-                    case DISPLAYTITLEBAR:
-                        get_bool(lp->line_value.option->option_value,
-                                 &pref_display_titlebar);
-                        break;
-                    case OMNIPRESENT:
-                        get_bool(lp->line_value.option->option_value,
-                                 &pref_omnipresent);
-                        break;
-                    case DEFAULTWORKSPACE:
-                        get_int(lp->line_value.option->option_value,
-                                &pref_default_workspace);
-                        break;
-                    case NUMBEROFWORKSPACES:
-                        get_int(lp->line_value.option->option_value,
-                                &pref_no_workspaces);
-                        break;
-                    case FOCUSPOLICY:
-                        get_int(lp->line_value.option->option_value,
-                                &pref_default_focus_policy);
-                        break;
-                    case ALWAYSONTOP:
-                        get_bool(lp->line_value.option->option_value,
-                                &pref_default_on_top);
-                        break;
-                    case ALWAYSONBOTTOM:
-                        get_bool(lp->line_value.option->option_value,
-                                &pref_default_on_bottom);
-                        break;
-                    case PASSFOCUSCLICK:
-                        get_bool(lp->line_value.option->option_value,
-                                 &pref_pass_focus_click);
-                        break;
-                    case CYCLEBEHAVIOUR:
-                        get_int(lp->line_value.option->option_value,
-                                &pref_default_cycle_behaviour);
-                        break;
-                    case COLORTITLEBAR:
-                        get_string(lp->line_value.option->option_value,
-                                   &pref_default_titlebar_color);
-                        break;
-                    case COLORTITLEBARFOCUSED:
-                        get_string(lp->line_value.option->option_value,
-                                   &pref_default_titlebar_focused_color);
-                        break;
-                    case COLORTEXT:
-                        get_string(lp->line_value.option->option_value,
-                                   &pref_default_titlebar_text_color);
-                        break;
-                    case COLORTEXTFOCUSED:
-                        get_string(lp->line_value.option->option_value,
-                                   &pref_default_titlebar_text_focused_color);
-                        break;
-                }
+                set_default(lp->line_value.option);
                 break;
             default:
                 if (first_line == NULL) {
@@ -232,8 +192,75 @@ void prefs_init()
                 break;
         }
     }
-    defaults = first_line;
     contexts = first_context;
+}
+
+static void set_default(option *opt)
+{
+    int i;
+    
+    /* ADDOPT 7: set default if in global context */
+    switch (opt->option_name) {
+        case NWORKSPACES:
+            /* special case: option only applies globally */
+            get_int(opt->option_value, &i);
+            if (i < 1) {
+                fprintf(stderr,
+                        "XWM: NumberOfWorkspaces must be at least one\n");
+            } else {
+                nworkspaces = i;
+            }
+            break;
+        case DISPLAYTITLEBAR:
+            get_bool(opt->option_value, &defaults.titlebar);
+            defaults.titlebar_set = opt->option_setting;
+            break;
+        case OMNIPRESENT:
+            get_bool(opt->option_value, &defaults.omnipresent);
+            defaults.omnipresent_set = opt->option_setting;
+            break;
+        case DEFAULTWORKSPACE:
+            get_int(opt->option_value, &defaults.workspace);
+            defaults.workspace_set = opt->option_setting;
+            break;
+        case FOCUSPOLICY:
+            get_int(opt->option_value, &defaults.focus_policy);
+            defaults.focus_policy_set = opt->option_setting;
+            break;
+        case ALWAYSONTOP:
+            get_bool(opt->option_value, &defaults.always_on_top);
+            defaults.always_on_top_set = opt->option_setting;
+            break;
+        case ALWAYSONBOTTOM:
+            get_bool(opt->option_value, &defaults.always_on_bottom);
+            defaults.always_on_bottom_set = opt->option_setting;
+            break;
+        case PASSFOCUSCLICK:
+            get_bool(opt->option_value, &defaults.pass_focus_click);
+            defaults.pass_focus_click_set = opt->option_setting;
+            break;
+        case CYCLEBEHAVIOUR:
+            get_int(opt->option_value, &defaults.cycle_behaviour);
+            defaults.cycle_behaviour_set = opt->option_setting;
+            break;
+        case COLORTITLEBAR:
+            get_string(opt->option_value, &defaults.titlebar_color);
+            defaults.titlebar_color_set = opt->option_setting;
+            break;
+        case COLORTITLEBARFOCUSED:
+            get_string(opt->option_value, &defaults.titlebar_focused_color);
+            defaults.titlebar_focused_color_set = opt->option_setting;
+            break;
+        case COLORTEXT:
+            get_string(opt->option_value, &defaults.titlebar_text_color);
+            defaults.titlebar_text_color_set = opt->option_setting;
+            break;
+        case COLORTEXTFOCUSED:
+            get_string(opt->option_value,
+                       &defaults.titlebar_text_focused_color);
+            defaults.titlebar_text_focused_color_set = opt->option_setting;
+            break;
+    }
 }
 
 static line *type_check(line *block)
@@ -324,7 +351,13 @@ static Bool type_check_option(option *opt)
     Bool retval;
     
     switch (opt->option_name) {
-        /* ADDOPT 7 */
+        /* ADDOPT 8: define option's type */
+        case NWORKSPACES:
+            if ( (retval = CHECK_INT(opt->option_value)) == False) {
+                fprintf(stderr,
+                        "XWM: NumberOfWorkspaces not given integer value\n");
+            }
+            break;
         case DISPLAYTITLEBAR:
             if ( (retval = CHECK_BOOL(opt->option_value)) == False) {
                 fprintf(stderr,
@@ -438,6 +471,8 @@ static Bool type_check_function(function *fn)
         case KILLWITHEXTREMEPREJUDICE:
         case FOCUS:
         case MAXIMIZE:
+        case MAXIMIZE_H:
+        case MAXIMIZE_V:
         case NOP:
         case QUOTE:
         case MOVEINTERACTIVELY:
@@ -508,38 +543,24 @@ void prefs_apply(client_t *client)
 {
     prefs p;
 
-    /* ADDOPT 9 */
-    p.titlebar = pref_display_titlebar;
-    p.omnipresent = pref_omnipresent;
-    p.workspace = pref_default_workspace;
-    p.focus_policy = pref_default_focus_policy;
-    p.always_on_top = pref_default_on_top;
-    p.always_on_bottom = pref_default_on_bottom;
-    p.pass_focus_click = pref_pass_focus_click;
-    p.cycle_behaviour = pref_default_cycle_behaviour;
-    p.titlebar_color = pref_default_titlebar_color;
-    p.titlebar_focused_color = pref_default_titlebar_focused_color;
-    p.titlebar_text_color = pref_default_titlebar_text_color;
-    p.titlebar_text_focused_color = pref_default_titlebar_text_focused_color;
+    memcpy(&p, &defaults, sizeof(prefs));
 
     prefs_apply_internal(client, contexts, &p);
 
     if (client->state == WithdrawnState) {
-        if (client->workspace_set <= UserSet) {
+        if (client->workspace_set <= p.workspace_set) {
             client->workspace = p.workspace;
-            client->workspace_set = UserSet;
+            client->workspace_set = p.workspace_set;
         }
     }
-    debug(("client '%s' (%s,%s) %s a titlebar\n",
-           client->name, client->class, client->instance,
-           p.titlebar ? "HAS" : "DOES NOT HAVE"));
-    if (client->has_titlebar_set <= UserSet) {
+
+    if (client->has_titlebar_set <= p.titlebar_set) {
         if (p.titlebar == True) {
             if (!client->has_titlebar) {
                 client->has_titlebar = 1;
                 if (client->frame != None) {
                     client_add_titlebar(client);
-                    client->has_titlebar_set = UserSet;
+                    client->has_titlebar_set = p.titlebar_set;
                 }
             }
         } else {
@@ -547,70 +568,70 @@ void prefs_apply(client_t *client)
                 client->has_titlebar = 0;
                 if (client->frame != None) {
                     client_remove_titlebar(client);
-                    client->has_titlebar_set = UserSet;
+                    client->has_titlebar_set = p.titlebar_set;
                 }
             }
         }
     }
-    if (client->cycle_behaviour_set <= UserSet) {
+    if (client->cycle_behaviour_set <= p.cycle_behaviour_set) {
         switch (p.cycle_behaviour) {
             case TYPE_SKIP_CYCLE:
                 client->cycle_behaviour = SkipCycle;
-                client->cycle_behaviour_set = UserSet;
+                client->cycle_behaviour_set = p.cycle_behaviour_set;
                 break;
             case TYPE_RAISE_IMMEDIATELY:
                 client->cycle_behaviour = RaiseImmediately;
-                client->cycle_behaviour_set = UserSet;
+                client->cycle_behaviour_set = p.cycle_behaviour_set;
                 break;
             case TYPE_RAISE_ON_CYCLE_FINISH:
                 client->cycle_behaviour = RaiseOnCycleFinish;
-                client->cycle_behaviour_set = UserSet;
+                client->cycle_behaviour_set = p.cycle_behaviour_set;
                 break;
             case TYPE_DONT_RAISE:
                 client->cycle_behaviour = DontRaise;
-                client->cycle_behaviour_set = UserSet;
+                client->cycle_behaviour_set = p.cycle_behaviour_set;
                 break;
         }
     }
-    if (client->omnipresent_set <= UserSet) {
+    if (client->omnipresent_set <= p.omnipresent_set) {
         if (p.omnipresent) {
             client->omnipresent = 1;
-            client->omnipresent_set = UserSet;
+            client->omnipresent_set = p.omnipresent_set;
         } else {
             client->omnipresent = 0;
-            client->omnipresent_set = UserSet;
+            client->omnipresent_set = p.omnipresent_set;
         }
     }
-    if (client->focus_policy_set <= UserSet) {
+    if (client->focus_policy_set <= p.focus_policy_set) {
         switch (p.focus_policy) {
             case TYPE_SLOPPY_FOCUS:
                 if (client->focus_policy == ClickToFocus) {
                     focus_policy_from_click(client);
                 }
                 client->focus_policy = SloppyFocus;
-                client->focus_policy_set = UserSet;
+                client->focus_policy_set = p.focus_policy_set;
                 break;
             case TYPE_CLICK_TO_FOCUS:
                 if (client->focus_policy != ClickToFocus) {
                     focus_policy_to_click(client);
                 }
                 client->focus_policy = ClickToFocus;
-                client->focus_policy_set = UserSet;
+                client->focus_policy_set = p.focus_policy_set;
                 break;
             case TYPE_DONT_FOCUS:
                 if (client->focus_policy == ClickToFocus) {
                     focus_policy_from_click(client);
                 }
                 client->focus_policy = DontFocus;
-                client->focus_policy_set = UserSet;
+                client->focus_policy_set = p.focus_policy_set;
                 break;
         }
     }
-    if (client->always_on_top_set <= UserSet) {
+    if (client->always_on_top_set <= p.always_on_top_set) {
         if (p.always_on_top) {
             if (client->always_on_top == 0) {
                 client->always_on_top = 1;
-                client->always_on_top_set = UserSet;
+                client->always_on_top_set = p.always_on_top_set;
                 /* moves to top of always-on-top windows: */
                 stacking_remove(client);
                 stacking_add(client);
@@ -618,18 +639,18 @@ void prefs_apply(client_t *client)
         } else {
             if (client->always_on_top == 1) {
                 client->always_on_top = 0;
-                client->always_on_top_set = UserSet;
+                client->always_on_top_set = p.always_on_top_set;
                 /* moves to top of not always-on-top windows: */
                 stacking_remove(client);
                 stacking_add(client);
             }
         }
     }
-    if (client->always_on_bottom_set <= UserSet) {
+    if (client->always_on_bottom_set <= p.always_on_bottom_set) {
         if (p.always_on_bottom) {
             if (client->always_on_bottom == 0) {
                 client->always_on_bottom = 1;
-                client->always_on_bottom_set = UserSet;
+                client->always_on_bottom_set = p.always_on_bottom_set;
                 /* moves to top of always-on-bottom windows: */
                 stacking_remove(client);
                 stacking_add(client);
@@ -637,20 +658,20 @@ void prefs_apply(client_t *client)
         } else {
             if (client->always_on_bottom == 1) {
                 client->always_on_bottom = 0;
-                client->always_on_bottom_set = UserSet;
+                client->always_on_bottom_set = p.always_on_bottom_set;
                 /* moves to top of not always-on-bottom windows: */
                 stacking_remove(client);
                 stacking_add(client);
             }
         }
     }
-    if (client->pass_focus_click <= UserSet) {
+    if (client->pass_focus_click <= p.pass_focus_click_set) {
         if (p.pass_focus_click) {
             client->pass_focus_click = 1;
-            client->pass_focus_click_set = UserSet;
+            client->pass_focus_click_set = p.pass_focus_click_set;
         } else {
             client->pass_focus_click = 0;
-            client->pass_focus_click_set = UserSet;
+            client->pass_focus_click_set = p.pass_focus_click_set;
         }
     }
 
@@ -658,8 +679,8 @@ void prefs_apply(client_t *client)
                            p.titlebar_focused_color,
                            p.titlebar_text_color,
                            p.titlebar_text_focused_color);
-    
-    /* ADDOPT 10 */
+
+    /* ADDOPT 10: apply the option to the client */
 }
 
 static void prefs_apply_internal(client_t *client, line *block, prefs *p)
@@ -814,44 +835,54 @@ static Bool context_applies(client_t *client, context *cntxt)
 static void option_apply(client_t *client, option *opt, prefs *p)
 {
     switch (opt->option_name) {
-        /* ADDOPT 8 */
+        /* ADDOPT 9: set option if found within a context */
         case DISPLAYTITLEBAR:
             get_bool(opt->option_value, &p->titlebar);
+            p->titlebar_set = opt->option_setting;
             break;
         case OMNIPRESENT:
             get_bool(opt->option_value, &p->omnipresent);
+            p->omnipresent_set = opt->option_setting;
             break;
         case DEFAULTWORKSPACE:
-            if (client->state == WithdrawnState) {
-                get_int(opt->option_value, &p->workspace);
-            }
+            get_int(opt->option_value, &p->workspace);
+            p->workspace_set = opt->option_setting;
             break;
         case FOCUSPOLICY:
             get_int(opt->option_value, &p->focus_policy);
+            p->focus_policy_set = opt->option_setting;
             break;
         case CYCLEBEHAVIOUR:
             get_int(opt->option_value, &p->cycle_behaviour);
+            p->cycle_behaviour_set = opt->option_setting;
             break;
         case ALWAYSONTOP:
             get_bool(opt->option_value, &p->always_on_top);
+            p->always_on_top_set = opt->option_setting;
             break;
         case ALWAYSONBOTTOM:
             get_bool(opt->option_value, &p->always_on_bottom);
+            p->always_on_bottom_set = opt->option_setting;
             break;
         case PASSFOCUSCLICK:
             get_bool(opt->option_value, &p->pass_focus_click);
+            p->pass_focus_click_set = opt->option_setting;
             break;
         case COLORTITLEBAR:
             get_string(opt->option_value, &p->titlebar_color);
+            p->titlebar_color_set = opt->option_setting;
             break;
         case COLORTITLEBARFOCUSED:
             get_string(opt->option_value, &p->titlebar_focused_color);
+            p->titlebar_focused_color_set = opt->option_setting;
             break;
         case COLORTEXT:
             get_string(opt->option_value, &p->titlebar_text_color);
+            p->titlebar_text_color_set = opt->option_setting;
             break;
         case COLORTEXTFOCUSED:
             get_string(opt->option_value, &p->titlebar_text_focused_color);
+            p->titlebar_text_focused_color_set = opt->option_setting;
             break;
     }
 }
@@ -880,24 +911,26 @@ static void mouseunbinding_apply(client_t *client, mouseunbinding *kb)
 /* in addition, this is pretty ugly */
 /* could prolly just move all this into the parser */
 key_fn fn_table[] = {
-/* 1  */    workspace_client_moveto_bindable,
-/* 2  */    workspace_goto_bindable,
-/* 3  */    focus_alt_tab,
-/* 4  */    kill_nicely,
-/* 5  */    kill_with_extreme_prejudice,
-/* 6  */    run_program,
-/* 7  */    NULL, /* focus function, only for mouse binding */
-/* 8  */    resize_maximize,
-/* 9  */    keyboard_ignore,
-/* 10 */    keyboard_quote,
-/* 11 */    move_client,
-/* 12 */    resize_client,
-/* 13 */    NULL, /* non-interactive move/resize, must implement */
-/* 14 */    xwm_quit,
-/* 15 */    NULL, /* beep */
-/* 16 */    NULL, /* invoke composed function */
-/* 17 */    NULL, /* expansion for menu system */
-/* 18 */    NULL, /* refresh/reset */
+/* 0  */    workspace_client_moveto_bindable,
+/* 1  */    workspace_goto_bindable,
+/* 2  */    focus_alt_tab,
+/* 3  */    kill_nicely,
+/* 4  */    kill_with_extreme_prejudice,
+/* 5  */    run_program,
+/* 6  */    NULL, /* focus function, only for mouse binding */
+/* 7  */    resize_maximize,
+/* 8  */    keyboard_ignore,
+/* 9  */    keyboard_quote,
+/* 10 */    move_client,
+/* 11 */    resize_client,
+/* 12 */    NULL, /* non-interactive move/resize, must implement */
+/* 13 */    xwm_quit,
+/* 14 */    NULL, /* beep */
+/* 15 */    NULL, /* invoke composed function */
+/* 16 */    NULL, /* expansion for menu system */
+/* 17 */    NULL, /* refresh/reset */
+/* 18 */    resize_maximize_vertically,
+/* 19 */    resize_maximize_horizontally
 };
 
 static void globally_bind(line *lp)

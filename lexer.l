@@ -79,10 +79,9 @@ DIGIT [0-9]
     }
 }
 
-DisplayTitleBar { return TOK_DISPLAYTITLEBAR; /* ADDOPT 1 */ }
+DisplayTitleBar { return TOK_DISPLAYTITLEBAR; /* ADDOPT 1: lexical symbol */ }
 Omnipresent { return TOK_OMNIPRESENT; }
 DefaultWorkspace { return TOK_DEFAULTWORKSPACE; }
-NumberOfWorkspaces { return TOK_NUMBEROFWORKSPACES; }
 FocusPolicy { return TOK_FOCUS_POLICY; }
 AlwaysOnTop { return TOK_ALWAYSONTOP; }
 AlwaysOnBottom { return TOK_ALWAYSONBOTTOM; }
@@ -101,6 +100,7 @@ ColorTitlebarTextNonFocused { return TOK_COLORTEXT; }
 ColourTitlebarTextNonFocused { return TOK_COLORTEXT; }
 ColorTitlebarTextFocused { return TOK_COLORTEXTFOCUSED; }
 ColourTitlebarTextFocused { return TOK_COLORTEXTFOCUSED; }
+NumberOfWorkspaces { return TOK_NWORKSPACES; }
 
 SloppyFocus { return TOK_SLOPPY_FOCUS; }
 ClickToFocus { return TOK_CLICK_TO_FOCUS; }
@@ -149,6 +149,8 @@ KillWithExtremePrejudice { return TOK_KILLWITHEXTREMEPREJUDICE; }
 Launch { return TOK_LAUNCH; }
 Focus { return TOK_FOCUS; }
 Maximize { return TOK_MAXIMIZE; }
+MaximizeHorizontally { return TOK_MAXIMIZE_HORIZONTALLY; }
+MaximizeVertically { return TOK_MAXIMIZE_VERTICALLY; }
 Nop { return TOK_NOP; }
 Quote { return TOK_QUOTE; }
 MoveInteractively { return TOK_MOVEINTERACTIVELY; }
@@ -162,6 +164,7 @@ Refresh { return TOK_REFRESH; }
 
 ";" { return TOK_SEMI; }
 "=" { return TOK_EQUALS; }
+"is!" { return TOK_SET_UNCONDITIONALLY; }
 "{" { return TOK_LBRACE; }
 "}" { return TOK_RBRACE; }
 "," { return TOK_COMMA; }

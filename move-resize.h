@@ -80,10 +80,12 @@ void resize_client(XEvent *xevent, arglist *ignored);
  * Toggle maximization state; if client->prev_width == -1 or
  * client->prev_heigth == -1, then the client is NOT maximized; else
  * the client is maximized and client->prev* holds the previous window
- * configuration.  This manipulates those appropriate attributes and
- * toggles the maximization state.  The void * argument is ignored.
+ * configuration.  These manipulate those appropriate attributes and
+ * toggle the maximization state.
  */
 
 void resize_maximize(XEvent *xevent, arglist *ignored);
+void resize_maximize_horizontally(XEvent *xevent, arglist *ignored);
+void resize_maximize_vertically(XEvent *xevent, arglist *ignored);
 
 #endif /* MOVE_RESIZE_H */

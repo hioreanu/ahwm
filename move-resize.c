@@ -62,8 +62,7 @@
  * These are the possible directions in which one can resize a window,
  * depending on which direction the mouse moves at first
  * 
- * UNKNOWN is obviously a marker to say the direction hasn't yet been
- * identified
+ * UNKNOWN is a marker to say the direction hasn't yet been identified
  * 
  * We only constrain the window resizing to one dimension by using a
  * keypress; window movement is never constrained to one direction.
@@ -123,39 +122,56 @@ static void resize_display_geometry(client_t *client, int x, int y,
                                     int width, int height);
 static void resist(client_t *client, int *oldx, int *oldy, int x, int y);
 
-/* FIXME: use maximum height, width */
-void resize_maximize(XEvent *xevent, arglist *ignored)
+static void max_vert(client_t *client)
 {
-    int h_inc, w_inc, h_base, w_base;
-    client_t *client;
-
-    client = client_find(xevent->xbutton.window);
-    if (client == NULL) return;
+    int h_inc, h_base;
+    
     h_inc = get_height_resize_inc(client);
-    w_inc = get_width_resize_inc(client);
     h_base = get_height_resize_base(client);
-    w_base = get_width_resize_base(client);
-
-    if (client->prev_width != -1 || client->prev_height != -1) {
-        if (client->prev_height != -1) {
-            client->height = client->prev_height;
-            client->y = client->prev_y;
-        }
-        if (client->prev_width != -1) {
-            client->width = client->prev_width;
-            client->x = client->prev_x;
-        }
-        client->prev_x = client->prev_y = -1;
-        client->prev_width = client->prev_height = -1;
-    } else {
-        client->prev_x = client->x;
+    if (client->prev_height == -1) {
         client->prev_y = client->y;
-        client->prev_width = client->width;
         client->prev_height = client->height;
-        client->width = ((scr_width - w_base) / w_inc) * w_inc + w_base;
         client->height = ((scr_height - h_base) / h_inc) * h_inc + h_base;
-        client->y = client->x = 0;
+        if (client->xsh != NULL && (client->xsh->flags & PMaxSize)) {
+            if (client->height > client->xsh->max_height) {
+                client->height = client->xsh->max_height;
+            }
+        }
+        client->y = 0;
+    } else {
+        client->height = client->prev_height;
+        client->y = client->prev_y;
+        client->prev_y = -1;
+        client->prev_height = -1;
     }
+}
+
+static void max_horiz(client_t *client)
+{
+    int w_inc, w_base;
+
+    w_inc = get_width_resize_inc(client);
+    w_base = get_width_resize_base(client);
+    if (client->prev_width == -1) {
+        client->prev_x = client->x;
+        client->prev_width = client->width;
+        client->width = ((scr_width - w_base) / w_inc) * w_inc + w_base;
+        if (client->xsh != NULL && (client->xsh->flags & PMaxSize)) {
+            if (client->width > client->xsh->max_width) {
+                client->width = client->xsh->max_width;
+            }
+        }
+        client->x = 0;
+    } else {
+        client->width = client->prev_width;
+        client->x = client->prev_x;
+        client->prev_x = -1;
+        client->prev_width = -1;
+    }
+}
+
+static void apply_max_state(client_t *client)
+{
     XMoveResizeWindow(dpy, client->frame, client->x, client->y,
                       client->width, client->height);
     if (client->titlebar != None) {
@@ -165,6 +181,40 @@ void resize_maximize(XEvent *xevent, arglist *ignored)
     } else {
         XResizeWindow(dpy, client->window, client->width, client->height);
     }
+}
+
+void resize_maximize(XEvent *xevent, arglist *ignored)
+{
+    client_t *client;
+
+    client = client_find(xevent->xbutton.window);
+    if (client == NULL) return;
+
+    max_horiz(client);
+    max_vert(client);
+    apply_max_state(client);
+}
+
+void resize_maximize_vertically(XEvent *xevent, arglist *ignored)
+{
+    client_t *client;
+
+    client = client_find(xevent->xbutton.window);
+    if (client == NULL) return;
+
+    max_vert(client);
+    apply_max_state(client);
+}
+
+void resize_maximize_horizontally(XEvent *xevent, arglist *ignored)
+{
+    client_t *client;
+
+    client = client_find(xevent->xbutton.window);
+    if (client == NULL) return;
+
+    max_horiz(client);
+    apply_max_state(client);
 }
 
 /*
@@ -383,8 +433,6 @@ void move_client(XEvent *xevent, arglist *ignored)
          * according to ICCCM 4.1.5 */
         if (action != RESET) {
             move_inform_client(client);
-            client->prev_x = client->prev_y = -1;
-            client->prev_width = client->prev_height = -1;
         }
     }
 
@@ -396,7 +444,7 @@ void move_client(XEvent *xevent, arglist *ignored)
         /* if we want to toggle from a move to a resize, we create
          * a fake XEvent, filling out the fields that the resize
          * code looks at.  The event isn't sent (no X requests are
-         * made - it is just used to call the resize code. */
+         * made - it is just used to call the resize code). */
         if (have_mouse) {
             event1.type = ButtonPress;
             event1.xbutton.window = client->window;
@@ -789,7 +837,6 @@ void resize_client(XEvent *xevent, arglist *ignored)
         client->width = orig.width;
         client->height = orig.height;
     } else {
-        client->prev_x = client->prev_y = -1;
         client->prev_width = client->prev_height = -1;
     }
 
@@ -815,6 +862,22 @@ void resize_client(XEvent *xevent, arglist *ignored)
     XUngrabKeyboard(dpy, CurrentTime);
     sizing = 0;
     if (action == MOVE) {
+        /* want to ensure client over mouse when starting move */
+        if (!mouse_over_client(client)) {
+            Window junk1;
+            int junk2, x, y;
+            unsigned int junk3;
+            
+            if (XQueryPointer(dpy, root_window, &junk1, &junk1,
+                              &x, &y, &junk2, &junk2,
+                              &junk3) == True) {
+                client->x = x;
+                client->y = y;
+                XMoveWindow(dpy, client->frame, x, y);
+                x_start = x;
+                y_start = y;
+            }
+        }
         if (have_mouse) {
             event1.type = ButtonPress;
             event1.xbutton.window = client->window;
