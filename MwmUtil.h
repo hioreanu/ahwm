@@ -99,6 +99,14 @@
  * menus in some way.  Perhaps it is a way to recognize those windows.
  * Only the first bit seems defined to do anything.  Further
  * investigation required.
+ * 
+ * UPDATE Sun Oct 13 23:25:31 2002:  MWM_DECORATIONS_ALL and
+ * MWM_FUNCTIONS_ALL change the meaning of the other flags.  If _ALL
+ * is set, any other set member indicates the feature should be turned
+ * OFF (eg, it inverts the meaning of the flags).  I had this wrong
+ * for an entire year and I only now know because I was browsing
+ * someone else's source.  It certainly would have helped if someone
+ * documented these.
  */
 
 typedef struct _mwm_hints {

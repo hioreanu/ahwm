@@ -155,6 +155,12 @@ void focus_save_stacks();
 void focus_load_stacks();
 
 /*
+ * FIXME: document hack
+ */
+
+Bool focus_in_alt_tab();
+
+/*
  * print out internal focus structures for debugging
  */
 

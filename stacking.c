@@ -453,7 +453,7 @@ static void raise_tree(client_t *node, client_t *ignore, Bool go_up)
 
     /* visit node */
     if (node->workspace == workspace_current && node->state == NormalState) {
-        XMapWindow(dpy, node->frame);
+        XMapWindow(dpy, node->frame); /* why is this here?  does not negate perf. gain? */
     }
     if (parent == NULL || order(node, parent) >= 0) {
         restack(node, True);

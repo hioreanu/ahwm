@@ -1,5 +1,18 @@
+LEFT OFF: event_mapnotify, konqueror, java
+
+BUG - move kpager to workspace 2 using ctrl-alt-2.  Also gets
+titlebar.  Titlebar not updated after move.
+
+focus for shaded windows?
+
+BUG - can focus non-focusables like kpager by clicking on them
+
+konqueror - maximize one window, subsequent windows all placed same way
+
 TODO before release:
+- investigate -fprofile-arcs and -fbranch-probabilities
 - ensure everything includes compat.h if needed
+- test_gravity, I'm doing it wrong
 - invocations of client_find() don't use event_window()
 - ewmh 1.2, much more sane
 - timer_t declared in sys/types.h on FreeBSD
@@ -20,8 +33,12 @@ TODO before release:
 - put window on two desktops using kpager, does strange things
 - _NET_WM_WINDOW_TYPE_MENU goes into alt-tab at launch
 - kicker: never focus, even on click, always pass focus click
+- test with metacity evil stuff
+- client_find - optimize with gcov
 
 Wishlist:
+- unix domain socket for communication
+- allow stealing ICCCM property like metacity
 - motif hints override is!
 - move to side, corner can use animation
 - implement "ping" protocol

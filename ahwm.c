@@ -123,6 +123,7 @@ int main(int argc, char **argv)
     XGCValues xgcv;
     XColor xcolor, junk2;
     sigset_t set;
+    unsigned long gc_mask;
 
 /* 
  * We may enter main() with SIGSEGV or SIGBUS blocked.  If we get a
@@ -247,7 +248,7 @@ int main(int argc, char **argv)
              * and misconfigures font server or something.  Might try
              * to continue without titlebars. */
             fprintf(stderr, "AHWM: Could not load any fonts at all.\n");
-            fprintf(stderr, "AHWM: This is a fatal error, quitting.\n");
+            fprintf(stderr, "AHWM: This is a fatal error - quitting.\n");
             exit(1);
         }
     }
@@ -270,60 +271,22 @@ int main(int argc, char **argv)
     xgcv.join_style = JoinMiter;
     xgcv.font = fontstruct->fid;
     xgcv.subwindow_mode = IncludeInferiors;
+
+    gc_mask = GCForeground | GCBackground | GCLineWidth | GCLineStyle
+        | GCCapStyle| GCJoinStyle | GCFont | GCFunction
+        | GCPlaneMask | GCSubwindowMode;
     
-    root_white_fg_gc = XCreateGC(dpy, root_window,
-                                 GCForeground | GCBackground
-                                 | GCLineWidth | GCLineStyle
-                                 | GCCapStyle | GCJoinStyle
-                                 | GCFont | GCFunction
-                                 | GCPlaneMask | GCSubwindowMode,
-                                 &xgcv);
-    extra_gc1 = XCreateGC(dpy, root_window,
-                          GCForeground | GCBackground
-                          | GCLineWidth | GCLineStyle
-                          | GCCapStyle | GCJoinStyle
-                          | GCFont | GCFunction
-                          | GCPlaneMask | GCSubwindowMode,
-                          &xgcv);
-    extra_gc2 = XCreateGC(dpy, root_window,
-                          GCForeground | GCBackground
-                          | GCLineWidth | GCLineStyle
-                          | GCCapStyle | GCJoinStyle
-                          | GCFont | GCFunction
-                          | GCPlaneMask | GCSubwindowMode,
-                          &xgcv);
-    extra_gc3 = XCreateGC(dpy, root_window,
-                          GCForeground | GCBackground
-                          | GCLineWidth | GCLineStyle
-                          | GCCapStyle | GCJoinStyle
-                          | GCFont | GCFunction
-                          | GCPlaneMask | GCSubwindowMode,
-                          &xgcv);
-    extra_gc4 = XCreateGC(dpy, root_window,
-                          GCForeground | GCBackground
-                          | GCLineWidth | GCLineStyle
-                          | GCCapStyle | GCJoinStyle
-                          | GCFont | GCFunction
-                          | GCPlaneMask | GCSubwindowMode,
-                          &xgcv);
+    root_white_fg_gc = XCreateGC(dpy, root_window, gc_mask, &xgcv);
+    extra_gc1 = XCreateGC(dpy, root_window, gc_mask, &xgcv);
+    extra_gc2 = XCreateGC(dpy, root_window, gc_mask, &xgcv);
+    extra_gc3 = XCreateGC(dpy, root_window, gc_mask, &xgcv);
+    extra_gc4 = XCreateGC(dpy, root_window, gc_mask, &xgcv);
     xgcv.function = GXxor;
-    root_invert_gc = XCreateGC(dpy, root_window,
-                                 GCForeground | GCBackground
-                                 | GCLineWidth | GCLineStyle
-                                 | GCCapStyle | GCJoinStyle
-                                 | GCFont | GCFunction
-                                 | GCPlaneMask | GCSubwindowMode,
-                                 &xgcv);
+    root_invert_gc = XCreateGC(dpy, root_window, gc_mask, &xgcv);
     xgcv.function = GXcopy;
     xgcv.background = white;
     xgcv.foreground = black;
-    root_black_fg_gc = XCreateGC(dpy, root_window,
-                                 GCForeground | GCBackground
-                                 | GCLineWidth | GCLineStyle
-                                 | GCCapStyle | GCJoinStyle
-                                 | GCFont | GCFunction
-                                 | GCPlaneMask | GCSubwindowMode,
-                                 &xgcv);
+    root_black_fg_gc = XCreateGC(dpy, root_window, gc_mask, &xgcv);
 
 #ifdef HAVE_ATEXIT
     atexit(focus_save_stacks);
@@ -343,7 +306,7 @@ int main(int argc, char **argv)
         event_get(xfd, &event);
         event_dispatch(&event);
     }
-    return 0;
+    return 0;                   /* can't happen :) */
 }
 
 /*
@@ -384,7 +347,6 @@ static int error_handler(Display *dpy, XErrorEvent *error)
 
 /*
  * Set up all windows that were here before the windowmanager started
- * 
  */
 
 static void scan_windows()
@@ -504,7 +466,9 @@ void ahwm_restart(XEvent *e, struct _arglist *ignored)
 }
 
 /*
- * call atexit() functions instead of terminating immediately on SIGTERM.
+ * Call atexit() functions instead of terminating immediately on
+ * SIGTERM.  (The default SIGTERM behaviour will not call atexit()
+ * functions.)
  * 
  * Problem is that we aren't supposed to call any Xlib functions in a
  * signal handler as Xlib isn't reentrant.  This might screw things up
@@ -512,7 +476,8 @@ void ahwm_restart(XEvent *e, struct _arglist *ignored)
  * function.  However, someone might have sent us SIGTERM because AHWM
  * is hung, and we may never get back to the dispatcher function.
  * Can't really come up with an optimal solution, but going ahead and
- * calling the Xlib functions works *some* of the time.
+ * calling the Xlib functions from a signal handler works *some* of
+ * the time.
  */
 
 static void sigterm(int signo)
@@ -589,7 +554,7 @@ static void sigsegv(int signo)
  * When AHWM crashes, it exec's itself with a special argument.  The
  * exec ensures we have a clean memory map, etc.  We then pop up a
  * dialog asking user if they want to continue (in which case we
- * simply exec again with the special argument), quit, or start TWM
+ * simply exec again without the special argument), quit, or start TWM
  * instead.
  * 
  * In practice, I haven't seen any place where restarting does not

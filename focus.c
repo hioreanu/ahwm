@@ -547,9 +547,16 @@ void focus_cycle_next(XEvent *xevent, arglist *ignored)
                 break;
                 
             /* we ignore the following events when in alt-tab: */    
+            case MotionNotify:
+                mouse_handle_event(xevent);
+                break;
             case ButtonPress:
             case ButtonRelease:
-            case MotionNotify:
+                if (mouse_handle_event(xevent)) {
+                    /* FIXME */
+                    /* state = DONE; */
+                }
+                break;
             case EnterNotify:
             case LeaveNotify:
             case FocusIn:
@@ -627,6 +634,11 @@ void focus_cycle_next(XEvent *xevent, arglist *ignored)
     
     debug(("\tfocus_current = %s\n", client_dbg(focus_current)));
     debug(("\tLeaving alt-tab\n"));
+}
+
+Bool focus_in_alt_tab()
+{
+    return in_alt_tab;
 }
 
 static void cycle_helper(focus_node *node)

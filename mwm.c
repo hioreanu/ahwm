@@ -52,7 +52,7 @@ void mwm_apply(client_t *client)
                            sizeof(mwm_hints), False, _MOTIF_WM_HINTS,
                            &actual, &fmt, &nitems, &bytes_after_return,
                            (unsigned char **)&hints) != Success) {
-        debug(("\tXGetWindowProperty(_MOTIF_WM_HINTS) FAILED!\n"));
+        debug(("\tXGetWindowProperty(_MOTIF_WM_HINTS) failed\n"));
         return;
     }
 
@@ -75,7 +75,9 @@ void mwm_apply(client_t *client)
      * the only 'decorations' member we don't ignore */
 
     if ((hints->flags & MWM_FLAGS_DECORATIONS) &&
-        (!(hints->decorations & MWM_DECORATIONS_TITLEBAR))) {
+        ((!(hints->decorations & MWM_DECORATIONS_TITLEBAR)) ||
+         ((hints->decorations & MWM_DECORATIONS_TITLEBAR) &&
+          (hints->decorations & MWM_DECORATIONS_ALL)))) {
         
         if (client->has_titlebar_set <= HintSet) {
             debug(("Removing titlebar of %s because of Motif hints\n",

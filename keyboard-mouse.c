@@ -131,6 +131,7 @@ void keyboard_init()
     KeySym keysym;
 
     meta_bit = super_bit = hyper_bit = alt_bit = mode_bit = -1;
+    meta_key = super_key = hyper_key = alt_key = mode_key = '\0';
     xmkm = XGetModifierMapping(dpy);
     for (i = 0; i < 8; i++) {
         for (j = 0; j < xmkm->max_keypermod; j++) {
@@ -738,9 +739,8 @@ static Bool mouse_down(XButtonEvent *xevent)
     
     click_to_focus_clicked(xevent);
 
-    /* must check absolute value of difference, X timestamps wrap */
     if (last_mousedown_set[button_ndx] &&
-        ABS(xevent->time - last_mousedown[button_ndx]) <= DBLCLICK_THRESH &&
+        xevent->time - last_mousedown[button_ndx] <= DBLCLICK_THRESH &&
         xevent->window == last_mousedown_window[button_ndx]) {
         /* we have a double click; invalidate timestamp, invoke function */
         last_mousedown_set[button_ndx] = False;
@@ -830,6 +830,8 @@ static void click_to_focus_clicked(XButtonEvent *xevent)
 {
     client_t *client;
 
+    if (focus_in_alt_tab()) return;
+    
     if (xevent->button == Button1
         && (xevent->state & ~(AllLocksMask | ANYBUTTONMASK)) == 0) {
         

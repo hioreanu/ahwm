@@ -167,6 +167,9 @@ void icccm_selection_request(XSelectionRequestEvent *xevent)
         their_property = xevent->property;
     } else if (xevent->target != None) {
         their_property = xevent->target;
+    } else {
+        /* no idea what's going on */
+        return;
     }
 
     XChangeProperty(dpy, xevent->requestor, their_property,

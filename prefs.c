@@ -357,6 +357,7 @@ static line *type_check(line *block)
 
     first_ok = NULL;
     prev = NULL;
+    line_ok = False;
     for (lp = block; lp != NULL; lp = lp->line_next) {
         switch (lp->line_type) {
             case CONTEXT:
@@ -871,6 +872,9 @@ static Bool context_applies(client_t *client, context *cntxt)
                 retval = !(strcmp(client->instance, type_string));
             }
         }
+    } else {
+        fprintf(stderr, "AHWM: context selector %d\n", cntxt->context_selector);
+        return False;
     }
     
     if (cntxt->context_selector & SEL_NOT) return !retval;

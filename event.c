@@ -428,7 +428,8 @@ static void event_unmap(XUnmapEvent *xevent)
     client_t *client;
     Window junk, parent, *junk2;
     int junk3;
-        
+    XEvent ev;
+
     client = client_find(xevent->window);
 
     client_print("Unmap:", client);
@@ -511,15 +512,22 @@ static void event_unmap(XUnmapEvent *xevent)
      * reparenting request is processed before anyone else has a
      * chance to reparent.  The only way to do this correctly is by
      * grabbing the server - something I don't like doing.
+     * 
+     * First implementation used XQueryTree() to get the window's
+     * parent.  This, however, does not work: it creates another race
+     * condition.  Correct behaviour seems to be to use
+     * XCheckTypedWindowEvent which looks both on our queue and then
+     * the server's queue.
      */
 
     XGrabServer(dpy);
-    XSync(dpy, False);
-    XQueryTree(dpy, client->window, &junk, &parent, &junk2, &junk3);
-    if (parent == client->frame) {
-        debug(("\tUnreparenting\n"));
-        client_unreparent(client);
-        XSync(dpy, False);
+    if (!XCheckTypedWindowEvent(dpy, client->window, ReparentNotify, &ev)) {
+        XQueryTree(dpy, client->window, &junk, &parent, &junk2, &junk3);
+        if (parent == client->frame) {
+            debug(("\tUnreparenting\n"));
+            /* client_unreparent(client); */
+            XSync(dpy, False);
+        }
     }
     XUngrabServer(dpy);
     
@@ -582,7 +590,7 @@ static void event_maprequest(XMapRequestEvent *xevent)
             || !(client->xsh->flags & (USPosition | PPosition)))
             place(client);
         XMapWindow(xevent->display, client->window);
-        stacking_raise(client);
+        stacking_raise(client); /* also maps frame */
         if (client->titlebar != None) {
             XMapWindow(xevent->display, client->titlebar);
         }
@@ -595,8 +603,8 @@ static void event_maprequest(XMapRequestEvent *xevent)
     }
 
     client_inform_state(client);
-    XFlush(dpy);                /* FIXME:  remove these two, kicker */
-    XSync(dpy, False);
+    /* XFlush(dpy); */               /* FIXME:  remove these two, kicker */
+    /* XSync(dpy, False); */
 }
 
 /*

@@ -31,7 +31,7 @@
 
 /* height of the titlebar, should probably be configurable */
 /* FIXME */
-//#define TITLE_HEIGHT 15
+/* #define TITLE_HEIGHT 15 */
 extern int TITLE_HEIGHT;
 
 /* Options may be set by user or hints, or set unconditionally by

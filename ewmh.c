@@ -1328,9 +1328,6 @@ void ewmh_client_list_add(client_t *client)
     XChangeProperty(dpy, root_window, _NET_CLIENT_LIST,
                     XA_WINDOW, 32, PropModeReplace,
                     (unsigned char *)ewmh_client_list, nclients);
-    XChangeProperty(dpy, root_window, _WIN_CLIENT_LIST,
-                    XA_WINDOW, 32, PropModeReplace,
-                    (unsigned char *)ewmh_client_list, nclients);
 }
 
 void ewmh_client_list_remove(client_t *client)

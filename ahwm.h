@@ -32,8 +32,8 @@
 #include <X11/Xutil.h>
 
 /* the events we usually listen for on the root window */
-#define ROOT_EVENT_MASK PropertyChangeMask | SubstructureRedirectMask | \
-                        SubstructureNotifyMask | KeyPressMask |         \
+#define ROOT_EVENT_MASK PropertyChangeMask | SubstructureRedirectMask |        \
+                        SubstructureNotifyMask | KeyPressMask |                \
                         KeyReleaseMask | ButtonPressMask | ButtonReleaseMask | \
                         FocusChangeMask
 

@@ -55,7 +55,6 @@ static Bool unmap(client_t *client, void *v)
     } else {
         XUnmapWindow(dpy, client->frame);
         debug(("\tUnmapping %s in workspace_goto\n", client_dbg(client)));
-        ewmh_client_list_remove(client);
     }
     return True;
 }

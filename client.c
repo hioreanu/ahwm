@@ -267,10 +267,10 @@ client_t *client_create(Window w)
             keyboard_grab_keys(client->frame);
         mouse_grab_buttons(client);
         focus_add(client, event_timestamp);
-        ewmh_client_list_add(client);
         client_inform_state(client);
     }
     
+    ewmh_client_list_add(client);
     return client;
 }
 
@@ -323,7 +323,7 @@ static void client_create_frame(client_t *client, position_size *win_position)
         XConfigureWindow(dpy, client->frame, mask, &xwc);
     }
 
-//    XClearWindow(dpy, client->frame); /* FIXME:  ??? */
+    /* XClearWindow(dpy, client->frame); */ /* FIXME:  ??? */
 
     if (XSaveContext(dpy, client->frame,
                      frame_context, (void *)client) != 0) {
@@ -360,7 +360,7 @@ void client_reparent(client_t *client)
         XReparentWindow(dpy, client->window, client->frame, 0, 0);
         XDeleteProperty(dpy, client->window, _AHWM_MOVE_OFFSET);
     }
-    XMapWindow(dpy, client->window);
+    /* XMapWindow(dpy, client->window); */ /* FIXME: remove, b0rked */
     client->reparented = 1;
 }
 
@@ -509,6 +509,8 @@ void client_destroy(client_t *client)
         c->next_transient = NULL;
         c->transient_for = None;
     }
+
+    ewmh_client_list_remove(client);
     
     XDeleteContext(dpy, client->window, window_context);
     XDeleteContext(dpy, client->frame, frame_context);

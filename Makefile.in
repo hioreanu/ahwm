@@ -6,7 +6,8 @@ LIBS=@XLIBS@
 CFLAGS=@CFLAGS@@X_CFLAGS@
 LDFLAGS=@LDFLAGS@@X_LIBS@
 
-#CFLAGS=-g -Wall -DSHAPE -DDEBUG=1 -I/usr/X11R6/include -L/usr/X11R6/lib
+# CFLAGS=
+# CC=./mycc.sh
 
 OBJS=ahwm.@OBJEXT@ client.@OBJEXT@ event.@OBJEXT@ focus.@OBJEXT@ workspace.@OBJEXT@ keyboard-mouse.@OBJEXT@ xev.@OBJEXT@ cursor.@OBJEXT@ move-resize.@OBJEXT@ kill.@OBJEXT@ malloc.@OBJEXT@ icccm.@OBJEXT@ colormap.@OBJEXT@ ewmh.@OBJEXT@ debug.@OBJEXT@ place.@OBJEXT@ stacking.@OBJEXT@ parser.@OBJEXT@ lexer.@OBJEXT@ prefs.@OBJEXT@ compat.@OBJEXT@ paint.@OBJEXT@ mwm.@OBJEXT@ timer.@OBJEXT@ animation.@OBJEXT@ shade.@OBJEXT@
 
@@ -50,7 +51,7 @@ wordcount:
 wc: wordcount
 
 clean:
-	@rm -f *.@OBJEXT@ *~ *core ahwm # TAGS
+	@rm -f *.@OBJEXT@ *~ *.da *.bb *.bbg *core ahwm # TAGS
 
 # FIXME:  just copying this over to Makefile.in, need to automate
 # DO NOT DELETE

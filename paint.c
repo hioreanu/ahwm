@@ -557,6 +557,11 @@ void paint_titlebar(client_t *client)
     } else if (client->title_position == DisplayRight) {
         int i = XTextWidth(fontstruct, client->name, strlen(client->name));
         title_position = client->width - i - room_right;
+    } else {
+        fprintf(stderr, "AHWM: Unkown client title position %d on client %s\n",
+                client->title_position, client_dbg(client));
+        /* possible memory corruption, attempt to continue */
+        title_position = room_left;
     }
     XDrawSegments(dpy, client->titlebar, extra_gc2,
                   main_hilight, 4);
