@@ -44,7 +44,7 @@
 #define LCHILD(i) (2*(i)+2)
 #define PARENT(i) (((i)-1)/2)
 
-struct _timer_t {
+struct _timer {
     enum { DONE, ACTIVE } state;
     int index;
     struct timeval tv;
@@ -52,19 +52,19 @@ struct _timer_t {
     void *arg;
 };
 
-static timer_t **timers;
+static timer **timers;
 
 static int nused, nallocated;
 
 static int timeval_compare(struct timeval *tv1, struct timeval *tv2);
 static void timeval_normalize(struct timeval *tv);
 static void timer_run_with_tv(struct timeval *now);
-static void remove_timer(timer_t *t);
+static void remove_timer(timer *t);
 
 void timer_init()
 {
     /* start out with eight timers */
-    timers = malloc(sizeof(timer_t *) * 1);
+    timers = malloc(sizeof(timer *) * 1);
     if (timers == NULL) {
         perror("malloc");
         exit(1);
@@ -72,24 +72,24 @@ void timer_init()
     nallocated = 1;
 }
 
-int timer_pending(timer_t *t)
+int timer_pending(timer *t)
 {
     return t->state == ACTIVE ? 1 : 0;
 }
 
-timer_t *timer_new(int msecs, timer_fn fn, void *arg)
+timer *timer_new(int msecs, timer_fn fn, void *arg)
 {
-    timer_t *t, *tmp, **tmp2;
+    timer *t, *tmp, **tmp2;
     struct timeval now;
     int i;
 
-    t = malloc(sizeof(timer_t));
+    t = malloc(sizeof(timer));
     if (t == NULL) {
         return NULL;
     }
     /* enlarge array if needed (we never shrink it again) */
     if (nused == nallocated) {
-        tmp2 = realloc(timers, sizeof(timer_t *) * nallocated * 2);
+        tmp2 = realloc(timers, sizeof(timer *) * nallocated * 2);
         if (tmp2 == NULL) {
             free(t);
             return NULL;
@@ -137,10 +137,10 @@ timer_t *timer_new(int msecs, timer_fn fn, void *arg)
  * elements of the heap, not only the top one.
  */
 
-static void remove_timer(timer_t *t)
+static void remove_timer(timer *t)
 {
     int i, smallest;
-    timer_t *tmp;
+    timer *tmp;
 
     if (t->state == DONE) {
         return;
@@ -204,7 +204,7 @@ static int timeval_compare(struct timeval *tv1, struct timeval *tv2)
     }
 }
 
-void timer_cancel(timer_t *t)
+void timer_cancel(timer *t)
 {
     remove_timer(t);
     free(t);
@@ -250,7 +250,7 @@ void timer_run_first()
 
 static void timer_run_with_tv(struct timeval *now)
 {
-    timer_t *t;
+    timer *t;
     
     while (nused > 0 && timeval_compare(now, &timers[0]->tv) <= 0) {
         /* must remove before calling user function - user function

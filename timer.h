@@ -40,8 +40,8 @@
  * opaque type
  */
 
-struct _timer_t;
-typedef struct _timer_t timer_t;
+struct _timer;
+typedef struct _timer timer;
 
 /*
  * Functions to be called on timer trigger; the first argument is the
@@ -49,7 +49,7 @@ typedef struct _timer_t timer_t;
  * to call timer_cancel.
  */
 
-typedef void (*timer_fn)(timer_t *, void *);
+typedef void (*timer_fn)(timer *, void *);
 
 /*
  * init module, no dependencies
@@ -67,7 +67,7 @@ void timer_init();
  * memory.
  */
 
-timer_t *timer_new(int msecs, timer_fn fn, void *arg);
+timer *timer_new(int msecs, timer_fn fn, void *arg);
 
 /*
  * Cancel and delete a timer before it shoots, or simply delete a
@@ -75,14 +75,14 @@ timer_t *timer_new(int msecs, timer_fn fn, void *arg);
  * be destroyed with timer_cancel or you'll get memory leaks.
  */
 
-void timer_cancel(timer_t *timer);
+void timer_cancel(timer *t);
 
 /*
  * Returns 1 if timer has not yet triggered; returns 0 if timer has
  * already shot.
  */
 
-int timer_pending(timer_t *timer);
+int timer_pending(timer *t);
 
 /*
  * Copy into TV the next time a timer will shoot.  The value placed

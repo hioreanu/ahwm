@@ -71,7 +71,7 @@ static void event_expose(XExposeEvent *);
 static void event_focusin(XFocusChangeEvent *);
 static void event_map(XMapEvent *);
 static void configure_nonclient(XConfigureRequestEvent *xevent);
-static void raise_on_timeout(timer_t *t, void *v);
+static void raise_on_timeout(timer *t, void *v);
 static void set_raise_timer(unsigned int milliseconds);
 static struct timeval *get_raise_timer();
 
@@ -319,7 +319,7 @@ void event_dispatch(XEvent *event)
     }
 }
 
-static void raise_on_timeout(timer_t *t, void *v)
+static void raise_on_timeout(timer *t, void *v)
 {
     client_t *client = (client_t *)v;
     stacking_raise(client);
@@ -348,7 +348,7 @@ static void raise_on_timeout(timer_t *t, void *v)
 static void event_enter(XCrossingEvent *xevent)
 {
     client_t *client;
-    static timer_t *t = NULL;
+    static timer *t = NULL;
     
     if (xevent->mode != NotifyNormal) {
         debug(("\tMode != NotifyNormal, ignoring event\n"));

@@ -54,6 +54,13 @@ static void shade_callback(float m, void *v)
     }
 }
 
+static void shade_finalize(void *v)
+{
+    client_t *client = (client_t *)v;
+
+    client->shading = 0;
+}
+
 void shade(XEvent *e, arglist *ignored)
 {
     client_t *client;
@@ -61,5 +68,8 @@ void shade(XEvent *e, arglist *ignored)
     client = client_find(e->xbutton.window);
     if (client == NULL) return;
     client->shaded = client->shaded ? 0 : 1;
-    animate(shade_callback, NULL, (void *)client);
+    if (client->shading == 0) {
+        client->shading = 1;
+        animate(shade_callback, shade_finalize, (void *)client);
+    }
 }

@@ -60,7 +60,7 @@ static char my_hostname[SYS_NMLN];
 static Atom _NET_WM_PID;
 
 static void set_murder_timer(client_t *client);
-static void murder_on_timeout(timer_t *timer, void *v);
+static void murder_on_timeout(timer *t, void *v);
 static unsigned long compute_hash(client_t *client);
 
 /*
@@ -210,12 +210,12 @@ static void set_murder_timer(client_t *client)
     timer_new(client->patience, murder_on_timeout, info);
 }
 
-static void murder_on_timeout(timer_t *timer, void *v)
+static void murder_on_timeout(timer *t, void *v)
 {
     client_t *client;
     murder_info *info = (murder_info *)v;
 
-    timer_cancel(timer);
+    timer_cancel(t);
     client = info->client;
     if (client != client_find(info->window)) {
         free(info);

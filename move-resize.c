@@ -34,8 +34,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <X11/keysym.h>
+#include <X11/Xlib.h>
 #include <X11/Xutil.h>
+#include <X11/keysym.h>
 
 #include "compat.h"
 #include "move-resize.h"
@@ -536,7 +537,7 @@ void move_client(XEvent *xevent, arglist *ignored)
                     action = DONE;
                     break;
                 }
-            
+                
                 break;
                 
             default:
@@ -548,7 +549,6 @@ void move_client(XEvent *xevent, arglist *ignored)
 
     }
 
-    debug(("\tEnd Move\n"));
     if (client != NULL) {
         XMoveWindow(dpy, client->frame, client->x, client->y);
         if (client->name != NULL) Free(client->name);

@@ -129,6 +129,7 @@ typedef struct _client_t {
     unsigned int reparented : 1;
     unsigned int ignore_unmapnotify : 1;
     unsigned int shaded : 1;
+    unsigned int shading : 1;
 
     /* user preferences */
     /* FIXME: 2-bit fields not defined in C, test with autoconf */

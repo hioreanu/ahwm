@@ -60,7 +60,7 @@ float animation_multiplicands[64] = {
     1.000000
 };
 
-static void animate_fire(timer_t *timer, void *v);
+static void animate_fire(timer *t, void *v);
 
 void animate(callback_fn callback, finalize_fn finalize, void *v)
 {
@@ -75,13 +75,13 @@ void animate(callback_fn callback, finalize_fn finalize, void *v)
     timer_new(ANIMATION_INTERVAL, animate_fire, (void *)data);
 }
 
-static void animate_fire(timer_t *timer, void *v)
+static void animate_fire(timer *t, void *v)
 {
     animate_data *data = (animate_data *)v;
 
     (data->callback)(animation_multiplicands[data->i], data->v);
 
-    timer_cancel(timer);
+    timer_cancel(t);
     data->i++;
     if (data->i == sizeof(animation_multiplicands) / sizeof(float)) {
         if (data->finalize != NULL) (data->finalize)(data->v);

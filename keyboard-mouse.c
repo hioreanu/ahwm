@@ -628,6 +628,7 @@ Bool keyboard_handle_event(XKeyEvent *xevent)
     }
 }
 
+/* FIXME: perhaps should separate mouse/keyboard stuff, AGAIN */
 #define DBLCLICK_THRESH 1000
 #define DRAG_THRESH 5
 #define ANYBUTTONMASK (Button1Mask | Button2Mask | Button3Mask \
@@ -635,6 +636,8 @@ Bool keyboard_handle_event(XKeyEvent *xevent)
 
 static int saved_x, saved_y, saved_location;
 static unsigned int saved_state, saved_button;
+/* for determining double-clicks, see mouse_down() */
+static Bool last_mousedown_set[5] = { False, False, False, False, False };
 
 static int distance_squared(int x1, int y1, int x2, int y2);
 static int button_to_index(unsigned int button);
@@ -660,6 +663,8 @@ static int distance_squared(int x1, int y1, int x2, int y2)
 
 static int button_to_index(unsigned int button)
 {
+    /* don't know if values of these symbols in headers change
+     * on some machines...better be safe */
     switch (button) {
         case Button1:
             return 0;
@@ -675,6 +680,10 @@ static int button_to_index(unsigned int button)
             return -1;
     }
 }
+
+/*
+ * Returns true if invoked function for event
+ */
 
 static Bool mouse_invoke(XEvent *xevent, click_type type)
 {
@@ -696,11 +705,21 @@ static Bool mouse_invoke(XEvent *xevent, click_type type)
     return False;
 }
 
+/*
+ * On MouseDown,
+ * grab pointer
+ * check for double-click
+ * if no double-click, just wait for MouseUp or Motion with pointer grabbed
+ * 
+ * Also deal with click-to-focus and GNOME root click proxying, but
+ * those are trivial (whereas doing the whole click/drag/double-click
+ * thing correctly is a little tricky)
+ */
+
 static Bool mouse_down(XButtonEvent *xevent)
 {
     int button_ndx;
     static Time last_mousedown[5]; /* for determining double-clicks */
-    static Bool last_mousedown_set[5] = { False, False, False, False, False };
     static Window last_mousedown_window[5];
 
     button_ndx = button_to_index(xevent->button);
@@ -717,7 +736,8 @@ static Bool mouse_down(XButtonEvent *xevent)
                  None, xevent->time);
     
     click_to_focus_clicked(xevent);
-    
+
+    /* must check absolute value of difference, X timestamps wrap */
     if (last_mousedown_set[button_ndx] &&
         ABS(xevent->time - last_mousedown[button_ndx]) <= DBLCLICK_THRESH &&
         xevent->window == last_mousedown_window[button_ndx]) {
@@ -737,6 +757,19 @@ static Bool mouse_down(XButtonEvent *xevent)
     }
 }
 
+/*
+ * On MouseUp, ungrab pointer whether or not invoked anything
+ * (don't care about Motion events while button not down)
+ * 
+ * This also means that if you:
+ * 1. left Mousedown on titlebar
+ * 2. right-click on titlebar
+ * 3. drag (left button still down)
+ * this does NOT invoke drag action; similar thing for step (3)
+ * MouseUp, does not invoke Click function.  Some toolkits work like
+ * this, some don't.  Feels pretty intuitive.
+ */
+
 static Bool mouse_up(XButtonEvent *xevent)
 {
     Time time;
@@ -748,23 +781,49 @@ static Bool mouse_up(XButtonEvent *xevent)
     return retval;
 }
 
+/*
+ * On Motion events, check to see if distance travelled from original
+ * MouseDown greater than threshold; invoke drag if so; keep waiting
+ * (with pointer grabbed) if not.
+ */
+
 static Bool mouse_moved(XMotionEvent *xevent)
 {
-    Time time;
     Bool retval;
-
+    XEvent ev;
+    int i;
+    
     retval = False;
     if (distance_squared(saved_x, saved_y, xevent->x_root,
                          xevent->y_root) >= DRAG_THRESH * DRAG_THRESH) {
-        time = xevent->time;
         retval = mouse_invoke((XEvent *)xevent, MOUSE_DRAG);
-        if (retval) XUngrabPointer(dpy, time);
-        /* FIXME: invalidate timestamp? */
+        if (retval) {
+            /* this is a little tricky
+             * 
+             * if dragged something
+             * (a) ungrab pointer now when drag done (not when drag started)
+             * (b) ensure server knows about Ungrab event
+             * (c) get all events from server queue, put on local queue
+             * (d) remove Motion events from local queue
+             * 
+             * if not done this way, may get stray Motion events later
+             * on, will begin another drag action (remove calls to XSync
+             * and XCheckMaskEvent then very quickly click and move
+             * mouse, it will seem as if mouse up event ignored)
+             */
+            XUngrabPointer(dpy, CurrentTime);
+            XSync(dpy, False);
+            while (XCheckMaskEvent(dpy, ButtonMotionMask, &ev));
+            /* invalidate pending double-clicks
+             * eg, don't allow quick drag followed by click to trigger
+             * double-click, force two MouseDowns after any drag
+             * (this is the intuitive behaviour) */
+            for (i = 0; i < 5; i++)
+                last_mousedown_set[i] = False;
+        }
     }
     return retval;
 }
-
-/* FIXME: proxy root clicks */
 
 static void click_to_focus_clicked(XButtonEvent *xevent)
 {
