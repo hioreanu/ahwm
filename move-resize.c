@@ -73,6 +73,47 @@ static void set_keys();
 static void move_constrain(client_t *client);
 static int get_width_resize_inc(client_t *client);
 static int get_height_resize_inc(client_t *client);
+static void move_inform_client(client_t *client);
+
+void resize_maximize(XEvent *xevent)
+{
+    int h_inc, w_inc;
+    client_t *client;
+
+    client = client_find(xevent->xbutton.window);
+    if (client == NULL) return;
+    h_inc = get_height_resize_inc(client);
+    w_inc = get_width_resize_inc(client);
+
+    if (client->prev_width != -1 || client->prev_height != -1) {
+        if (client->prev_height != -1) {
+            client->height = client->prev_height;
+            client->y = client->prev_y;
+        }
+        if (client->prev_width != -1) {
+            client->width = client->prev_width;
+            client->x = client->prev_x;
+        }
+        client->prev_x = client->prev_y = -1;
+        client->prev_width = client->prev_height = -1;
+    } else {
+        client->prev_x = client->x;
+        client->prev_y = client->y;
+        client->prev_width = client->width;
+        client->prev_height = client->height;
+        client->width = (DisplayWidth(dpy, scr) / w_inc) * w_inc;
+        client->height = (DisplayHeight(dpy, scr) / h_inc) * h_inc;
+        client->y = client->x = 0;
+    }
+    XMoveResizeWindow(dpy, client->frame, client->x, client->y,
+                      client->width, client->height);
+    if (client->titlebar != None) {
+        XResizeWindow(dpy, client->window, client->width,
+                      client->height - TITLE_HEIGHT);
+    } else {
+        XResizeWindow(dpy, client->window, client->width, client->height);
+    }
+}
 
 /*
  * This takes over the event loop and grabs the pointer until the move
@@ -209,7 +250,7 @@ void move_client(XEvent *xevent)
                 } else if (xevent->xkey.keycode == keycode_Escape) {
                     client->x = orig_x;
                     client->y = orig_y;
-                    action = DONE;
+                    action = RESET;
                     break;
                 } else if (xevent->xkey.keycode == keycode_Control_L ||
                            xevent->xkey.keycode == keycode_Control_R) {
@@ -253,22 +294,10 @@ void move_client(XEvent *xevent)
         client_paint_titlebar(client);
         /* must send a synthetic ConfigureNotify to the client
          * according to ICCCM 4.1.5 */
-        /* FIXME:  make this a function in client.c */
         if (action != RESET) {
-            event1.type = ConfigureNotify;
-            event1.xconfigure.display = dpy;
-            event1.xconfigure.event = client->window;
-            event1.xconfigure.window = client->window;
-            event1.xconfigure.x = client->x;
-            event1.xconfigure.y = client->y + TITLE_HEIGHT;
-            event1.xconfigure.width = client->width;
-            event1.xconfigure.height = client->height - TITLE_HEIGHT;
-            event1.xconfigure.border_width = 0;
-            event1.xconfigure.above = client->frame; /* fixme */
-            event1.xconfigure.override_redirect = False;
-            XSendEvent(dpy, client->window, False,
-                       StructureNotifyMask, &event1);
-            XFlush(dpy);
+            move_inform_client(client);
+            client->prev_x = client->prev_y = -1;
+            client->prev_width = client->prev_height = -1;
         }
     }
 
@@ -292,6 +321,32 @@ void move_client(XEvent *xevent)
         }
         resize_client(&event1);
     }
+}
+
+/* ICCCM 4.1.5 */
+static void move_inform_client(client_t *client)
+{
+    XConfigureEvent event;
+    
+    event.type = ConfigureNotify;
+    event.display = dpy;
+    event.event = client->window;
+    event.window = client->window;
+    event.x = client->x;
+    event.width = client->width;
+    if (client->titlebar == None) {
+        event.y = client->y;
+        event.height = client->height;
+    } else {
+        event.y = client->y + TITLE_HEIGHT;
+        event.height = client->height - TITLE_HEIGHT;
+    }
+    event.border_width = 0;
+    event.above = None;
+    event.override_redirect = False;
+    XSendEvent(dpy, client->window, False,
+               StructureNotifyMask, (XEvent *)&event);
+    XFlush(dpy);
 }
 
 /* helper for move function, don't let user move window off-screen */
@@ -555,13 +610,20 @@ void resize_client(XEvent *xevent)
         client->y = orig.y;
         client->width = orig.width;
         client->height = orig.height;
+    } else {
+        client->prev_x = client->prev_y = -1;
+        client->prev_width = client->prev_height = -1;
     }
 
     if (client != NULL) {
         XMoveResizeWindow(dpy, client->frame, client->x, client->y,
                           client->width, client->height);
-        XResizeWindow(dpy, client->window, client->width,
-                      client->height - TITLE_HEIGHT);
+        if (client->titlebar != None) {
+            XResizeWindow(dpy, client->window, client->width,
+                          client->height - TITLE_HEIGHT);
+        } else {
+            XResizeWindow(dpy, client->window, client->width, client->height);
+        }
         if (client->name != NULL) free(client->name); /* FIXME */
         client_set_name(client);
         client_paint_titlebar(client);
@@ -737,14 +799,16 @@ static void process_resize(client_t *client, int new_x, int new_y,
                            position_size *orig, resize_ordinal_t ordinal)
 {
     int x_diff, y_diff;
-    int x, y, w, h;
+    int x, y, w, h, title_height;
 
     x = client->x;
     y = client->y;
     w = client->width;
     h = client->height;
+    title_height = (client->titlebar == None ? 0 : TITLE_HEIGHT);
     y_diff = new_y - *old_y;
     x_diff = new_x - *old_x;
+    
     if (direction == WEST || direction == EAST)
         y_diff = 0;
     if (direction == NORTH || direction == SOUTH)
@@ -809,15 +873,15 @@ static void process_resize(client_t *client, int new_x, int new_y,
             case NORTH:
             case NW:
             case NE:
-                if (client->height - y_diff > TITLE_HEIGHT + 1
+                if (client->height - y_diff > title_height + 1
                     && new_y < orig->y + orig->height) {
                     if (client->xsh->flags & PMinSize
                         && client->height - y_diff <
-                           client->xsh->min_height + TITLE_HEIGHT)
+                           client->xsh->min_height + title_height)
                         break;
                     if (client->xsh->flags & PMaxSize
                         && client->height - y_diff >
-                           client->xsh->max_height + TITLE_HEIGHT)
+                           client->xsh->max_height + title_height)
                         break;
                     client->y += y_diff;
                     client->height -= y_diff;
@@ -827,14 +891,14 @@ static void process_resize(client_t *client, int new_x, int new_y,
             case SOUTH:
             case SE:
             case SW:
-                if (client->height + y_diff > TITLE_HEIGHT + 1) {
+                if (client->height + y_diff > title_height + 1) {
                     if (client->xsh->flags & PMinSize
                         && client->height + y_diff <
-                           client->xsh->min_height + TITLE_HEIGHT)
+                           client->xsh->min_height + title_height)
                         break;
                     if (client->xsh->flags & PMaxSize
                         && client->height + y_diff >
-                           client->xsh->max_height + TITLE_HEIGHT)
+                           client->xsh->max_height + title_height)
                         break;
                     client->height += y_diff;
                     *old_y += y_diff;
@@ -998,7 +1062,10 @@ static void drafting_lines(client_t *client, resize_direction_t direction,
     }
 
     if (direction == WEST || direction == EAST) {
-        tmp = (y2 - y1 - TITLE_HEIGHT) / h_inc;
+        if (client->titlebar == None)
+            tmp = (y2 - y1) / h_inc;
+        else
+            tmp = (y2 - y1 - TITLE_HEIGHT) / h_inc;
     } else {
         tmp = (x2 - x1) / w_inc;
     }
@@ -1178,6 +1245,7 @@ static void display_geometry(char *s, client_t *client)
     static char *titlebar_display = NULL;
     int width, height;
 
+    if (client->titlebar == None) return;
     width = client->width / get_width_resize_inc(client);
     height = (client->height - TITLE_HEIGHT) / get_height_resize_inc(client);
     if (client->name != titlebar_display) {

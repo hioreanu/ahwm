@@ -175,6 +175,8 @@ int main(int argc, char **argv)
                        kill_nicely);
     mouse_set_function("Control | Button2", MOUSE_DEPRESS, MOUSE_TITLEBAR,
                        kill_with_extreme_prejudice);
+    mouse_set_function("Button3", MOUSE_DEPRESS, MOUSE_TITLEBAR,
+                       resize_maximize);
 
     WM_STATE = XInternAtom(dpy, "WM_STATE", False);
     WM_CHANGE_STATE = XInternAtom(dpy, "WM_CHANGE_STATE", False);

@@ -45,6 +45,10 @@ typedef struct _client_t {
     int y;                      /* frame's actual position when mapped */
     int width;                  /* frame's actual size when mapped */
     int height;                 /* frame's actual size when mapped */
+    int prev_x;                 /* previous position/size for maximization */
+    int prev_y;                 /* previous position/size for maximization */
+    int prev_width;             /* previous position/size for maximization */
+    int prev_height;            /* previous position/size for maximization */
     int workspace;              /* client's workspace  */
     int window_event_mask;      /* event mask of client->window */
     int frame_event_mask;       /* event mask of client->frame */
@@ -182,10 +186,11 @@ void client_inform_state(client_t *);
  * Create a frame window for a client and reparent the client.  If the
  * client has already been reparented, ensure the frame window
  * properly expresses the client's size and position wishes.  Frame is
- * stored in client->frame.
+ * stored in client->frame.  The second argument is True if the window
+ * is going to have a titlebar, else False.
  */
 
-void client_reparent(client_t *);
+void client_reparent(client_t *, Bool);
 
 typedef struct _position_size {
     int x, y, width, height;

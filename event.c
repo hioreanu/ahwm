@@ -325,8 +325,7 @@ static void event_unmap(XUnmapEvent *xevent)
      * cause. */
     /* FIXME:  this will break with synchronous behaviour turned off */
     if (client->state == NormalState) {
-        if (client->frame != None)
-            XUnmapWindow(dpy, client->frame);
+        XUnmapWindow(dpy, client->frame);
 
         error_ignore(BadWindow, X_UnmapWindow);
         XUnmapWindow(dpy, client->window);
@@ -371,11 +370,9 @@ static void event_maprequest(XMapRequestEvent *xevent)
 
     if (client->state == NormalState) {
         XMapWindow(xevent->display, client->window);
-        if (client->frame != None) {
-            XMapWindow(xevent->display, client->frame);
-            if (client->titlebar != None) {
-                XMapWindow(xevent->display, client->titlebar);
-            }
+        XMapWindow(xevent->display, client->frame);
+        if (client->titlebar != None) {
+            XMapWindow(xevent->display, client->titlebar);
         }
         keyboard_grab_keys(client);
         mouse_grab_buttons(client);
@@ -393,6 +390,7 @@ static void event_configurerequest(XConfigureRequestEvent *xevent)
 {
     client_t       *client;
     XWindowChanges  xwc;
+    position_size   ps;
     
     client = client_find(xevent->window);
 
@@ -401,16 +399,35 @@ static void event_configurerequest(XConfigureRequestEvent *xevent)
     printf("\tBefore: %dx%d+%d+%d\n", client->x, client->y,
            client->width, client->height);
 #endif /* DEBUG */
-    
-    if (xevent->value_mask & CWX)
-        client->x      = xevent->x;
-    if (xevent->value_mask & CWY)
-        client->y      = xevent->y;
-    if (xevent->value_mask & CWWidth)
-        client->width  = xevent->width;
-    if (xevent->value_mask & CWHeight)
-        client->height = xevent->height + TITLE_HEIGHT;
 
+    ps.x = client->x;
+    ps.y = client->y;
+    ps.width = client->width;
+    ps.height = client->height;
+    
+    if (xevent->value_mask & CWX) {
+        client->prev_x = client->prev_width = -1;
+        ps.x = xevent->x;
+    }
+    if (xevent->value_mask & CWY) {
+        client->prev_y = client->prev_height = -1;
+        ps.y = xevent->y;
+    }
+    if (xevent->value_mask & CWWidth) {
+        client->prev_x = client->prev_width = -1;
+        ps.width = xevent->width;
+    }
+    if (xevent->value_mask & CWHeight) {
+        client->prev_y = client->prev_height = -1;
+        ps.height = xevent->height;
+    }
+
+    client_frame_position(client, &ps);
+    client->x = ps.x;
+    client->y = ps.y;
+    client->width = ps.width;
+    client->height = ps.height;
+    
     xwc.x            = client->x;
     xwc.y            = client->y;
     xwc.width        = client->width;
@@ -422,17 +439,22 @@ static void event_configurerequest(XConfigureRequestEvent *xevent)
     XConfigureWindow(dpy, client->frame,
                      xevent->value_mask | CWX | CWY | CWWidth | CWHeight,
                      &xwc);
-    XConfigureWindow(dpy, client->titlebar, CWWidth, &xwc);
+    if (client->titlebar != None)
+        XConfigureWindow(dpy, client->titlebar, CWWidth, &xwc);
 
-    xwc.y       = TITLE_HEIGHT;
+    if (client->titlebar != None) {
+        xwc.y       = TITLE_HEIGHT;
+        xwc.height -= TITLE_HEIGHT;
+    } else {
+        xwc.y = 0;
+    }
     xwc.x       = 0;
-    xwc.height -= TITLE_HEIGHT;
     XConfigureWindow(xevent->display, client->window,
                      xevent->value_mask | CWX | CWY | CWWidth | CWHeight,
                      &xwc);
 
 #ifdef DEBUG
-    printf("\tBefore: %dx%d+%d+%d\n", client->x, client->y,
+    printf("\tAfter: %dx%d+%d+%d\n", client->x, client->y,
            client->width, client->height);
 #endif /* DEBUG */
 }
@@ -489,9 +511,7 @@ static void event_clientmessage(XClientMessageEvent *xevent)
     if (xevent->message_type == WM_CHANGE_STATE) {
         client = client_find(xevent->window);
         if (xevent->format == 32 && xevent->data.l[0] == IconicState) {
-            if (client->frame != None) {
-                XUnmapWindow(dpy, client->frame);
-            }
+            XUnmapWindow(dpy, client->frame);
             XUnmapWindow(dpy, client->window);
             client->state = IconicState;
             client_inform_state(client);

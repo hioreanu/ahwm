@@ -51,6 +51,8 @@ client_t *client_create(Window w)
     client->state = WithdrawnState;
     client->frame = None;
     client->titlebar = None;
+    client->prev_x = client->prev_y = -1;
+    client->prev_height = client->prev_width = -1;
 
     client_set_name(client);
     client_set_instance_class(client);
@@ -62,7 +64,12 @@ client_t *client_create(Window w)
     client->window_event_mask = xwa.your_event_mask | StructureNotifyMask
                                 | PropertyChangeMask;
     XSelectInput(dpy, client->window, client->window_event_mask);
-    client_reparent(client);
+    client_reparent(client, True);
+    if (client->frame == None) {
+        fprintf(stderr, "Could not reparent window\n");
+        free(client);
+        return NULL;
+    }
     client_add_titlebar(client);
     
     if (focus_canfocus(client)) focus_add(client);
@@ -77,22 +84,12 @@ client_t *client_create(Window w)
            (unsigned int)w, (unsigned int)client);
 #endif /* DEBUG */
 
-    if (client->frame != None) {
-        if (XSaveContext(dpy, client->frame,
-                         frame_context, (void *)client) != 0) {
-            XDeleteContext(dpy, client->window, window_context);
-            free(client);
-            fprintf(stderr, "XWM: XSaveContext failed, could not save frame\n");
-            return NULL;
-        }
-    } else {
-        /* if the window doesn't have a frame, we still need to listen
-         * for EnterWindow events so it will be focused correctly when
-         * the mouse moves over it */
-        /* in the current implementation, all clients will have a frame,
-         * so this should never run */
-        client->window_event_mask |= EnterWindowMask;
-        XSelectInput(dpy, w, client->window_event_mask);
+    if (XSaveContext(dpy, client->frame,
+                     frame_context, (void *)client) != 0) {
+        XDeleteContext(dpy, client->window, window_context);
+        free(client);
+        fprintf(stderr, "XWM: XSaveContext failed, could not save frame\n");
+        return NULL;
     }
     if (client->titlebar != None) {
         if (XSaveContext(dpy, client->titlebar,
@@ -114,7 +111,7 @@ client_t *client_create(Window w)
  * twice when creating a client and remapping window
  */
 
-void client_reparent(client_t *client)
+void client_reparent(client_t *client, Bool has_titlebar)
 {
     XSetWindowAttributes xswa;
     XWindowAttributes xwa;
@@ -142,7 +139,15 @@ void client_reparent(client_t *client)
     ps.width = xwa.width;
     ps.height = xwa.height;
     client_get_position_size_hints(client, &ps);
-    client_frame_position(client, &ps);
+    /* client_frame_position checks for the titlebar which
+     * has not yet been created - I'd rather not change the api */
+    if (has_titlebar) {
+        client->titlebar = client->window;
+        client_frame_position(client, &ps);
+        client->titlebar = None;
+    } else {
+        client_frame_position(client, &ps);
+    }
     client->x = ps.x;
     client->y = ps.y;
     client->width = ps.width;
@@ -161,7 +166,7 @@ void client_reparent(client_t *client)
          * more expensive than just resetting the frame to the initial
          * state */
         XSelectInput(dpy, w, client->window_event_mask & ~StructureNotifyMask);
-        XReparentWindow(dpy, w, root_window, 0, TITLE_HEIGHT);
+        XReparentWindow(dpy, w, root_window, 0, 0);
         XChangeWindowAttributes(dpy, client->frame, mask, &xswa);
 
         mask = CWX | CWY | CWWidth | CWHeight | CWBorderWidth;
@@ -181,7 +186,11 @@ void client_reparent(client_t *client)
     XClearWindow(dpy, client->frame);
     /* ignore the map and unmap events caused by the reparenting: */
     XSelectInput(dpy, w, client->window_event_mask & ~StructureNotifyMask);
-    XReparentWindow(dpy, w, client->frame, 0, TITLE_HEIGHT);
+    if (has_titlebar) {
+        XReparentWindow(dpy, w, client->frame, 0, TITLE_HEIGHT);
+    } else {
+        XReparentWindow(dpy, w, client->frame, 0, 0);
+    }
     XSelectInput(dpy, w, client->window_event_mask);
 }
 
@@ -230,13 +239,16 @@ client_t *client_find(Window w)
 
 void client_destroy(client_t *client)
 {
-    if (client->frame != None) {
-        XUnmapWindow(dpy, client->frame);
-        XDestroyWindow(dpy, client->frame);
-    }
-    if (client->xwmh != NULL) XFree(client->xwmh);
     XDeleteContext(dpy, client->window, window_context);
     XDeleteContext(dpy, client->frame, frame_context);
+    XUnmapWindow(dpy, client->frame);
+    XDestroyWindow(dpy, client->frame);
+    if (client->titlebar != None) {
+        XDeleteContext(dpy, client->titlebar, title_context);
+        XUnmapWindow(dpy, client->titlebar);
+        XDestroyWindow(dpy, client->titlebar);
+    }
+    if (client->xwmh != NULL) XFree(client->xwmh);
     free(client->name);         /* should never be NULL */
     if (client->instance != NULL) XFree(client->instance);
     if (client->class != NULL) XFree(client->class);
@@ -322,7 +334,6 @@ void client_set_xsh(client_t *client)
     }
 }
 
-
 void client_get_position_size_hints(client_t *client, position_size *ps)
 {
     if (client->xsh != NULL) {
@@ -347,6 +358,7 @@ void client_frame_position(client_t *client, position_size *ps)
            ps->x, ps->y, ps->height, ps->width);
 #endif /* DEBUG */
 
+    if (client->titlebar == None) return;
     gravity = NorthWestGravity;
     
     if (client->xsh != NULL) {
@@ -411,10 +423,10 @@ void client_print(char *s, client_t *client)
 
 void client_paint_titlebar(client_t *client)
 {
+    if (client->titlebar == None) return;
     XClearWindow(dpy, client->titlebar);
     XDrawString(dpy, client->titlebar, root_invert_gc, 2, TITLE_HEIGHT - 4,
                 client->name, strlen(client->name));
-    printf("Painting titlebar 0x%08X\n", (unsigned int)client->titlebar);
 }
 
 /* ICCCM, 4.1.3.1 */
@@ -464,5 +476,5 @@ void client_sendmessage(client_t *client, Atom data0, Time timestamp,
     xcme.data.l[2] = data2;
     xcme.data.l[3] = data3;
     xcme.data.l[4] = data4;
-    XSendEvent(dpy, client->window, False, 0, &xcme);
+    XSendEvent(dpy, client->window, False, 0, (XEvent *)&xcme);
 }

@@ -40,7 +40,7 @@ void mouse_grab_buttons(client_t *client)
             XGrabButton(dpy, mb->button, mb->modifiers, client->frame,
                         True, mb->depress, GrabModeSync, GrabModeAsync,
                         None, cursor_normal);
-        if (mb->location & MOUSE_TITLEBAR)
+        if (mb->location & MOUSE_TITLEBAR && client->titlebar != None)
             XGrabButton(dpy, mb->button, mb->modifiers, client->titlebar,
                         True, mb->depress, GrabModeSync, GrabModeAsync,
                         None, cursor_normal);
