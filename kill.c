@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include "kill.h"
 #include "event.h"
+#include "debug.h"
 
 void kill_nicely(XEvent *xevent, void *v)
 {
@@ -17,15 +18,11 @@ void kill_nicely(XEvent *xevent, void *v)
         fprintf(stderr, "XWM: Unable to kill client, client not found\n");
     }
     if (client->protocols & PROTO_DELETE_WINDOW) {
-#ifdef DEBUG
-        printf("\tPolitely requesting window to die\n");
-#endif /* DEBUG */
+        debug(("\tPolitely requesting window to die\n"));
         client_sendmessage(client, WM_DELETE_WINDOW, event_timestamp,
                            0, 0, 0);
     } else {
-#ifdef DEBUG
-        printf("\tWindow isn't civilized, exterminating it\n");
-#endif /* DEBUG */
+        debug(("\tWindow isn't civilized, exterminating it\n"));
         kill_with_extreme_prejudice(xevent, v);
     }
 }
@@ -38,8 +35,6 @@ void kill_with_extreme_prejudice(XEvent *xevent, void *v)
     if (client == NULL) {
         fprintf(stderr, "XWM: Unable to kill client, client not found\n");
     }
-#ifdef DEBUG
-    printf("Commiting windicide\n");
-#endif /* DEBUG */
+    debug(("Commiting windicide\n"));
     XKillClient(dpy, client->window);
 }

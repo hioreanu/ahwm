@@ -22,6 +22,8 @@
 #include "xev.h"
 #include "error.h"
 #include "malloc.h"
+#include "move-resize.h"
+#include "debug.h"
 
 #ifdef SHAPE
 #include <X11/extensions/shape.h>
@@ -41,7 +43,7 @@ static void event_colormap(XColormapEvent *);
 static void event_clientmessage(XClientMessageEvent *);
 static void event_circulaterequest(XCirculateRequestEvent *);
 static void event_expose(XExposeEvent *);
-static void event_focus(XFocusChangeEvent *);
+static void event_focusin(XFocusChangeEvent *);
 static void event_map(XMapEvent *);
 
 #ifdef SHAPE
@@ -115,13 +117,13 @@ void event_dispatch(XEvent *event)
         "MappingNotify",        /* TODO */
     };
 
-    printf("----------------------------------------");
-    printf("----------------------------------------\n");
+    debug(("----------------------------------------"));
+    debug(("----------------------------------------\n"));
     if (event->type > MappingNotify)
-        printf("%-19s unknown (%d)\n", "received event:", event->type);
+        debug(("%-19s unknown (%d)\n", "received event:", event->type));
     else
-        printf("%-19s %s (%d)\n", "received event:",
-               xevent_names[event->type], event->type);
+        debug(("%-19s %s (%d))\n", "received event:",
+               xevent_names[event->type], event->type));
     xev_print(event);
 #endif /* DEBUG */
 
@@ -158,7 +160,7 @@ void event_dispatch(XEvent *event)
             break;
             
         case FocusIn:           /* frame FocusChangeMask, client.c */
-            event_focus(&event->xfocus);
+            event_focusin(&event->xfocus);
             break;
             
 /*        case FocusOut: */     /* TODO */
@@ -235,9 +237,7 @@ void event_dispatch(XEvent *event)
                 event_shape((XShapeEvent *)event);
             }
 #endif /* SHAPE */
-#ifdef DEBUG
-            printf("\tIgnoring event\n");
-#endif /* DEBUG */
+            debug(("\tIgnoring event\n"));
             break;
     }
 }
@@ -266,25 +266,31 @@ static void event_enter(XCrossingEvent *xevent)
 {
     client_t *client;
     
-    if (xevent->mode != NotifyNormal)
+    if (xevent->mode != NotifyNormal) {
+        debug(("\tMode != NotifyNormal, ignoring event\n"));
         return;
+    }
     
     /* If the mouse is NOT in the focus window but in some other
      * window and it moves to the titlebar of the window, it will
      * generate this event, and I don't want this to do anything
      */
-    if (xevent->detail == NotifyInferior) return;
+    if (xevent->detail == NotifyInferior) {
+        debug(("\tMode == NotifyInferior, ignoring event\n"));
+        return;
+    }
 
     client = client_find(xevent->window);
     if (client != NULL && client->state == NormalState) {
         if (client->ignore_enternotify == 1) {
-#ifdef DEBUG
-            printf("\tclient has ignore_enternotify\n");
-#endif /* DEBUG */
+            debug(("\tclient has ignore_enternotify\n"));
             client->ignore_enternotify = 0;
         } else {
+            debug(("\tSetting focus in response to EnterNotify\n"));
             focus_set(client, CurrentTime);
         }
+    } else {
+        debug(("\tNot setting focus\n"));
     }
 }
 
@@ -314,9 +320,7 @@ static void event_leave(XCrossingEvent *xevent)
     client = client_find(xevent->window);
     if (client == NULL) return;
     if (client->ignore_enternotify == 1) {
-#ifdef DEBUG
-        printf("\tResetting client->ignore_enternotify\n");
-#endif /* DEBUG */
+        debug(("\tResetting client->ignore_enternotify\n"));
         client->ignore_enternotify = 0;
     }
     client->frame_event_mask &= ~LeaveWindowMask;
@@ -332,17 +336,13 @@ static void event_create(XCreateWindowEvent *xevent)
     client_t *client;
 
     if (xevent->override_redirect) {
-#ifdef DEBUG
-        printf("\tWindow 0x%08X has override_redirect, ignoring\n",
-               (unsigned int)xevent->window);
-#endif /* DEBUG */
+        debug(("\tWindow 0x%08X has override_redirect, ignoring\n",
+               (unsigned int)xevent->window));
         return;
     }
 
     client = client_create(xevent->window);
-#ifdef DEBUG
     client_print("Create:", client);
-#endif /* DEBUG */
     if (client == NULL) return;
 }
 
@@ -355,9 +355,7 @@ static void event_destroy(XDestroyWindowEvent *xevent)
     client_t *client, *under_mouse;
     
     client = client_find(xevent->window);
-#ifdef DEBUG
     client_print("Destroy:", client);
-#endif /* DEBUG */
     if (client == NULL) {
         return;
     }
@@ -405,9 +403,7 @@ static void event_unmap(XUnmapEvent *xevent)
     
     client = client_find(xevent->window);
 
-#ifdef DEBUG
     client_print("Unmap:", client);
-#endif /* DEBUG */
     if (client == NULL) {
         under_mouse = query_stacking_order(None);
         if (under_mouse != NULL) {
@@ -465,9 +461,7 @@ static void event_maprequest(XMapRequestEvent *xevent)
     Bool addfocus;
 
     client = client_find(xevent->window);
-#ifdef DEBUG
     client_print("Map Request:", client);
-#endif /* DEBUG */
     if (client == NULL) {
         fprintf(stderr, "XWM: unable to find client, shouldn't happen\n");
         return;
@@ -508,9 +502,7 @@ static void event_maprequest(XMapRequestEvent *xevent)
         mouse_grab_buttons(client);
         if (addfocus) focus_add(client, event_timestamp);
     } else {
-#ifdef DEBUG
-        printf("\tsigh...client->state = %d\n", client->state);
-#endif /* DEBUG */
+        debug(("\tsigh...client->state = %d\n", client->state));
     }
     client_inform_state(client);
 }
@@ -519,16 +511,21 @@ static void event_maprequest(XMapRequestEvent *xevent)
  * update our idea of client's geometry, massage request
  * according to client's gravity if it has a title bar
  * 
- * This may also generate one of those "Bad" EnterNotify events, but I
- * haven't seen it be a problem yet (hasn't interrupted my work), so
- * I'm not dealing with that possibility.
+ * This may also generate some of those "Bad" EnterNotify events, so
+ * we deal with those as well.
  */
 
+/* FIXME:  should send a synthetic ConfigureNotify, ICCCM 4.1.5 */
 static void event_configurerequest(XConfigureRequestEvent *xevent)
 {
-    client_t       *client;
+    client_t       *client, *under_mouse;
     XWindowChanges  xwc;
     position_size   ps;
+    Window          junk1;
+    int             x, y, junk2;
+    unsigned int    junk3;
+    Bool            was_under_mouse;
+    unsigned long   new_mask;
     
     client = client_find(xevent->window);
 
@@ -539,73 +536,69 @@ static void event_configurerequest(XConfigureRequestEvent *xevent)
         return;
     }
 
-#ifdef DEBUG
     client_print("Configure Request:", client);
-    printf("\tBefore: %dx%d+%d+%d\n", client->width, client->height,
-           client->x, client->y);
-#endif /* DEBUG */
+    
+    under_mouse = query_stacking_order(client->frame);
+    if (XQueryPointer(dpy, root_window, &junk1, &junk1, &x, &y,
+                      &junk2, &junk2, &junk3) == False) {
+        x = -1;
+        y = -1;
+    }
 
-    if (xevent->value_mask & CWBorderWidth) {
-        client->orig_border_width = xevent->border_width;
+    if (client->x <= x && client->x + client->width >= x
+        && client->y <= y && client->y + client->height >= y) {
+        /* FIXME:  also check stacking order, may be obscured */
+        was_under_mouse = True;
+    } else {
+        was_under_mouse = False;
     }
     
+    debug(("\tBefore: %dx%d+%d+%d\n", client->width, client->height,
+           client->x, client->y));
+
     ps.x = client->x;
     ps.y = client->y;
     ps.width = client->width;
     ps.height = client->height;
-
-#ifdef DEBUG
-    printf("\tClient is changing: ");
-#endif /* DEBUG */
+    
+    debug(("\tClient is changing: "));
     if (xevent->value_mask & CWX) {
         client->prev_x = client->prev_width = -1;
         ps.x = xevent->x;
-#ifdef DEBUG
-        printf("x ");
-#endif /* DEBUG */
+        debug(("x "));
     }
     if (xevent->value_mask & CWY) {
         client->prev_y = client->prev_height = -1;
         ps.y = xevent->y;
-#ifdef DEBUG
-        printf("y ");
-#endif /* DEBUG */
+        debug(("y "));
     }
     if (xevent->value_mask & CWWidth) {
         client->prev_x = client->prev_width = -1;
         ps.width = xevent->width;
-#ifdef DEBUG
-        printf("width ");
-#endif /* DEBUG */
+        debug(("width "));
     }
     if (xevent->value_mask & CWHeight) {
         client->prev_y = client->prev_height = -1;
         ps.height = xevent->height;
-#ifdef DEBUG
-        printf("height ");
-#endif /* DEBUG */
+        debug(("height "));
     }
     if (xevent->value_mask & CWBorderWidth) {
         client->orig_border_width = xevent->border_width;
-#ifdef DEBUG
-        printf("border_width ");
-#endif /* DEBUG */
+        debug(("border_width "));
     }
-#ifdef DEBUG
     if (xevent->value_mask & CWSibling) {
-        printf("sibling ");
+        debug(("sibling "));
     }
     if (xevent->value_mask & CWStackMode) {
-        printf("stack_mode ");
+        debug(("stack_mode "));
     }
-    printf("\n");
-#endif /* DEBUG */
+    debug(("\n"));
 
     client_frame_position(client, &ps);
-    client->x = ps.x;
-    client->y = ps.y;
-    client->width = ps.width;
-    client->height = ps.height;
+    if (xevent->value_mask & CWX) client->x = ps.x;
+    if (xevent->value_mask & CWY) client->y = ps.y;
+    if (xevent->value_mask & CWWidth) client->width = ps.width;
+    if (xevent->value_mask & CWHeight) client->height = ps.height;
     
     xwc.x            = client->x;
     xwc.y            = client->y;
@@ -615,27 +608,60 @@ static void event_configurerequest(XConfigureRequestEvent *xevent)
     xwc.sibling      = xevent->above;
     xwc.stack_mode   = xevent->detail;
 
-    XConfigureWindow(dpy, client->frame,
-                     xevent->value_mask | CWX | CWY | CWWidth | CWHeight,
-                     &xwc);
-    if (client->titlebar != None)
+    new_mask = xevent->value_mask & (~(CWSibling | CWStackMode));
+    XConfigureWindow(dpy, client->frame, new_mask, &xwc);
+    if (client->titlebar != None && (xevent->value_mask & CWWidth))
         XConfigureWindow(dpy, client->titlebar, CWWidth, &xwc);
 
     if (client->titlebar != None) {
-        xwc.y       = TITLE_HEIGHT;
+        xwc.y = TITLE_HEIGHT;
         xwc.height -= TITLE_HEIGHT;
     } else {
         xwc.y = 0;
     }
-    xwc.x       = 0;
-    XConfigureWindow(xevent->display, client->window,
-                     xevent->value_mask | CWX | CWY | CWWidth | CWHeight,
-                     &xwc);
+    xwc.x = 0;
+    XConfigureWindow(xevent->display, client->window, new_mask, &xwc);
 
-#ifdef DEBUG
-    printf("\tAfter: %dx%d+%d+%d\n", client->width, client->height,
-           client->x, client->y);
-#endif /* DEBUG */
+    /* if the client was under the pointer but is no longer under the
+     * pointer but some other client is, we will receive an
+     * EnterNotify which we want to ignore
+     * 
+     * If the client was not under the pointer but now is, we will
+     * receive an EnterNotify which we ignore
+     */
+    if (was_under_mouse
+        && (client->x > x || client->x + client->width < x
+            || client->y > y || client->y + client->height < y)
+        && under_mouse != NULL) {
+        debug(("\tClient 0x%08X (%s) resized itself and left "
+               "client 0x%08X (%s) under pointer\n",
+               (unsigned int)client, client->name,
+               (unsigned int)under_mouse, under_mouse->name));
+        under_mouse->ignore_enternotify = 1;
+    } else if (client->x <= x && client->x + client->width >= x
+               && client->y <= y && client->y + client->width >= y) {
+        debug(("\tClient 0x%08X (%s) resized itself to be under pointer\n",
+               (unsigned int)client, client->name));
+        client->ignore_enternotify = 1;
+    }
+
+    /* FIXME:  this could also cause an EnterNotify */
+    if (xevent->value_mask & CWStackMode) {
+        /* FIXME:  deal with the sibling, Opposite correctly */
+        if (xevent->detail == Above) {
+            debug(("\tRaising window\n"));
+            XRaiseWindow(dpy, client->frame);
+        } else if (xevent->detail == Below) {
+            debug(("\tLowering window\n"));
+            XLowerWindow(dpy, client->frame);
+        } else {
+            debug(("\tClient 0x%08X (%s) is requesting strange "
+                   "stacking order %d\n", (unsigned int)client,
+                   client->name, xevent->detail));
+        }
+    }
+    debug(("\tAfter: %dx%d+%d+%d\n", client->width, client->height,
+           client->x, client->y));
 }
 
 /*
@@ -652,36 +678,26 @@ static void event_property(XPropertyEvent *xevent)
         /* move-resize.c takes over client->name while
          * moving or resizing and then resets value */
         if (moving || sizing) return;
-#ifdef DEBUG
-        printf("\tWM_NAME, changing client->name\n");
-#endif /* DEBUG */
+        debug(("\tWM_NAME, changing client->name\n"));
         Free(client->name);
         client_set_name(client);
         client_paint_titlebar(client);
     } else if (xevent->atom == XA_WM_CLASS) {
-#ifdef DEBUG
-        printf("\tWM_CLASS, changing client->[class, instance]\n");
-#endif /* DEBUG */
+        debug(("\tWM_CLASS, changing client->[class, instance]\n"));
         if (client->class != None) XFree(client->class);
         if (client->instance != None) XFree(client->instance);
         client_set_instance_class(client);
     } else if (xevent->atom == XA_WM_HINTS) {
-#ifdef DEBUG
-        printf("\tWM_HINTS, changing client->xwmh\n");
-#endif /* DEBUG */
+        debug(("\tWM_HINTS, changing client->xwmh\n"));
         if (client->xwmh != NULL && client->group_leader == NULL)
             XFree(client->xwmh);
         client_set_xwmh(client);
     } else if (xevent->atom == XA_WM_NORMAL_HINTS) {
-#ifdef DEBUG
-        printf("\tWM_NORMAL_HINTS, changing client->xsh\n");
-#endif /* DEBUG */
+        debug(("\tWM_NORMAL_HINTS, changing client->xsh\n"));
         if (client->xsh != None) XFree(client->xsh);
         client_set_xsh(client);
     } else if (xevent->atom == WM_PROTOCOLS) {
-#ifdef DEBUG
-        printf("\tWM_PROTOCOLS, changing client->protocols\n");
-#endif /* DEBUG */
+        debug(("\tWM_PROTOCOLS, changing client->protocols\n"));
         client_set_protocols(client);
     } else if (xevent->atom == XA_WM_TRANSIENT_FOR) {
         client_set_transient_for(client);
@@ -706,9 +722,7 @@ static void event_clientmessage(XClientMessageEvent *xevent)
         /* ICCCM 4.1.4 */
         client = client_find(xevent->window);
         if (xevent->format == 32 && xevent->data.l[0] == IconicState) {
-#ifdef DEBUG
-            printf("\tClient insists on iconifying itself, placating it\n");
-#endif /* DEBUG */
+            debug(("\tClient insists on iconifying itself, placating it\n"));
             XUnmapWindow(dpy, client->frame);
             XUnmapWindow(dpy, client->window);
             client->state = IconicState;
@@ -720,7 +734,7 @@ static void event_clientmessage(XClientMessageEvent *xevent)
 
 static void event_circulaterequest(XCirculateRequestEvent *xevent)
 {
-    /* nobody uses this */
+    /* generated by XCirculateSubwindows, nobody uses this */
     fprintf(stderr, "XWM: Received CirculateRequest, ignoring it\n");
 }
 
@@ -746,10 +760,15 @@ static void event_expose(XExposeEvent *xevent)
  * ICCCM) or if client stole the focus.
  */
 
-static void event_focus(XFocusChangeEvent *xevent)
+static void event_focusin(XFocusChangeEvent *xevent)
 {
     client_t *client;
 
+    /* we could get a couple of these in a row and then
+     * we start generating loads of these events - very
+     * nasty bug, keeps bouncing the focus everywhere */
+    while (XCheckTypedEvent(dpy, FocusIn, (XEvent *)xevent));
+    
     if (xevent->type == FocusIn
         && xevent->mode == NotifyNormal
         && xevent->detail == NotifyNonlinearVirtual) {
@@ -760,10 +779,10 @@ static void event_focus(XFocusChangeEvent *xevent)
             fprintf(stderr, "XWM: Could not find client on FocusIn event\n");
             return;
         }
-#ifdef DEBUG
-        printf("\tSetting focus\n");
-#endif /* DEBUG */
+        debug(("\tSetting focus\n"));
         focus_set(client, event_timestamp);
+    } else {
+        debug(("\tNot setting focus\n"));
     }
 }
 
@@ -782,10 +801,10 @@ static void event_map(XMapEvent *xevent)
 
     client = client_find(xevent->window);
     if (client != NULL && client == focus_current) {
-#ifdef DEBUG
-        printf("\tCalling XSetInputFocus\n");
-#endif /* DEBUG */
+        debug(("\tCalling XSetInputFocus\n"));
         XSetInputFocus(dpy, client->window, RevertToPointerRoot, CurrentTime);
+    } else {
+        debug(("\tNot doing anything\n"));
     }
 }
 
@@ -877,54 +896,38 @@ static client_t *query_stacking_order(Window unmapped)
 
     if (XQueryTree(dpy, root_window, &junk1, &junk1,
                    &children, &nchildren) == 0) {
-#ifdef DEBUG
-        printf("\tstacking: xquerytree failed\n");
-#endif /* DEBUG */
+        debug(("\tstacking: xquerytree failed\n"));
         return NULL;
     }
     if (XQueryPointer(dpy, root_window, &junk1, &junk1, &x, &y,
                       &junk2, &junk2, &junk3) == 0) {
-#ifdef DEBUG
-        printf("\tstacking: xquerypointer failed\n");
-#endif /* DEBUG */
+        debug(("\tstacking: xquerypointer failed\n"));
         return NULL;
     }
 
     if (children == NULL) {
-#ifdef DEBUG
-        printf("\tstacking: no children\n");
-#endif /* DEBUG */
+        debug(("\tstacking: no children\n"));
         return NULL;
     }
 
     for (i = nchildren - 1; i >= 0; i--) {
-#ifdef DEBUG
-        printf("\tstacking: --\n");
-#endif /* DEBUG */
+        debug(("\tstacking: --\n"));
         if (children[i] == unmapped) {
-#ifdef DEBUG
-            printf("\tstacking: unmapped window\n");
-#endif /* DEBUG */
+            debug(("\tstacking: unmapped window\n"));
             continue;
         }
         client = client_find(children[i]);
         if (client == NULL) {
-#ifdef DEBUG
-            printf("\tstacking: window 0x%08X is not client\n",
-                   (unsigned int)children[i]);
-#endif /* DEBUG */
+            debug(("\tstacking: window 0x%08X is not client\n",
+                   (unsigned int)children[i]));
             continue;
         }
-#ifdef DEBUG
-        printf("\tstacking: client is %s\n", client->name);
-#endif /* DEBUG */
+        debug(("\tstacking: client is %s\n", client->name));
         if (x >= client->x
             && y >= client->y
             && x <= client->x + client->width
             && y <= client->y + client->height) {
-#ifdef DEBUG
-            printf("\tstacking: client is below pointer\n");
-#endif /* DEBUG */
+            debug(("\tstacking: client is below pointer\n"));
             XFree(children);
             return client;
         }

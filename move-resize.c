@@ -20,6 +20,7 @@
 #include "event.h"
 #include "xwm.h"
 #include "malloc.h"
+#include "debug.h"
 
 #ifndef MIN
 #define MIN(x,y) ((x) < (y) ? (x) : (y))
@@ -321,13 +322,9 @@ void move_client(XEvent *xevent, void *v)
                 break;
                 
             default:
-#ifdef DEBUG
-                printf("\tStart recursive event processing\n");
-#endif /* DEBUG */
+                debug(("\tStart recursive event processing\n"));
                 event_dispatch(xevent);
-#ifdef DEBUG
-                printf("\tEnd recursive event processing\n");
-#endif /* DEBUG */
+                debug(("\tEnd recursive event processing\n"));
                 break;
         }
 
@@ -465,9 +462,7 @@ void resize_client(XEvent *xevent, void *v)
         resize_direction = SE;
     }
     if (client == NULL) {
-#ifdef DEBUG
-        printf("\tNot resizing a non-client\n");
-#endif /* DEBUG */
+        debug(("\tNot resizing a non-client\n"));
         XUngrabPointer(dpy, CurrentTime);
         return;
     }
@@ -701,13 +696,9 @@ void resize_client(XEvent *xevent, void *v)
                 break;
                 
             default:
-#ifdef DEBUG
-                printf("\tStart recursive event processing\n");
-#endif /* DEBUG */
+                debug(("\tStart recursive event processing\n"));
                 event_dispatch(xevent);
-#ifdef DEBUG
-                printf("\tEnd recursive event processing\n");
-#endif /* DEBUG */
+                debug(("\tEnd recursive event processing\n"));
                 break;
         }
     }
@@ -887,11 +878,9 @@ static void compress_motion(XEvent *xevent)
         }
     }
     if (newer != NULL) {
-#ifdef DEBUG
-        printf("\tMotion event compressed (%d,%d) -> (%d,%d)\n",
+        debug(("\tMotion event compressed (%d,%d) -> (%d,%d)\n",
                xevent->xmotion.x_root, xevent->xmotion.x_root,
-               newer->xmotion.x_root, newer->xmotion.y_root);
-#endif /* DEBUG */
+               newer->xmotion.x_root, newer->xmotion.y_root));
         memcpy(xevent, newer, sizeof(xevent));
     }
 }

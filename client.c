@@ -24,6 +24,7 @@
 #include "focus.h"
 #include "event.h"
 #include "malloc.h"
+#include "debug.h"
 
 XContext window_context;
 XContext frame_context;
@@ -42,9 +43,7 @@ client_t *client_create(Window w)
 
     if (XGetWindowAttributes(dpy, w, &xwa) == 0) return NULL;
     if (xwa.override_redirect) {
-#ifdef DEBUG
-        printf("\tWindow has override_redirect, not creating client\n");
-#endif /* DEBUG */
+        debug(("\tWindow has override_redirect, not creating client\n"));
         /* FIXME:  may still need to reparent to fake root */
         return NULL;
     }
@@ -103,10 +102,8 @@ client_t *client_create(Window w)
         XShapeQueryExtents(dpy, client->window, &shaped, &tmp, &tmp,
                            &tmp2, &tmp2, &tmp, &tmp, &tmp, &tmp2, &tmp2);
         has_titlebar = !shaped;
-#ifdef DEBUG
-        if (shaped) printf("\tSHAPED\n");
-        else printf("\tNOT SHAPED\n");
-#endif /* DEBUG */
+        if (shaped) debug(("\tSHAPED\n"));
+        else debug(("\tNOT SHAPED\n"));
     }
 #endif /* SHAPE */
 
@@ -142,9 +139,7 @@ client_t *client_create(Window w)
     client_list = client;
 
     if (xwa.map_state != IsUnmapped) {
-#ifdef DEBUG
-        printf("\tclient_create:  client is already mapped\n");
-#endif /* DEBUG */
+        debug(("\tclient_create:  client is already mapped\n"));
         client->state = NormalState;
         client_inform_state(client);
         XMapWindow(dpy, client->frame);
@@ -292,16 +287,14 @@ client_t *client_find(Window w)
             if (XFindContext(dpy, w, title_context, (void *)&client) != 0)
                 client = NULL;
 
-#ifdef DEBUG
     if (client == NULL)
-        printf("\tCould not find client\n");
+        debug(("\tCould not find client\n"));
     else if (client->window == w)
-        printf("\tFound client from window\n");
+        debug(("\tFound client from window\n"));
     else if (client->titlebar == w)
-        printf("\tFound client from titlebar\n");
+        debug(("\tFound client from titlebar\n"));
     else
-        printf("\tFound client from frame\n");
-#endif /* DEBUG */
+        debug(("\tFound client from frame\n"));
     
     return client;
 }
@@ -374,9 +367,7 @@ void client_set_name(client_t *client)
     }
     if (xtp.value != NULL) XFree(xtp.value);
 
-#ifdef DEBUG
-    printf("\tClient 0x%08X is %s\n", (unsigned int)client, client->name);
-#endif /* DEBUG */
+    debug(("\tClient 0x%08X is %s\n", (unsigned int)client, client->name));
 }
 
 void client_set_instance_class(client_t *client)
@@ -455,10 +446,8 @@ void client_frame_position(client_t *client, position_size *ps)
     int gravity;
     int y_win_ref, y_frame_ref; /* "reference" points */
 
-#ifdef DEBUG
-    printf("\twindow wants to be positioned at %dx%d+%d+%d\n",
-           ps->width, ps->height, ps->x, ps->y);
-#endif /* DEBUG */
+    debug(("\twindow wants to be positioned at %dx%d+%d+%d\n",
+           ps->width, ps->height, ps->x, ps->y));
 
     if (client->titlebar == None) return;
     gravity = NorthWestGravity;
@@ -475,9 +464,7 @@ void client_frame_position(client_t *client, position_size *ps)
         case SouthEastGravity:
         case SouthGravity:
         case SouthWestGravity:
-#ifdef DEBUG
-            printf("\tGravity is like static\n");
-#endif /* DEBUG */
+            debug(("\tGravity is like static\n"));
             ps->y -= TITLE_HEIGHT;
             break;
         case CenterGravity:
@@ -486,23 +473,17 @@ void client_frame_position(client_t *client, position_size *ps)
             y_win_ref = (ps->height - TITLE_HEIGHT) / 2;
             y_frame_ref = ps->height / 2;
             ps->y -= (y_frame_ref - y_win_ref);
-#ifdef DEBUG
-            printf("\tGravity is like center\n");
-#endif /* DEBUG */
+            debug(("\tGravity is like center\n"));
             break;
         case NorthGravity:
         case NorthEastGravity:
         case NorthWestGravity:
         default:                /* assume NorthWestGravity */
-#ifdef DEBUG
-            printf("\tGravity is like NorthWest\n");
-#endif /* DEBUG */
+            debug(("\tGravity is like NorthWest\n"));
             break;
     }
-#ifdef DEBUG
-    printf("\tframe positioned at %dx%d+%d+%d\n",
-           ps->width, ps->height, ps->x, ps->y);
-#endif /* DEBUG */
+    debug(("\tframe positioned at %dx%d+%d+%d\n",
+           ps->width, ps->height, ps->x, ps->y));
 }
 
 void client_position_noframe(client_t *client, position_size *ps)
@@ -546,22 +527,17 @@ void client_position_noframe(client_t *client, position_size *ps)
     }
 }
 
-void client_print(char *s, client_t *client)
+void _client_print(char *s, client_t *client)
 {
-#ifndef DEBUG
-    /* this may be in the middle of a tight loop where one cannot
-     * afford even a null function call */
-    fprintf(stderr, "XWM: Crazy author forgot to remove debugging output\n");
-#endif
     if (client == NULL) {
-        printf("%-19s null client\n", s);
+        debug(("%-19s null client\n", s));
         return;
     }
-    printf("%-19s client = 0x%08X, window = 0x%08X, frame = 0x%08X\n",
+    debug(("%-19s client = 0x%08X, window = 0x%08X, frame = 0x%08X\n",
            s, (unsigned int)client, (unsigned int)client->window,
-           (unsigned int)client->frame);
-    printf("%-19s name = %s, instance = %s, class = %s\n",
-           s, client->name, client->instance, client->class);
+           (unsigned int)client->frame));
+    debug(("%-19s name = %s, instance = %s, class = %s\n",
+           s, client->name, client->instance, client->class));
 }
 
 void client_paint_titlebar(client_t *client)

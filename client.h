@@ -261,7 +261,12 @@ void client_get_position_size_hints(client_t *client, position_size *ps);
  * given string
  */
 
-void client_print(char *, client_t *);
+void _client_print(char *, client_t *);
+#ifdef DEBUG
+#define client_print _client_print
+#else
+#define client_print(x,y) /* */
+#endif /* DEBUG */
 
 /*
  * Send a ClientMessage to a client window, according the conventions

@@ -10,6 +10,7 @@
 #include "workspace.h"
 #include "focus.h"
 #include "event.h"
+#include "debug.h"
 
 #ifndef MIN
 #define MIN(x,y) ((x) < (y) ? (x) : (y))
@@ -49,9 +50,7 @@ void workspace_goto(XEvent *xevent, void *v)
         return;
     }
 
-#ifdef DEBUG
-    printf("\tgoing to workspace %d\n", new_workspace);
-#endif /* DEBUG */
+    debug(("\tgoing to workspace %d\n", new_workspace));
     
     client = focus_stacks[workspace_current - 1];
     if (client != NULL) {
@@ -99,8 +98,8 @@ void workspace_client_moveto(XEvent *xevent, void *v)
     if (client->workspace == ws) return;
 
 #ifdef DEBUG
-    printf("\tMoving client 0x%08X (%s) to workspace %d\n",
-           (unsigned int)client, client->name, ws);
+    debug(("\tMoving client 0x%08X (%s) to workspace %d\n",
+           (unsigned int)client, client->name, ws));
 #endif /* DEBUG */
     
     focus_remove(client, event_timestamp);
@@ -148,7 +147,7 @@ static void must_focus_this_client(client_t *client)
             || event.type == FocusOut)
             continue;
         if (event.type == MapNotify && event.xmap.window == client->frame) {
-            printf("ATTEMPTING TO FOCUS %s\n", client->name);
+            debug(("ATTEMPTING TO FOCUS %s\n", client->name));
             focus_set(client, CurrentTime); /* XMapEvent has no time stamp */
             focus_ensure(CurrentTime);
             break;
