@@ -37,6 +37,6 @@ void kill_with_extreme_prejudice(XEvent *xevent, void *v)
         fprintf(stderr, "XWM: Unable to kill client, client not found\n");
         return;
     }
-    debug(("Commiting windicide\n"));
+    debug(("\tCommiting windicide\n"));
     XKillClient(dpy, client->window);
 }

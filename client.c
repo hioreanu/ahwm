@@ -72,6 +72,7 @@ client_t *client_create(Window w)
     client->ignore_enternotify = 0;
     client->ignore_unmapnotify = 0;
     client->orig_border_width = xwa.border_width;
+    client->flags.reparented = 0;
     
     /* God, this sucks.  I want the border width to be zero on all
      * clients, so I need to change the client's border width at some
@@ -240,7 +241,7 @@ static void client_create_frame(client_t *client, Bool has_titlebar,
 void client_reparent(client_t *client)
 {
     /* reparent the window and map window and frame */
-    debug(("\tReparenting window 0x%08X '%.10s'\n",
+    debug(("\tReparenting window 0x%08X ('%.10s')\n",
            client->window, client->name));
     XSetWindowBorderWidth(dpy, client->window, 0);
     if (client->titlebar != None) {
@@ -250,13 +251,14 @@ void client_reparent(client_t *client)
         XReparentWindow(dpy, client->window, client->frame, 0, 0);
     }
     XMapWindow(dpy, client->window);
-    XSync(dpy, False);
+    client->flags.reparented = 1;
 }
 
 void client_unreparent(client_t *client)
 {
-    client->ignore_unmapnotify = 1;
-    XUnmapWindow(dpy, client->window);
+    client->flags.reparented = 0;
+//    client->ignore_unmapnotify = 1;
+//    XUnmapWindow(dpy, client->window);
     XReparentWindow(dpy, client->window, root_window, client->x, client->y);
     XSetWindowBorderWidth(dpy, client->window, client->orig_border_width);
 }
@@ -771,7 +773,7 @@ void client_raise_internal(client_t *client, int x, int y,
             && y >= client->y
             && x <= client->x + client->width
             && y <= client->y + client->height) {
-            debug(("Setting ignore_enternotify for '%s' in client_raise\n",
+            debug(("\tSetting ignore_enternotify for '%s' in client_raise\n",
                    client->name));
             client->ignore_enternotify = 1;
             *under_pointer = client->frame;

@@ -51,7 +51,7 @@ void workspace_goto(XEvent *xevent, void *v)
         return;
     }
 
-    debug(("\tgoing to workspace %d\n", new_workspace));
+    debug(("\tGoing to workspace %d\n", new_workspace));
     
     client = focus_stacks[workspace_current - 1];
     if (client != NULL) {
@@ -78,11 +78,11 @@ void workspace_goto(XEvent *xevent, void *v)
              client != tmp;
              client = client->prev_focus) {
             debug(("\tRemapping 0x%08X ('%.10s')\n", client, client->name));
-            client_reparent(client);
+//            client_reparent(client);
             client_raise(client);
         }
         debug(("\tRemapping 0x%08X ('%.10s')\n", client, client->name));
-        client_reparent(client);
+//        client_reparent(client);
         client_raise(client);
     }
     focus_current = focus_stacks[workspace_current - 1];

@@ -75,6 +75,11 @@ typedef struct _client_t {
      * The state is 'NormalState' whenever the window is mapped.
      */
 
+    struct _flags {
+        int mapped:1;
+        int reparented:1;
+    } flags;
+    
     /* clients are also managed as doubly linked lists */
     struct _client_t *next;
     struct _client_t *prev;

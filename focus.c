@@ -227,7 +227,7 @@ void focus_alt_tab(XEvent *xevent, void *v)
                         permute(orig_focus, focus_current);
                     }
                     XUngrabKeyboard(dpy, event_timestamp);
-                    debug(("RETURNING FROM ALT-TAB\n"));
+                    debug(("\treturning from alt-tab\n"));
                     dump_focus_list();
                     return;
                 }

@@ -147,8 +147,11 @@ void event_dispatch(XEvent *event)
             mouse_handle_event(event);
             break;
             
-        case MotionNotify:      /* can't happen */
-            fprintf(stderr, "XWM: received MotionNotify in wrong place\n");
+        case MotionNotify:
+            /* the only way this can happen is if we have some stray
+             * MotionNotify events left over in the event queue from
+             * the move/resize code or elsewhere where we grab the mouse
+             * and listen for these - harmless, ignore them */
             break;
             
         case EnterNotify:       /* frame EnterWindowMask, client.c */
@@ -378,7 +381,7 @@ static void event_destroy(XDestroyWindowEvent *xevent)
         if (client->workspace == workspace_current) {
             under_mouse = query_stacking_order(client->frame);
             if (under_mouse != NULL) {
-                debug(("Setting ignore_enternotify for '%s' in event_destroy\n",
+                debug(("\tSetting ignore_enternotify for '%s' in event_destroy\n",
                        under_mouse->name));
                 under_mouse->ignore_enternotify = 1;
             }
@@ -418,7 +421,7 @@ static void event_unmap(XUnmapEvent *xevent)
     if (client == NULL) {
         under_mouse = query_stacking_order(None);
         if (under_mouse != NULL) {
-            debug(("Setting ignore_enternotify for '%s' in event_unmap\n",
+            debug(("\tSetting ignore_enternotify for '%s' in event_unmap\n",
                    under_mouse->name));
             under_mouse->ignore_enternotify = 1;
             under_mouse->frame_event_mask |= LeaveWindowMask;
@@ -428,21 +431,12 @@ static void event_unmap(XUnmapEvent *xevent)
         return;
     }
 
-    /* whenever we unmap a frame, we'll get two message, one for
-     * SubstructureNotify on the root window which we will ignore */
-    if (xevent->event == root_window) return;
-
-    if (client->ignore_unmapnotify && xevent->event == client->window) {
-        debug(("\tClient has ignore_unmapnotify\n"));
-        client->ignore_unmapnotify = 0;
-        return;
-    }
-    /* if we unmapped it ourselves, no need to do anything else */
+    /* if we unmapped it ourselves (like below), no need to do anything else */
     if (xevent->window != client->window) {
-        client_unreparent(client);
+        debug(("\tNot doing anything in event_unmap\n"));
         return;
     }
-
+    
     /* well, at this point, we need to do some things to the window
      * (such as setting the WM_STATE property on the window to Withdrawn
      * as per ICCCM), but the problem is that the client may have
@@ -463,11 +457,11 @@ static void event_unmap(XUnmapEvent *xevent)
         XUnmapWindow(dpy, client->frame);
 
         debug(("\tUnmapping window in event_unmap\n"));
-        XUnmapWindow(dpy, client->window);
+        XUnmapWindow(dpy, client->window); /* FIXME:  needed? */
         if (client->workspace == workspace_current) {
             under_mouse = query_stacking_order(client->frame);
             if (under_mouse != NULL) {
-                debug(("Setting ignore_enternotify for '%s' in event_unmap\n",
+                debug(("\tSetting ignore_enternotify for '%s' in event_unmap\n",
                        under_mouse->name));
                 under_mouse->ignore_enternotify = 1;
             }
@@ -521,7 +515,8 @@ static void event_maprequest(XMapRequestEvent *xevent)
     }
 
     if (client->state == NormalState) {
-        client_reparent(client);
+        if (client->flags.reparented == 0)
+            client_reparent(client);
         XMapWindow(xevent->display, client->window);
         XMapWindow(xevent->display, client->frame);
         if (client->titlebar != None) {
@@ -668,7 +663,7 @@ static void event_configurerequest(XConfigureRequestEvent *xevent)
                "client 0x%08X (%s) under pointer\n",
                (unsigned int)client, client->name,
                (unsigned int)under_mouse, under_mouse->name));
-        debug(("Setting ignore_enternotify for '%s' in configurerequest\n",
+        debug(("\tSetting ignore_enternotify for '%s' in configurerequest\n",
                under_mouse->name));
         under_mouse->ignore_enternotify = 1;
     } else if (client->x <= x && client->x + client->width >= x
@@ -677,7 +672,7 @@ static void event_configurerequest(XConfigureRequestEvent *xevent)
         debug(("\tClient 0x%08X (%s) resized itself to be under pointer\n",
                (unsigned int)client, client->name));
         client->ignore_enternotify = 1;
-        debug(("Setting ignore_enternotify for '%s' in configurerequest\n",
+        debug(("\tSetting ignore_enternotify for '%s' in configurerequest\n",
                client->name));
     }
 
