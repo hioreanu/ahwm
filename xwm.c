@@ -16,6 +16,8 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 #include <unistd.h>
 #include <fcntl.h>
 
@@ -328,13 +330,21 @@ static void scan_windows()
     if (wins != NULL) XFree(wins);
 }
 
+/* standard double fork trick, don't leave zombies */
 void run_program(XEvent *e, void *arg)
 {
-    /* FIXME: reap children */
-    if (fork() == 0) {
-/*        execlp(arg, arg, NULL); */
-        system((char *)arg);
-        _exit(0);
+    pid_t pid;
+    
+    if ( (pid = fork()) == 0) {
+        close(ConnectionNumber(dpy));
+        if (fork() == 0) {
+            execl("/bin/sh", "/bin/sh", "-c", arg, NULL);
+        }
+        exit(0);
+    } else if (pid > 0) {
+        wait(NULL);
+    } else {
+        perror("XWM: fork");
     }
 }
 
