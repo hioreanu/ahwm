@@ -122,6 +122,7 @@ void resize_maximize(XEvent *xevent, void *v)
     if (client->titlebar != None) {
         XResizeWindow(dpy, client->window, client->width,
                       client->height - TITLE_HEIGHT);
+        XResizeWindow(dpy, client->titlebar, client->width, TITLE_HEIGHT);
     } else {
         XResizeWindow(dpy, client->window, client->width, client->height);
     }
