@@ -101,10 +101,7 @@ int main(int argc, char **argv)
 
     already_running_windowmanager = 0;
     XSetErrorHandler(tmp_error_handler);
-    XSelectInput(dpy, root_window,
-                 PropertyChangeMask | SubstructureRedirectMask |
-                 SubstructureNotifyMask | KeyPressMask |
-                 KeyReleaseMask);
+    XSelectInput(dpy, root_window, ROOT_EVENT_MASK);
     XSync(dpy, 0);
     if (already_running_windowmanager) {
         fprintf(stderr, "XWM: You're already running a window manager, silly.\n");

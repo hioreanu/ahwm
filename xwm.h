@@ -9,7 +9,10 @@
 
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
-/* #include <X11/extensions/shape.h> */
+
+#define ROOT_EVENT_MASK PropertyChangeMask | SubstructureRedirectMask | \
+                        SubstructureNotifyMask | KeyPressMask |         \
+                        KeyReleaseMask
 
 /* these globals are used throughout - only one screen is supported */
 

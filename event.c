@@ -29,7 +29,8 @@
 
 Time event_timestamp;
 
-static void event_enter_leave(XCrossingEvent *);
+static void event_enter(XCrossingEvent *);
+static void event_leave(XCrossingEvent *);
 static void event_create(XCreateWindowEvent *);
 static void event_destroy(XDestroyWindowEvent *);
 static void event_unmap(XUnmapEvent *);
@@ -43,23 +44,12 @@ static void event_expose(XExposeEvent *);
 static void event_focus(XFocusChangeEvent *);
 static void event_map(XMapEvent *);
 
-static Time figure_timestamp(XEvent *event);
-static client_t *query_stacking_order(Window unmapped);
-
-#if 0
-static Bool under_mouse(client_t *client);
-#endif
-
 #ifdef SHAPE
 static void event_shape(XShapeEvent *);
 #endif /* SHAPE */
 
-/*
- * FIXME:  every window manager I've seen does this by sitting a
- * select() loop, but why?  XNextEvent() blocks, there's no need to
- * cook up one's own event blocking thing...besides that, XNextEvent()
- * uses select() internally in all the X implementations I've seen....
- */
+static Time figure_timestamp(XEvent *event);
+static client_t *query_stacking_order(Window unmapped);
 
 /*
  * One could also put a timeout handler here (WindowMaker does this),
@@ -70,27 +60,20 @@ void event_get(int xfd, XEvent *event)
 {
     fd_set fds;
 
-    XNextEvent(dpy, event);
-    return;
     for (;;) {
         FD_ZERO(&fds);
         FD_SET(xfd, &fds);
         if (select(xfd + 1, &fds, &fds, &fds, NULL) > 0) {
-            if (QLength(dpy) > 0) {
+            if (XPending(dpy) > 0) {
                 XNextEvent(dpy, event);
                 return;
             }
         } else if (errno != EINTR) {
-            perror("xwm: select:");
-            /* just continue, no need to die */
-            /* although this means that if the display context
-             * becomes invalid for some reason, we lose */
+            perror("XWM: select:");
         }
     }
 }
 
-/* Line 571 of my Xlib.h */
-/* file:/home/ach/xlib/events/processing-overview.html */
 void event_dispatch(XEvent *event)
 {
 #ifdef DEBUG
@@ -167,10 +150,12 @@ void event_dispatch(XEvent *event)
             break;
             
         case EnterNotify:       /* frame EnterWindowMask, client.c */
-            event_enter_leave(&event->xcrossing);
+            event_enter(&event->xcrossing);
             break;
             
-/*        case LeaveNotify: */  /* ignored */
+        case LeaveNotify:       /* frame LeaveWindowMask, see event_unmap() */
+            event_leave(&event->xcrossing);
+            break;
             
         case FocusIn:           /* frame FocusChangeMask, client.c */
             event_focus(&event->xfocus);
@@ -236,7 +221,7 @@ void event_dispatch(XEvent *event)
             break;
 #endif
             
-        case ClientMessage:     /* client in charge of this */
+        case ClientMessage:     /* client's in charge of this */
             event_clientmessage(&event->xclient);
             break;
             
@@ -258,15 +243,26 @@ void event_dispatch(XEvent *event)
 }
 
 /*
- * see the manual page for each individual event (for instance,
- * XKeyEvent(3))
- */
-
-/*
  * Focus and raise if possible
+ * 
+ * The problem is that sometimes we'll get EnterNotify events that and
+ * we don't want to focus the window on those events - for example,
+ * when the window under the pointer unmaps, it changes the window the
+ * pointer is in and causes an EnterNotify on the new
+ * window-under-pointer.  We only want to respond to this event when
+ * the user moves the pointer, so we set a flag on clients that may
+ * soon get an EnterNotify and ignore the event if the flag is set.
+ * 
+ * NB:  all of this is needed because we allow a
+ * focus-follows-mouse-style processing without the assumption that
+ * the window under the pointer gets the focus.
+ * 
+ * I've seen no other window manager that does this correctly -
+ * they'll just force you to choose another window to focus or focus
+ * the wrong window, which is clearly unacceptable.
  */
 
-static void event_enter_leave(XCrossingEvent *xevent)
+static void event_enter(XCrossingEvent *xevent)
 {
     client_t *client;
     
@@ -274,7 +270,7 @@ static void event_enter_leave(XCrossingEvent *xevent)
         return;
     
     /* If the mouse is NOT in the focus window but in some other
-     * window and it moves to the frame of the window, it will
+     * window and it moves to the titlebar of the window, it will
      * generate this event, and I don't want this to do anything
      */
     if (xevent->detail == NotifyInferior) return;
@@ -282,12 +278,49 @@ static void event_enter_leave(XCrossingEvent *xevent)
     client = client_find(xevent->window);
     if (client != NULL && client->state == NormalState) {
         if (client->ignore_enternotify == 1) {
-            printf("CLIENT HAS IGNORE_ENTERNOTIFY\n");
+#ifdef DEBUG
+            printf("\tclient has ignore_enternotify\n");
+#endif /* DEBUG */
             client->ignore_enternotify = 0;
         } else {
-            focus_set(client, event_timestamp);
+            focus_set(client, CurrentTime);
         }
     }
+}
+
+/*
+ * We set the ignore_enternotify flag on the client under the mouse on
+ * any unmap.  Unfortunately, we cannot know if the EnterNotify event
+ * will actually be created by the server.  For example, open two
+ * xterms, move them to different parts of the screen and then set the
+ * focus (using alt-tab) to the xterm which is not under the pointer.
+ * Then type in "xrefresh."  "Xrefresh" maps and unmaps a window with
+ * override_redirect, so we don't keep track of its position/size, so
+ * we can't tell whether or not it was under the pointer (so we can't
+ * tell if an EnterNotify event will be sent).  There is no way to
+ * tell the difference between an EnterNotify generated by the server
+ * on a window unmap and an EnterNotify generated because the user
+ * actually moved the pointer.
+ * 
+ * If we get a LeaveNotify, however, we know we won't be getting a
+ * stray EnterNotify, so we reset the flag.  That's the only reason we
+ * would even listen for LeaveNotify events.
+ */
+
+static void event_leave(XCrossingEvent *xevent)
+{
+    client_t *client;
+    
+    client = client_find(xevent->window);
+    if (client == NULL) return;
+    if (client->ignore_enternotify == 1) {
+#ifdef DEBUG
+        printf("\tResetting client->ignore_enternotify\n");
+#endif /* DEBUG */
+        client->ignore_enternotify = 0;
+    }
+    client->frame_event_mask &= ~LeaveWindowMask;
+    XSelectInput(dpy, client->frame, client->frame_event_mask);
 }
 
 /*
@@ -330,6 +363,12 @@ static void event_destroy(XDestroyWindowEvent *xevent)
     }
     if (client->titlebar == xevent->window) return;
     if (client->state == NormalState) {
+        /* received a DestroyNotify before or without an UnmapNotify
+         * 
+         * the Xlib docs don't say whether UnmapNotify will always
+         * be generated before DestroyNotify, but I've always seen
+         * it happen that way (so I haven't seen this code run)
+         */
         focus_remove(client, event_timestamp);
         if (client->workspace == workspace_current) {
             under_mouse = query_stacking_order(client->frame);
@@ -342,17 +381,22 @@ static void event_destroy(XDestroyWindowEvent *xevent)
 /*
  * ICCCM 4.1.4:
  * 
- * For compatibility with obsolete clients, window managers should
+ * "For compatibility with obsolete clients, window managers should
  * trigger the transition to the Withdrawn state on the real
  * UnmapNotify rather than waiting for the synthetic one. They should
  * also trigger the transition if they receive a synthetic UnmapNotify
- * on a window for which they have not yet received a real UnmapNotify.
+ * on a window for which they have not yet received a real UnmapNotify."
  * 
  * Which means that we simply set the state to Withdrawn if we receive
- * any kind of unmap request.  Most other window managers also reparent
- * the window to the root window when it's unmapped so that it doesn't
- * get mapped again if the window manager exits.  I'm not going to deal
- * with that since I don't use X that way.
+ * any kind of unmap request.  Most other window managers also
+ * reparent the window to the root window when it's unmapped so that
+ * it doesn't get mapped again if the window manager exits.  I'm not
+ * going to deal with that since I don't use X that way (window
+ * manager crashes = you're screwed).
+ * 
+ * Also, this is where we see if we are going to get an EnterNotify
+ * which we don't want to see (happens for both client windows and
+ * override_redirect windows (eg, xrefresh).
  */
 
 static void event_unmap(XUnmapEvent *xevent)
@@ -364,7 +408,16 @@ static void event_unmap(XUnmapEvent *xevent)
 #ifdef DEBUG
     client_print("Unmap:", client);
 #endif /* DEBUG */
-    if (client == NULL) return;
+    if (client == NULL) {
+        under_mouse = query_stacking_order(None);
+        if (under_mouse != NULL) {
+            under_mouse->ignore_enternotify = 1;
+            under_mouse->frame_event_mask |= LeaveWindowMask;
+            XSelectInput(dpy, under_mouse->frame,
+                         under_mouse->frame_event_mask);
+        }
+        return;
+    }
 
     /* if we unmapped it ourselves, no need to do anything */
     if (xevent->window != client->window) return;
@@ -420,7 +473,9 @@ static void event_maprequest(XMapRequestEvent *xevent)
         return;
     }
     if (client->state == NormalState) {
-        /* already mapped, don't focus again */
+        /* This should never happen as XMapWindow on an already-mapped
+         * window should never generate an X request, but better be
+         * safe (don't want to raise a window randomly) */
         addfocus = False;
     } else {
         addfocus = True;
@@ -455,6 +510,10 @@ static void event_maprequest(XMapRequestEvent *xevent)
 /*
  * update our idea of client's geometry, massage request
  * according to client's gravity if it has a title bar
+ * 
+ * This may also generate one of those "Bad" EnterNotify events, but I
+ * haven't seen it be a problem yet (hasn't interrupted my work), so
+ * I'm not dealing with that possibility.
  */
 
 static void event_configurerequest(XConfigureRequestEvent *xevent)
@@ -487,7 +546,9 @@ static void event_configurerequest(XConfigureRequestEvent *xevent)
     ps.width = client->width;
     ps.height = client->height;
 
+#ifdef DEBUG
     printf("\tClient is changing: ");
+#endif /* DEBUG */
     if (xevent->value_mask & CWX) {
         client->prev_x = client->prev_width = -1;
         ps.x = xevent->x;
@@ -522,17 +583,15 @@ static void event_configurerequest(XConfigureRequestEvent *xevent)
         printf("border_width ");
 #endif /* DEBUG */
     }
-    if (xevent->value_mask & CWSibling) {
 #ifdef DEBUG
+    if (xevent->value_mask & CWSibling) {
         printf("sibling ");
-#endif /* DEBUG */
     }
     if (xevent->value_mask & CWStackMode) {
-#ifdef DEBUG
         printf("stack_mode ");
-#endif /* DEBUG */
     }
     printf("\n");
+#endif /* DEBUG */
 
     client_frame_position(client, &ps);
     client->x = ps.x;
@@ -570,6 +629,10 @@ static void event_configurerequest(XConfigureRequestEvent *xevent)
            client->x, client->y);
 #endif /* DEBUG */
 }
+
+/*
+ * window property changed, update client structure
+ */
 
 static void event_property(XPropertyEvent *xevent)
 {
@@ -619,6 +682,11 @@ static void event_colormap(XColormapEvent *xevent)
     /* FIXME: deal with this later */
 }
 
+/*
+ * The only thing we look for here is if the window wishes to iconize
+ * itself as per ICCCM 4.1.4
+ */
+
 static void event_clientmessage(XClientMessageEvent *xevent)
 {
     client_t *client;
@@ -627,6 +695,9 @@ static void event_clientmessage(XClientMessageEvent *xevent)
         /* ICCCM 4.1.4 */
         client = client_find(xevent->window);
         if (xevent->format == 32 && xevent->data.l[0] == IconicState) {
+#ifdef DEBUG
+            printf("\tClient insists on iconifying itself, placating it\n");
+#endif /* DEBUG */
             XUnmapWindow(dpy, client->frame);
             XUnmapWindow(dpy, client->window);
             client->state = IconicState;
@@ -639,7 +710,13 @@ static void event_clientmessage(XClientMessageEvent *xevent)
 static void event_circulaterequest(XCirculateRequestEvent *xevent)
 {
     /* nobody uses this */
+    fprintf(stderr, "XWM: Received CirculateRequest, ignoring it\n");
 }
+
+/*
+ * Should only get this if titlebar needs repainting; we simply
+ * repaint the whole thing at once.
+ */
 
 static void event_expose(XExposeEvent *xevent)
 {
@@ -654,10 +731,10 @@ static void event_expose(XExposeEvent *xevent)
 }
 
 /*
- * We only care about focus change events when the focus changes from
- * one top-level window to another; we listen for focus in events on
- * the frame, and map the frame when we receive such an event.
+ * Only does anthing if client is using Globally Active focus (see
+ * ICCCM) or if client stole the focus.
  */
+
 static void event_focus(XFocusChangeEvent *xevent)
 {
     client_t *client;
@@ -672,6 +749,9 @@ static void event_focus(XFocusChangeEvent *xevent)
             fprintf(stderr, "XWM: Could not find client on FocusIn event\n");
             return;
         }
+#ifdef DEBUG
+        printf("\tSetting focus\n");
+#endif /* DEBUG */
         focus_set(client, event_timestamp);
     }
 }
@@ -679,8 +759,10 @@ static void event_focus(XFocusChangeEvent *xevent)
 /*
  * Occasionally we map a window and then immediately give it the focus
  * - however, we get a BadMatch error if the window hasn't yet been
- * made visible by the server.  This function ensures we always map
- * what we want to map.
+ * made visible by the server.  This function ensures we always focus
+ * what we want to focus.  workspace.c does something similar, but it
+ * doesn't hurt to have some redundancy (having the wrong window
+ * focused is a CATASTROPHIC FAILURE for a window manager)
  */
 
 static void event_map(XMapEvent *xevent)
@@ -688,9 +770,18 @@ static void event_map(XMapEvent *xevent)
     client_t *client;
 
     client = client_find(xevent->window);
-    if (client != NULL && client == focus_current)
+    if (client != NULL && client == focus_current) {
+#ifdef DEBUG
+        printf("\tCalling XSetInputFocus\n");
+#endif /* DEBUG */
         XSetInputFocus(dpy, client->window, RevertToPointerRoot, CurrentTime);
+    }
 }
+
+/*
+ * If we get this, we update our frame to match the client's shape and
+ * get rid of the titlebar if the client has one.
+ */
 
 #ifdef SHAPE
 static void event_shape(XShapeEvent *xevent)
@@ -717,9 +808,9 @@ static void event_shape(XShapeEvent *xevent)
 #endif /* SHAPE */
 
 /* 
- * all events defined by Xlib have common first few members,
- * so just use an arbitrary event to get the window if this
- * is an event defined by Xlib.
+ * all events defined by Xlib have common first few members, so just
+ * use any arbitrary event structure to get the window if the event is
+ * defined by Xlib
  */
 Window event_window(XEvent *event)
 {
@@ -758,28 +849,13 @@ static Time figure_timestamp(XEvent *event)
     }
 }
 
-#if 0
-static Bool under_mouse(client_t *client) /* FIXME */
-{
-    Window junk1;
-    int junk2, x, y;
-    unsigned int junk3;
-    
-    if (XQueryPointer(dpy, root_window, &junk1, &junk1, &x, &y,
-                      &junk2, &junk2, &junk3) == 0) {
-        printf("under_mouse: XQueryPointer failed!\n");
-        return False;
-    }
-    if (x >= client->x
-        && y >= client->y
-        && x <= client->x + client->width
-        && y <= client->y + client->height) {
-        return True;
-    } else {
-        return False;
-    }
-}
-#endif
+/*
+ * This looks at the windows which are actually mapped (mapped on the
+ * server, not our idea of mapped) and returns the client under the
+ * pointer.  It will ignore the parameter window if it is found as a
+ * frame of a client.  This is used to detect unwanted EnterNotify
+ * events.
+ */
 
 static client_t *query_stacking_order(Window unmapped)
 {
@@ -790,38 +866,54 @@ static client_t *query_stacking_order(Window unmapped)
 
     if (XQueryTree(dpy, root_window, &junk1, &junk1,
                    &children, &nchildren) == 0) {
-        printf("STACKING: XQUERYTREE FAILED\n");
+#ifdef DEBUG
+        printf("\tstacking: xquerytree failed\n");
+#endif /* DEBUG */
         return NULL;
     }
     if (XQueryPointer(dpy, root_window, &junk1, &junk1, &x, &y,
                       &junk2, &junk2, &junk3) == 0) {
-        printf("STACKING: XQUERYPOINTER FAILED\n");
+#ifdef DEBUG
+        printf("\tstacking: xquerypointer failed\n");
+#endif /* DEBUG */
         return NULL;
     }
 
     if (children == NULL) {
-        printf("STACKING: NO CHILDREN\n");
+#ifdef DEBUG
+        printf("\tstacking: no children\n");
+#endif /* DEBUG */
         return NULL;
     }
 
     for (i = nchildren - 1; i >= 0; i--) {
-        printf("STACKING: --\n");
+#ifdef DEBUG
+        printf("\tstacking: --\n");
+#endif /* DEBUG */
         if (children[i] == unmapped) {
-            printf("STACKING: UNMAPPED WINDOW\n");
+#ifdef DEBUG
+            printf("\tstacking: unmapped window\n");
+#endif /* DEBUG */
             continue;
         }
         client = client_find(children[i]);
         if (client == NULL) {
-            printf("STACKING: WINDOW 0x%08X IS NOT CLIENT\n",
+#ifdef DEBUG
+            printf("\tstacking: window 0x%08X is not client\n",
                    (unsigned int)children[i]);
+#endif /* DEBUG */
             continue;
         }
-        printf("STACKING: CLIENT IS %s\n", client->name);
+#ifdef DEBUG
+        printf("\tstacking: client is %s\n", client->name);
+#endif /* DEBUG */
         if (x >= client->x
             && y >= client->y
             && x <= client->x + client->width
             && y <= client->y + client->height) {
-            printf("STACKING: CLIENT IS BELOW POINTER\n");
+#ifdef DEBUG
+            printf("\tstacking: client is below pointer\n");
+#endif /* DEBUG */
             XFree(children);
             return client;
         }

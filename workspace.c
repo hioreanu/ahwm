@@ -26,7 +26,9 @@ void workspace_goto(XEvent *xevent, void *v)
         return;
     }
 
-    printf("GOING TO WORKSPACE %d\n", new_workspace);
+#ifdef DEBUG
+    printf("\tgoing to workspace %d\n", new_workspace);
+#endif /* DEBUG */
     
     client = focus_stacks[workspace_current - 1];
     if (client != NULL) {
@@ -71,6 +73,11 @@ void workspace_client_moveto(XEvent *xevent, void *v)
     
     if (client->workspace == ws) return;
 
+#ifdef DEBUG
+    printf("\tMoving client 0x%08X (%s) to workspace %d\n",
+           (unsigned int)client, client->name, ws);
+#endif /* DEBUG */
+    
     focus_remove(client, event_timestamp);
     XUnmapWindow(dpy, client->frame);
     client->workspace = ws;
@@ -110,7 +117,7 @@ static void must_focus_this_client(client_t *client)
     XSelectInput(dpy, client->frame, client->frame_event_mask);
 
     for (;;) {
-        XNextEvent(dpy, &event);
+        event_get(ConnectionNumber(dpy), &event);
         if (event.type == EnterNotify
             || event.type == FocusIn
             || event.type == FocusOut)

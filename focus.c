@@ -30,8 +30,10 @@ void focus_add(client_t *client, Time timestamp)
     focus_remove(client, timestamp);
     old = focus_stacks[client->workspace - 1];
     if (old == NULL) {
-        printf("SETTING FOCUS STACK OF WORKSPACE %d TO %s\n",
+#ifdef DEBUG
+        printf("\tsetting focus stack of workspace %d to %s\n",
                client->workspace, client->name);
+#endif /* DEBUG */
         client->next_focus = client;
         client->prev_focus = client;
         focus_stacks[client->workspace - 1] = client;
@@ -60,14 +62,18 @@ void focus_remove(client_t *client, Time timestamp)
             client->next_focus->prev_focus = client->prev_focus;
             /* if was focused for workspace, update workspace pointer */
             if (focus_stacks[client->workspace - 1] == client) {
-                printf("SETTING FOCUS STACK OF WORKSPACE %d TO %s\n",
+#ifdef DEBUG
+                printf("\tsetting focus stack of workspace %d to %s\n",
                        client->workspace, client->prev_focus->name);
+#endif /* DEBUG */
                 focus_stacks[client->workspace - 1] = client->prev_focus;
             }
             /* if only client left on workspace, set to NULL */
             if (client->next_focus == client) {
-                printf("SETTING FOCUS STACK OF WORKSPACE %d TO NULL\n",
+#ifdef DEBUG
+                printf("setting focus stack of workspace %d to null\n",
                        client->workspace);
+#endif /* DEBUG */
                 focus_stacks[client->workspace - 1] = NULL;
                 client->next_focus = NULL;
                 client->prev_focus = NULL;
@@ -101,8 +107,10 @@ void focus_set(client_t *client, Time timestamp)
     }
     do {
         if (p == client) {
-            printf("SETTING FOCUS STACK OF WORKSPACE %d TO %s\n",
+#ifdef DEBUG
+            printf("setting focus stack of workspace %d to %s\n",
                    client->workspace, client->name);
+#endif /* DEBUG */
             focus_stacks[client->workspace - 1] = client;
             if (client->workspace == workspace_current) {
                 focus_current = client;
@@ -145,22 +153,22 @@ void focus_ensure(Time timestamp)
         focus_current->xwmh->input == False) {
         XSetInputFocus(dpy, root_window, RevertToPointerRoot, CurrentTime);
 #ifdef DEBUG
-        printf("DOESN'T WANT FOCUS\n");
+        printf("\tdoesn't want focus\n");
 #endif /* DEBUG */
         if (focus_current->protocols & PROTO_TAKE_FOCUS) {
             client_sendmessage(focus_current, WM_TAKE_FOCUS,
                                timestamp, 0, 0, 0);
 #ifdef DEBUG
-            printf("GLOBALLY ACTIVE FOCUS\n");
+            printf("\tglobally active focus\n");
 #endif /* DEBUG */
         }
     } else {
 #ifdef DEBUG
-        printf("WANTS FOCUS\n");
+        printf("\twants focus\n");
 #endif /* DEBUG */
         if (focus_current->protocols & PROTO_TAKE_FOCUS) {
 #ifdef DEBUG
-            printf("WILL TAKE FOCUS\n");
+            printf("\twill forcibly take focus\n");
 #endif /* DEBUG */
             client_sendmessage(focus_current, WM_TAKE_FOCUS,
                                timestamp, 0, 0, 0);
