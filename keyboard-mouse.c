@@ -507,11 +507,29 @@ void mouse_replay(XButtonEvent *e)
     XSendEvent(dpy, e->window, True, mask, (XEvent *)e);
 }
 
-Bool keyboard_handle_event(XKeyEvent *xevent)
+key_fn keyboard_find_function(XKeyEvent *xevent, arglist **args)
 {
     boundkey *kb;
     int code;
 
+    code = xevent->keycode;
+
+    for (kb = boundkeys; kb != NULL; kb = kb->next) {
+        if (kb->keycode == code
+            && kb->modifiers == (xevent->state & (~AllLocksMask))
+            && kb->depress == xevent->type) {
+
+            if (args != NULL) *args = kb->args;
+            return kb->function;
+        }
+    }
+    return NULL;
+}
+
+Bool keyboard_handle_event(XKeyEvent *xevent)
+{
+    key_fn fn;
+    arglist *args;
 #ifdef DEBUG
     KeySym ks;
 
@@ -521,21 +539,17 @@ Bool keyboard_handle_event(XKeyEvent *xevent)
            xevent->state, XKeysymToString(ks)));
 #endif /* DEBUG */
 
-    code = xevent->keycode;
-
-    for (kb = boundkeys; kb != NULL; kb = kb->next) {
-        if (kb->keycode == code
-            && kb->modifiers == (xevent->state & (~AllLocksMask))
-            && kb->depress == xevent->type) {
-            if (quoting) {
-                unquote((XEvent *)xevent);
-            } else {
-                (*kb->function)((XEvent *)xevent, kb->args);
-            }
-            return True;
+    fn = keyboard_find_function(xevent, &args);
+    if (fn == NULL) {
+        return False;
+    } else {
+        if (quoting) {
+            unquote((XEvent *)xevent);
+        } else {
+            (*fn)((XEvent *)xevent, args);
         }
+        return True;
     }
-    return False;
 }
 
 /*

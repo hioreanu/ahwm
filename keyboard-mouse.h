@@ -297,7 +297,12 @@ Bool keyboard_handle_event(XKeyEvent *xevent);
 
 Bool mouse_handle_event(XEvent *e);
 
-/* FIXME:  there should be a function to unmap keys and buttons if we
- * really want this to be dynamic */
+/*
+ * This will return the address of the function that would have been
+ * invoked for the given XKeyEvent.  If 'args' is non-null, it will
+ * also set it to the arguments for the function to invoke.
+ */
+
+key_fn keyboard_find_function(XKeyEvent *xevent, arglist **args);
 
 #endif /* KEYBOARD_H */
