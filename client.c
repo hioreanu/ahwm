@@ -25,7 +25,6 @@ client_t *client_create(Window w)
         printf("\tWindow has override_redirect, not creating client\n");
         return NULL;
     }
-    XSelectInput(dpy, w, EnterWindowMask);
 
     client = malloc(sizeof(client_t));
     if (client == NULL) {
@@ -77,7 +76,7 @@ client_t *client_create(Window w)
         XSelectInput(dpy, w, xwa.your_event_mask & ~StructureNotifyMask);
         XReparentWindow(dpy, w, client->frame, 0, TITLE_HEIGHT);
         XSelectInput(dpy, w,
-                     xwa.your_event_mask | EnterWindowMask
+                     xwa.your_event_mask // | EnterWindowMask
                      | StructureNotifyMask);
     }
     if (client->frame != None) {
@@ -88,6 +87,8 @@ client_t *client_create(Window w)
             printf("\tCould not save frame context\n");
             return NULL;
         }
+    } else {
+        XSelectInput(dpy, w, EnterWindowMask);
     }
 
     return client;

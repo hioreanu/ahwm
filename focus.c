@@ -106,5 +106,5 @@ void focus_ensure()
     XSetInputFocus(dpy, focus_current->window,
                    RevertToPointerRoot, CurrentTime);
     printf("ok\n");
-    XMapRaised(dpy, focus_current->window);
+    XMapRaised(dpy, focus_current->frame);
 }

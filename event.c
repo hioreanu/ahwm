@@ -11,6 +11,7 @@
 #include "event.h"
 #include "client.h"
 #include "workspace.h"
+#include "keyboard.h"
 
 static void event_key(XKeyEvent *);
 static void event_button(XButtonEvent *);
@@ -66,6 +67,7 @@ void event_get(int xfd, XEvent *event)
 /* windowmaker: src/event.c:237 */
 void event_dispatch(XEvent *event)
 {
+#ifdef DEBUG
     static char *xevent_names[] = {
         "Zero",
         "One",
@@ -111,6 +113,7 @@ void event_dispatch(XEvent *event)
     else
         printf("%-19s %s (%d)\n", "received event:",
                xevent_names[event->type], event->type);
+#endif /* DEBUG */
 
     /* check the event number, jump to appropriate function */
     switch(event->type) {
@@ -122,8 +125,9 @@ void event_dispatch(XEvent *event)
         case ButtonRelease:
             event_button(&event->xbutton);
             break;
+
         case EnterNotify:
-        case LeaveNotify:
+/*        case LeaveNotify: */
             event_enter_leave(&event->xcrossing);
             break;
         case CreateNotify:
@@ -160,7 +164,9 @@ void event_dispatch(XEvent *event)
             break;
         /* MappingNotify */
         default:
+#ifdef DEBUG
             printf("\tIgnoring event\n");
+#endif /* DEBUG */
             break;
     }
 }
@@ -180,6 +186,7 @@ static void event_key(XKeyEvent *xevent)
     printf("\twindow 0x%08X, keycode %d, state %d, keystring %s\n",
            xevent->window, xevent->keycode, xevent->state,
            XKeysymToString(ks));
+    keyboard_process(xevent);
 }
 
 static void event_button(XButtonEvent *xevent)
@@ -191,11 +198,19 @@ static void event_enter_leave(XCrossingEvent *xevent)
 {
     client_t *client;
     
-    /* stolen from 9wm: */
-//    if (xevent->mode != NotifyGrab || xevent->detail != NotifyNonlinearVirtual)
-//        return;
+    /* have no idea when other 'modes' will be generated, just be safe */
+    if (xevent->mode != NotifyNormal)
+        return;
+
+    /* If the mouse is NOT in the focus window but in some other
+     * window and it moves to the frame of the window, it will
+     * generate this event, and I don't want this to do anything
+     */
+    if (xevent->detail == NotifyInferior) return;
+
     client = client_find(xevent->window);
     client_print("Enter/Leave:", client);
+    printf("\tmode = %d, detail = %d\n", xevent->mode, xevent->detail);
     if (client != NULL && focus_canfocus(client)) {
         focus_set(client);      /* focus.c */
         focus_ensure();

@@ -1,7 +1,7 @@
 # $Id$
 SHELL=/bin/sh
 
-CFLAGS=-I/usr/X11R6/include -L/usr/X11R6/lib -g
+CFLAGS=-DDEBUG=1 -I/usr/X11R6/include -L/usr/X11R6/lib -g
 LIBS=-lX11
 
 xwm: xwm.o client.o event.o focus.o workspace.o keyboard.o

@@ -10,6 +10,8 @@
 #include "xwm.h"
 #include "event.h"
 #include "client.h"
+#include "keyboard.h"
+#include "focus.h"
 
 Display *dpy;
 int scr;
@@ -21,6 +23,11 @@ Window root_window;
 Cursor cursor_normal;
 Cursor cursor_moving;
 Cursor cursor_sizing;
+
+int alt_tab(Window win, Window subwindow, Time t,
+            int x, int y, int root_x, int root_y);
+int alt_shift_tab(Window win, Window subwindow, Time t,
+                  int x, int y, int root_x, int root_y);
 
 static int already_running_windowmanager;
 
@@ -98,7 +105,11 @@ int main(int argc, char **argv)
 
     window_context = XUniqueContext(); /* client.c */
     frame_context = XUniqueContext();
-    
+
+    keyboard_set_function("Alt | Tab", KEYBOARD_DEPRESS, alt_tab);
+    keyboard_set_function("Alt | Shift | Tab", KEYBOARD_DEPRESS,
+                          alt_shift_tab);
+
     scan_windows();
 
     printf("\tSetting root input focus...");
@@ -144,4 +155,20 @@ static void scan_windows()
         }
     }
     XFree(wins);
+}
+
+int alt_tab(Window win, Window subwindow, Time t,
+            int x, int y, int root_x, int root_y)
+{
+    focus_next();
+    focus_ensure();
+    return 0;
+}
+
+int alt_shift_tab(Window win, Window subwindow, Time t,
+                  int x, int y, int root_x, int root_y)
+{
+    focus_prev();
+    focus_ensure();
+    return 0;
 }
