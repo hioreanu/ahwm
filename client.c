@@ -71,7 +71,8 @@ XContext title_context;
 static void client_create_frame(client_t *client, position_size *win_position);
 static void remove_transient_from_leader(client_t *client);
 static void client_add_titlebar_internal(client_t *client);
-
+static void update_move_offset(client_t *client);
+    
 void client_init()
 {
     window_context = XUniqueContext();
@@ -323,6 +324,21 @@ static void client_create_frame(client_t *client, position_size *win_position)
     }
 }
 
+static void update_move_offset(client_t *client)
+{
+    position_size ps;
+    int offset;
+
+    client_position_noframe(client, &ps);
+    if (client->titlebar == None) {
+        offset = 0;
+    } else {
+        offset = ps.y + TITLE_HEIGHT - client->y;
+    }
+    XChangeProperty(dpy, client->window, _AHWM_MOVE_OFFSET, XA_INTEGER,
+                    32, PropModeReplace, (unsigned char *)&offset, 1);
+}
+
 void client_reparent(client_t *client)
 {
     /* reparent the window and map window and frame */
@@ -333,8 +349,10 @@ void client_reparent(client_t *client)
     if (client->titlebar != None) {
         XReparentWindow(dpy, client->window,
                         client->frame, 0, TITLE_HEIGHT);
+        update_move_offset(client);
     } else {
         XReparentWindow(dpy, client->window, client->frame, 0, 0);
+        XDeleteProperty(dpy, client->window, _AHWM_MOVE_OFFSET);
     }
     XMapWindow(dpy, client->window);
     client->reparented = 1;
@@ -404,6 +422,7 @@ void client_add_titlebar(client_t *client)
     client_get_position_size_hints(client, &ps);
     client_create_frame(client, &ps);
     XMoveWindow(dpy, client->window, 0, TITLE_HEIGHT);
+    update_move_offset(client);
     XMapWindow(dpy, client->titlebar);
     mouse_grab_buttons(client);
 }
@@ -437,6 +456,7 @@ void client_remove_titlebar(client_t *client)
 
     client_create_frame(client, &ps); /* just resets frame's position */
     XMoveWindow(dpy, client->window, 0, 0);
+    XDeleteProperty(dpy, client->window, _AHWM_MOVE_OFFSET);
 #ifdef SHAPE
     if (shape_supported && client->is_shaped) {
         XShapeCombineShape(dpy, client->frame, ShapeBounding, 0, 0,
@@ -669,9 +689,7 @@ void client_get_position_size_hints(client_t *client, position_size *ps)
 }
 
 /*
- * I think this is the only window manager I've seen that
- * actually follows ICCCM 4.1.2.3 to the letter, specifically
- * with EastGravity and WestGravity.
+ * ICCCM 4.1.2.3
  */
 
 void client_frame_position(client_t *client, position_size *ps)

@@ -1,9 +1,6 @@
 TODO before release:
 - window placement wrt. old titlebars on restart, use X property
-- on first start, pop up dialog explaining what's going on
 - resize and restart bound to same key
-- documentation to cvs
-- default-message.h to cvs
 - placement, use corner with least overlap first
 - _NET_WORKAREA and STRUT
 - keep _WM_STATE, _WIN_LAYER updated
@@ -152,6 +149,9 @@ Finished, no longer TODO:
 - 'make install' should work and 'make clean' shouldn't remove parser.c
 - zombies on FreeBSD
 - timestamp focus issue
+- on first start, pop up dialog explaining what's going on
+- documentation to cvs
+- default-message.h to cvs
 
 Abandoned, no longer TODO:
 - "stop" focus, detect when pointer stops in a window (no timeout) -

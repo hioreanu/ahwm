@@ -87,6 +87,7 @@ Atom WM_TAKE_FOCUS;
 Atom WM_SAVE_YOURSELF;
 Atom WM_DELETE_WINDOW;
 Atom WM_PROTOCOLS;
+Atom _AHWM_MOVE_OFFSET;
 
 #ifdef SHAPE
 int shape_supported;
@@ -101,10 +102,15 @@ static int (*default_error_handler)(Display *, XErrorEvent *);
 static int tmp_error_handler(Display *dpy, XErrorEvent *error);
 static int error_handler(Display *dpy, XErrorEvent *error);
 static void scan_windows();
+static void reposition(Window w);
 static void remove_titlebars();
 static void sigterm(int signo);
 static void sigsegv(int signo);
 static void crash_handler();
+static void crashwin_draw(GC gc, Window toplevel, Window button1,
+                          Window button2, Window button3,
+                          int height, int width);
+
 
 #ifdef DEBUG
 static void mark(XEvent *e, struct _arglist *ignored);
@@ -200,6 +206,7 @@ int main(int argc, char **argv)
     WM_SAVE_YOURSELF = XInternAtom(dpy, "WM_SAVE_YOURSELF", False);
     WM_DELETE_WINDOW = XInternAtom(dpy, "WM_DELETE_WINDOW", False);
     WM_PROTOCOLS = XInternAtom(dpy, "WM_PROTOCOLS", False);
+    _AHWM_MOVE_OFFSET = XInternAtom(dpy, "_AHWM_MOVE_OFFSET", False);
 
 #ifdef SHAPE
     shape_supported = XShapeQueryExtension(dpy, &shape_event_base, &junk);
@@ -372,6 +379,7 @@ static int error_handler(Display *dpy, XErrorEvent *error)
 
 /*
  * Set up all windows that were here before the windowmanager started
+ * 
  */
 
 static void scan_windows()
@@ -382,12 +390,70 @@ static void scan_windows()
 
     XQueryTree(dpy, root_window, &junk, &junk, &wins, &n);
     for (i = 0; i < n; i++) {
+        reposition(wins[i]);
         client = client_create(wins[i]);
     }
     if (wins != NULL) XFree(wins);
 }
 
+/*
+ * When AHWM exits, managed windows will be reparented to root;
+ * however, they will not be moved, so the y coordinate will be a few
+ * pixels higher, depending on the size of the titlebar.  We now check
+ * if a previous invocation of AHWM moved the client window down at
+ * all, and move it back if needed.  We store the amount we move a
+ * client window in a property on the client window.  The size of the
+ * titlebar may have changed in between invocations and the client
+ * window may have not been moved at all depending on gravity, so
+ * using an integer for this property is much better than a boolean.
+ */
+
+static void reposition(Window w)
+{
+    Window junk;
+    int x, y;
+    unsigned int junk2, height;
+    Atom actual;
+    int fmt;
+    unsigned long nitems, bytes_after_return;
+    int *offset;
+    XWindowAttributes xwa;
+
+    if (XGetGeometry(dpy, w, &junk, &x, &y,
+                     &junk2, &height, &junk2, &junk2) == 0) {
+        return;
+    }
+    if (XGetWindowProperty(dpy, w, _AHWM_MOVE_OFFSET, 0, 1, False,
+                           XA_INTEGER, &actual, &fmt,
+                           &nitems, &bytes_after_return,
+                           (unsigned char **)&offset) != Success) {
+        return;
+    }
+    if (offset == NULL || fmt != 32 || actual != XA_INTEGER || nitems != 1
+        || bytes_after_return != 0 || nitems != 1) {
+
+        if (offset != NULL) XFree(offset);
+        return;
+    }
+    if (*offset == 0) {
+        XFree(offset);
+        return;
+    }
+
+    /* don't move offscreen unless window is already offscreen */
+    if ((y <= scr_height && y >= 0)
+        && (y + *offset > scr_height || y + *offset + height < 0)) {
+
+        XFree(offset);
+        return;
+    }
+    XMoveWindow(dpy, w, x, y - *offset);
+    XFree(offset);
+}
+
 /* standard double fork trick, don't leave zombies */
+/* anything that takes an 'arglist' argument is a bindable
+ * function which appears in the config file; see prefs.c:fn_table */
 void run_program(XEvent *e, struct _arglist *args)
 {
     pid_t pid;
@@ -445,6 +511,7 @@ static void remove_titlebars()
     Window *wins, junk;
     client_t *client;
 
+    return;
     if (exiting == 1) _exit(1);
     exiting = 1;
 
@@ -489,7 +556,8 @@ static void mark(XEvent *e, struct _arglist *ignored)
 #endif
 
 /*
- * Well, this is just beautiful.  My friends, we have crashed.
+ * Well, this is embarrasing.  If this function is called, AHWM
+ * has crashed.
  * 
  * It would be most unfortunate if the user is actually working in
  * some window and our crash makes the user lose their work.  In fact,
@@ -540,10 +608,6 @@ static void sigsegv(int signo)
 #define CRASHBUTTON_HEIGHT 35
 #define CRASHWIN_SPACING 20
 
-static void crashwin_draw(GC gc, Window toplevel, Window button1,
-                          Window button2, Window button3,
-                          int height, int width);
-
 /*
  * Not very elegant.
  * 
@@ -557,7 +621,8 @@ static void crashwin_draw(GC gc, Window toplevel, Window button1,
  * work.  AHWM is mostly stateless, so restarting is pretty
  * transparent.
  * 
- * This "dialog" is butt-ugly.
+ * This "dialog" is butt-ugly, but that's what you get when you want
+ * to ensure you don't rely on any toolkit libraries.
  */
 
 static void crash_handler()

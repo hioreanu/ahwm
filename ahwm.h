@@ -59,6 +59,7 @@ extern Atom WM_TAKE_FOCUS;
 extern Atom WM_SAVE_YOURSELF;
 extern Atom WM_DELETE_WINDOW;
 extern Atom WM_PROTOCOLS;
+extern Atom _AHWM_MOVE_OFFSET;
 
 #ifdef SHAPE
 extern int shape_supported;
