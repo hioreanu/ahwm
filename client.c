@@ -25,7 +25,7 @@ client_t *client_create(Window w)
         printf("\tWindow has override_redirect, not creating client\n");
         return NULL;
     }
-    XSelectInput(dpy, w, EnterWindowMask | KeyPressMask);
+    XSelectInput(dpy, w, EnterWindowMask);
 
     client = malloc(sizeof(client_t));
     if (client == NULL) {
@@ -62,9 +62,8 @@ client_t *client_create(Window w)
         xswa.cursor = cursor_normal;
         xswa.background_pixmap = None;
         xswa.background_pixel = black;
-        xswa.event_mask = KeyPressMask | KeyReleaseMask
-                          | SubstructureRedirectMask | ExposureMask
-                          | EnterWindowMask | LeaveWindowMask;
+        xswa.event_mask = SubstructureRedirectMask | ExposureMask |
+                          EnterWindowMask | LeaveWindowMask;
         xswa.override_redirect = True;
         client->frame = XCreateWindow(dpy, root_window, client->x, client->y,
                                       client->width, client->height, 0,
@@ -78,8 +77,8 @@ client_t *client_create(Window w)
         XSelectInput(dpy, w, xwa.your_event_mask & ~StructureNotifyMask);
         XReparentWindow(dpy, w, client->frame, 0, TITLE_HEIGHT);
         XSelectInput(dpy, w,
-                     xwa.your_event_mask | EnterWindowMask | KeyPressMask
-                    | StructureNotifyMask);
+                     xwa.your_event_mask | EnterWindowMask
+                     | StructureNotifyMask);
     }
     if (client->frame != None) {
         if (XSaveContext(dpy, client->frame,
