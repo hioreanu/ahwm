@@ -71,13 +71,16 @@ extern int shape_event_base;
  * 4.  Barf if some other window manager is running
  * 5.  Initialize globals declared above
  * 6.  Call the various _init functions, in correct order
- * 7.  Create static key/mouse bindings
- * 8.  Scan already-mapped windows and manage them
- * 9.  Do the main event loop
+ * 7.  Scan already-mapped windows and manage them
+ * 8.  Do the main event loop
  */
 
+/*
+ * These two are bindable functions, put in xwm.c for lack of a better
+ * place.  Predeclaring struct _arglist to avoid header loop on xwm.h
+ * and prefs.h.
+ */
 
-/* FIXME:  wrong place */
 struct _arglist;
 void run_program(XEvent *e, struct _arglist *args);
 void xwm_quit(XEvent *e, struct _arglist *ignored);

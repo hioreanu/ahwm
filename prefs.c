@@ -53,6 +53,7 @@
 #include "kill.h"
 #include "move-resize.h"
 
+#include "default-xwmrc.h"
 
 #define CHECK_BOOL(x) ((x)->type_type == BOOLEAN ? True : False)
 #define CHECK_STRING(x) ((x)->type_type == STRING ? True : False)
@@ -94,6 +95,7 @@ static void mouseunbinding_apply(client_t *client, mouseunbinding *kb);
 static void prefs_apply_internal(client_t *client, line *block, prefs *p);
 static void globally_bind(line *lp);
 static void globally_unbind(line *lp);
+static int no_config(char *xwmrc_path);
 
 static line *defaults, *contexts;
 
@@ -130,7 +132,9 @@ void prefs_init()
     if (yyin == NULL) {
         fprintf(stderr, "XWM: Could not open configuration file '%s': %s\n",
                 buf, strerror(errno));
-        return;
+        if (no_config(buf) == 0) {
+            return;
+        }
     }
     debug(("Start parsing\n"));
     yyparse();
@@ -934,4 +938,29 @@ static void globally_unbind(line *lp)
                      lp->line_value.mouseunbinding->mouseunbinding_depress,
                      lp->line_value.mouseunbinding->mouseunbinding_location);
     }
+}
+
+/*
+ * When the user has no .xwmrc, we try to create one and pop up an
+ * explanatory message.
+ */
+
+static int no_config(char *xwmrc_path)
+{
+    extern FILE *yyin;
+    int i;
+
+    fprintf(stderr, "XWM: Creating default configuration file\n");
+    yyin = fopen(xwmrc_path, "r+b");
+    if (yyin == NULL) {
+        fprintf(stderr,
+                "XWM: Could not create default configuration file: %s\n",
+                strerror(errno));
+        return 0;
+    }
+    for (i = 0; i < sizeof(default_xwmrc); i++) {
+        fprintf(yyin, "%s\n", default_xwmrc[i]);
+    }
+    fseek(yyin, 0, SEEK_SET);
+    return 1;
 }

@@ -88,10 +88,6 @@ int shape_supported;
 int shape_event_base;
 #endif
 
-#ifdef DEBUG
-void mark(XEvent *e, struct _arglist *ignored);
-#endif
-
 static int already_running_windowmanager;
 static int (*default_error_handler)(Display *, XErrorEvent *);
 
@@ -99,22 +95,9 @@ static int tmp_error_handler(Display *dpy, XErrorEvent *error);
 static int error_handler(Display *dpy, XErrorEvent *error);
 static void scan_windows();
 
-/*
- * 1.  Open a display
- * 2.  Set up some convenience global variables
- * 3.  Select the X events we want to see
- * 4.  Die if we can't do that because some other windowmanager is running
- * 5.  Set the X error handler
- * 6.  Define the root window cursor and other cursors
- * 7.  Create a XContexts for the window management functions
- * 8.  Scan already-created windows and manage them
- * 9.  Go into a select() loop waiting for events
- * 10. Dispatch events
- * 
- * FIXME:  move everything not defined in this file into various
- * _init functions, document this in xwm.h
- * FIXME:  redo this comment
- */
+#ifdef DEBUG
+static void mark(XEvent *e, struct _arglist *ignored);
+#endif
 
 int main(int argc, char **argv)
 {
@@ -131,6 +114,8 @@ int main(int argc, char **argv)
         fprintf(stderr, "XWM: Could not open display '%s'\n", XDisplayName(NULL));
         exit(1);
     }
+    xfd = ConnectionNumber(dpy);
+    fcntl(xfd, F_SETFD, FD_CLOEXEC);
     scr = DefaultScreen(dpy);
     root_window = DefaultRootWindow(dpy);
     scr_height = DisplayHeight(dpy, scr);
@@ -143,25 +128,29 @@ int main(int argc, char **argv)
     /* this causes an error if some other window manager is running */
     XSelectInput(dpy, root_window, ROOT_EVENT_MASK);
     /* and we want to ensure the server processes the request now */
-    XSync(dpy, 0);
+    XSync(dpy, False);
     if (already_running_windowmanager) {
-        fprintf(stderr, "XWM: You're already running a window manager, silly.\n");
+        fprintf(stderr,
+                "XWM: You're already running a window manager.  Quitting.\n");
         exit(1);
     }
 
     printf("--------------------------------");
     printf(" Welcome to XWM ");
     printf("--------------------------------\n");
-    fflush(stdout);
 
     /* get the default error handler and set our error handler */
     XSetErrorHandler(NULL);
     default_error_handler = XSetErrorHandler(error_handler);
-#ifdef DEBUG_BAD_IDEA
+
+#if 0
+    /* using this is a really bad idea, but this is where the call
+     * goes if it's needed */
     XSynchronize(dpy, True);
 #endif
 
     /* set up our global variables */
+    
     WM_STATE = XInternAtom(dpy, "WM_STATE", False);
     WM_CHANGE_STATE = XInternAtom(dpy, "WM_CHANGE_STATE", False);
     WM_TAKE_FOCUS = XInternAtom(dpy, "WM_TAKE_FOCUS", False);
@@ -247,12 +236,11 @@ int main(int argc, char **argv)
                                  | GCPlaneMask | GCSubwindowMode,
                                  &xgcv);
 
+    /* call initialization functions of various modules (order matters) */
+    
     client_init();
     cursor_init();
     paint_init();
-    icccm_init();
-    ewmh_init();
-    mwm_init();
     keyboard_init();
 
 #ifdef DEBUG
@@ -261,12 +249,12 @@ int main(int argc, char **argv)
 #endif
     
     prefs_init();
+    icccm_init();
+    ewmh_init();
+    mwm_init();
     focus_init();
     scan_windows();
     
-    xfd = ConnectionNumber(dpy);
-    fcntl(xfd, F_SETFD, FD_CLOEXEC);
-
     XSync(dpy, 0);
 
     for (;;) {
@@ -324,7 +312,6 @@ static void scan_windows()
 }
 
 /* standard double fork trick, don't leave zombies */
-/* FIXME:  this should move out of xwm.c perhaps misc.c */
 void run_program(XEvent *e, struct _arglist *args)
 {
     pid_t pid;
@@ -362,8 +349,8 @@ void xwm_quit(XEvent *e, struct _arglist *ignored)
 }
 
 #ifdef DEBUG
-/* make it easier to parse debug output */
-void mark(XEvent *e, struct _arglist *ignored)
+/* make it easier to read debug output */
+static void mark(XEvent *e, struct _arglist *ignored)
 {
     printf("-------------------------------------");
     printf(" MARK ");

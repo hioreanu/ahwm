@@ -175,6 +175,10 @@ client_t *client_create(Window w)
 
     prefs_apply(client);
     mwm_apply(client);
+    ewmh_wm_state_apply(client);
+    ewmh_wm_strut_apply(client);
+    ewmh_window_type_apply(client);
+    ewmh_wm_desktop_apply(client);
     
     XSelectInput(dpy, client->window,
                  xwa.your_event_mask

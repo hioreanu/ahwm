@@ -42,14 +42,9 @@
  * yet been mapped into any workspace.
  */
 
-#define NO_WORKSPACES 7
+extern unsigned int nworkspaces;
 
 extern unsigned int workspace_current;
-
-extern unsigned long workspace_pixels[NO_WORKSPACES];
-extern unsigned long workspace_dark_highlight[NO_WORKSPACES];
-extern unsigned long workspace_darkest_highlight[NO_WORKSPACES];
-extern unsigned long workspace_highlight[NO_WORKSPACES];
 
 /*
  * move a client to a workspace and make it the top-level window in
@@ -69,11 +64,5 @@ void workspace_goto(unsigned int ws);
 
 /* same as above for binding */
 void workspace_goto_bindable(XEvent *e, arglist *args);
-
-/*
- * update the color on a workspace, allocate colors if needed
- */
-
-void workspace_update_color();
 
 #endif /* WORKSPACE_H */

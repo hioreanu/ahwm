@@ -184,7 +184,7 @@ client_t *client_create(Window);
 
 /*
  * Find the client structure for a given window.  The window argument
- * is either the client window you passed to client_create or the
+ * is either the client window you passed to client_create, or the
  * frame which that function creates, or the titlebar subwindow.
  * 
  * Returns NULL on error.

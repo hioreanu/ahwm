@@ -26,6 +26,10 @@
 #ifndef MWM_H
 #define MWM_H
 
+/*
+ * Module for dealing with Motif hints
+ */
+
 #include "config.h"
 
 #include "client.h"

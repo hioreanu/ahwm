@@ -74,9 +74,9 @@ typedef struct _focus_node {
 
 client_t *focus_current = NULL;
 
-static focus_node *focus_stacks[NO_WORKSPACES] = { NULL };
+static focus_node **focus_stacks;
 
-static XContext focus_contexts[NO_WORKSPACES];
+static XContext *focus_contexts;
 
 static Bool in_alt_tab = False; /* see focus_alt_tab, focus_ensure */
 
@@ -96,7 +96,14 @@ void focus_init()
     int i;
     XSetWindowAttributes xswa;
 
-    for (i = 0; i < NO_WORKSPACES; i++) {
+    focus_contexts = malloc(nworkspaces * sizeof(XContext));
+    focus_stacks = malloc(nworkspaces * sizeof(focus_node *));
+    if (focus_contexts == NULL || focus_stacks == NULL) {
+        perror("XWM: focus_init: malloc");
+        fprintf(stderr, "XWM: this is a fatal error, quitting.\n");
+        exit(1);
+    }
+    for (i = 0; i < nworkspaces; i++) {
         focus_contexts[i] = XUniqueContext();
         focus_stacks[i] = NULL;
     }
@@ -105,7 +112,6 @@ void focus_init()
                               InputOnly, DefaultVisual(dpy, scr),
                               CWOverrideRedirect, &xswa);
     XMapWindow(dpy, revert_to);
-    XFlush(dpy);
     XSync(dpy, False);
     keyboard_grab_keys(revert_to);
 }
@@ -164,13 +170,13 @@ void focus_add(client_t *client, Time timestamp)
     if ( (node = find_node(client)) != NULL)
         focus_remove(client, CurrentTime);
     if (client->omnipresent) {
-        node = Malloc(NO_WORKSPACES * sizeof(focus_node));
+        node = Malloc(nworkspaces * sizeof(focus_node));
         if (node == NULL) {
             fprintf(stderr, "XWM: out of memory while focusing client\n");
             return;
         }
         debug(("\tOmnipresent node = %#lx\n", node));
-        for (i = 0; i < NO_WORKSPACES; i++) {
+        for (i = 0; i < nworkspaces; i++) {
             node[i].client = client;
             focus_add_internal(&node[i], i + 1, timestamp);
         }
@@ -232,7 +238,7 @@ void focus_remove(client_t *client, Time timestamp)
     focus_node *node = NULL;
 
     if (client->omnipresent) {
-        for (i = NO_WORKSPACES - 1; i >= 0; i--) {
+        for (i = nworkspaces - 1; i >= 0; i--) {
             if (XFindContext(dpy, client->window, focus_contexts[i],
                              (void *)&node) != 0) {
                 node = NULL;

@@ -35,13 +35,7 @@
 #include "ewmh.h"
 #include "stacking.h"
 
-#ifndef MIN
-#define MIN(x,y) ((x) < (y) ? (x) : (y))
-#endif
-#ifndef MAX
-#define MAX(x,y) ((x) > (y) ? (x) : (y))
-#endif
-
+unsigned int nworkspaces = 1;
 unsigned int workspace_current = 1;
 
 void workspace_goto_bindable(XEvent *e, arglist *args)
@@ -49,7 +43,7 @@ void workspace_goto_bindable(XEvent *e, arglist *args)
     if (args != NULL && args->arglist_arg->type_type == INTEGER) {
         workspace_goto(args->arglist_arg->type_value.intval);
     } else {
-        fprintf(stderr, "XWM: type error\n");
+        fprintf(stderr, "XWM: type error\n"); /* FIXME */
     }
 }
 
@@ -84,7 +78,7 @@ void workspace_goto(unsigned int new_workspace)
 {
     XSetWindowAttributes xswa;
 
-    if (new_workspace < 1 || new_workspace > NO_WORKSPACES) {
+    if (new_workspace < 1 || new_workspace > nworkspaces) {
         fprintf(stderr, "XWM:  attempt to go to invalid workspace %d\n",
                 new_workspace);
         return;
@@ -173,7 +167,7 @@ void workspace_client_moveto_bindable(XEvent *xevent, arglist *args)
 
 void workspace_client_moveto(client_t *client, unsigned int ws)
 {
-    if (ws < 1 || ws > NO_WORKSPACES) {
+    if (ws < 1 || ws > nworkspaces) {
         fprintf(stderr, "XWM:  attempt to move to invalid workspace %d\n", ws);
         return;
     }
@@ -182,7 +176,7 @@ void workspace_client_moveto(client_t *client, unsigned int ws)
 
     /* we now move the client's transients which are in the same
      * workspace as the client to the new workspace
-     * FIXME:  try to ensure the focus list remains somewhat
+     * FIXME:  could try to ensure the focus list remains somewhat
      * intact as we move the transients */
 
     move_with_transients(client, ws);

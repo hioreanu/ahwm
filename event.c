@@ -711,6 +711,14 @@ static void event_property(XPropertyEvent *xevent)
         client_set_transient_for(client);
     } else if (xevent->atom == _MOTIF_WM_HINTS) {
         mwm_apply(client);
+    } else if (xevent->atom == _NET_WM_WINDOW_TYPE) {
+        ewmh_window_type_apply(client);
+    } else if (xevent->atom == _NET_WM_STATE) {
+        ewmh_wm_state_apply(client);
+    } else if (xevent->atom == _NET_WM_STRUT) {
+        ewmh_wm_strut_apply(client);
+    } else if (xevent->atom == _NET_WM_DESKTOP) {
+        ewmh_wm_desktop_apply(client);
     }
 }
 

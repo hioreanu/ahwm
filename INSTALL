@@ -6,7 +6,7 @@ sudo make install
 man xwm
 
 The configure script has no special options.  If one of the above steps
-fails, contact me (Alex Hioreanu, hioreanu@uchicago.edu).
+fails, contact me (Alex Hioreanu, hioreanu+ahwm@uchicago.edu).
 
 If you do not have root access to the machine on which you wish to install
 xwm, you can use './configure --prefix=$HOME' instead of './configure'; the

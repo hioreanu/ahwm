@@ -42,6 +42,7 @@ extern client_t *focus_current;
 
 /*
  * Initialize the focus module
+ * Depends on number of workspaces being set
  */
 
 void focus_init();
