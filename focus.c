@@ -138,6 +138,7 @@ static focus_node *find_node(client_t *client)
     return node;
 }
 
+/* FIXME:  this is overloaded, change name */
 Bool focus_forall(forall_fn fn, void *v)
 {
     focus_node *node, *tmp;
@@ -684,6 +685,9 @@ static void permute(focus_node *A, focus_node *D)
 {
     focus_node *C, *E, *F;
 
+    if (A->client->workspace != D->client->workspace)
+        return;
+    
     /* if have only one or two elements, or not moving, done */
     if (A == D || (A->next == D && D->next == A))
         return;
@@ -715,6 +719,24 @@ static void permute(focus_node *A, focus_node *D)
 
         D->next = A;
         A->prev = D;
+    }
+}
+
+void focus_debug()
+{
+    int ws;
+    focus_node *orig, *node;
+
+    for (ws = 0; ws < nworkspaces; ws++) {
+        node = orig = focus_stacks[ws];
+        debug(("%d: ", ws));
+        if (node != NULL) {
+            do {
+                debug(("%s, ", client_dbg(node->client)));
+                node = node->prev;
+            } while (node != orig);
+        }
+        debug(("\n"));
     }
 }
 

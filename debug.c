@@ -42,7 +42,7 @@ void _debug(char *fmt, ...)
     vprintf(fmt, ap);
     va_end(ap);
     fflush(stdout);
-/*    printf("\017"); */ /* fixes stupid xterm "alternate-charset" escape */
+/*    printf("\017"); */  /* fixes stupid xterm "alternate-charset" escape */
 }
 # endif
 #endif

@@ -269,6 +269,10 @@ BUG - sometimes when xterm loses focus, it doesn't update its cursor; looks
 like an xterm bug, other window managers do same thing - FIXED:  definitely
 xterm bug
 
+BUG - ./go; launch xterm; start kpager; drag xterm icon to ws 2;
+change workspaces in this order using kpager: 2, 3, 2, 1, 2 - FIXED:
+must check that workspaces are equal in focus:permute
+
 BUG - strange interaction in window moving edge-resistance, sometimes
 pointer leaves window when moving quickly, can't reproduce
 

@@ -1249,6 +1249,8 @@ Bool ewmh_handle_clientmessage(XClientMessageEvent *xevent)
             typ.type_value.resize_enum = data3;
             resize_client(&ev, &al);
         }
+        
+        return True;
     }
     
     return False;

@@ -192,7 +192,7 @@ void event_dispatch(XEvent *event)
         "ClientMessage",        /* YES */
         "MappingNotify",        /* TODO */
     };
-
+    
     debug(("----------------------------------------"));
     debug(("----------------------------------------\n"));
     if (event->type > MappingNotify)
