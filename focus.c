@@ -13,6 +13,7 @@
 #include "workspace.h"
 #include "debug.h"
 #include "event.h"
+#include "ewmh.h"
 
 client_t *focus_current = NULL;
 
@@ -138,6 +139,8 @@ void focus_ensure(Time timestamp)
     debug(("\tSetting focus to 0x%08X (%s)...\n",
            (unsigned int)focus_current->window, focus_current->name));
 
+    ewmh_active_window_update();
+    
     /* see ICCCM 4.1.7 */
     if (focus_current->xwmh != NULL &&
         focus_current->xwmh->flags & InputHint &&

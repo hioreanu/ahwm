@@ -140,7 +140,8 @@ int main(int argc, char **argv)
      * over something, and we need to define a cursor for some of our
      * windows.  X does not provide any mechanism for getting a
      * window's cursor, so we define the root cursor for
-     * consistency. */
+     * consistency.
+     * FIXME:  move into cursor_init() */
     XDefineCursor(dpy, root_window, cursor_normal);
 
     workspace_update_color();
@@ -202,7 +203,7 @@ int main(int argc, char **argv)
     frame_context = XUniqueContext();
     title_context = XUniqueContext();
 
-    icccm_set_WM_Sn();
+    icccm_init();
     ewmh_init();
     keyboard_init();
 

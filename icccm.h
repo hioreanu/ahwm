@@ -13,7 +13,7 @@
  * but before the root window is selected for events.
  */
 
-void icccm_set_WM_Sn();
+void icccm_init();
 
 /*
  * Deal with a selection request event on the "WM_Sn" selection.

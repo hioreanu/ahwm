@@ -374,6 +374,7 @@ static void event_destroy(XDestroyWindowEvent *xevent)
          * it happen that way (so I haven't seen this code run)
          */
         focus_remove(client, event_timestamp);
+        ewmh_client_list_remove(client);
         if (client->workspace == workspace_current) {
             under_mouse = query_stacking_order(client->frame);
             if (under_mouse != NULL) {
@@ -427,11 +428,6 @@ static void event_unmap(XUnmapEvent *xevent)
         return;
     }
 
-    if (xevent->window == client->frame
-        && client->workspace == workspace_current) {
-        ewmh_client_list_remove(client);
-    }
-
     /* if we unmapped it ourselves, no need to do anything */
     if (xevent->window != client->window) return;
 
@@ -451,6 +447,7 @@ static void event_unmap(XUnmapEvent *xevent)
     focus_remove(client, event_timestamp);
     
     if (client->state == NormalState) {
+        ewmh_client_list_remove(client);
         XUnmapWindow(dpy, client->frame);
 
         error_ignore(BadWindow, X_UnmapWindow);
@@ -521,7 +518,10 @@ static void event_maprequest(XMapRequestEvent *xevent)
         }
         keyboard_grab_keys(client);
         mouse_grab_buttons(client);
-        if (addfocus) focus_add(client, event_timestamp);
+        if (addfocus) {
+            focus_add(client, event_timestamp);
+//            ewmh_client_list_add(client);
+        }
     } else {
         debug(("\tsigh...client->state = %d\n", client->state));
     }
@@ -754,6 +754,7 @@ static void event_clientmessage(XClientMessageEvent *xevent)
             client->state = IconicState;
             client_inform_state(client);
             focus_remove(client, event_timestamp);
+            ewmh_client_list_remove(client);
         }
     }
 }

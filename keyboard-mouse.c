@@ -306,7 +306,6 @@ void keyboard_process(XKeyEvent *xevent)
            xevent->state, XKeysymToString(ks));
 #endif /* DEBUG */
 
-    printf("AllLocksMask = %02X, state = %02X\n", AllLocksMask, xevent->state);
     code = xevent->keycode;
 
     for (kb = bindings; kb != NULL; kb = kb->next) {

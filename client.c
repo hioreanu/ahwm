@@ -25,6 +25,7 @@
 #include "event.h"
 #include "malloc.h"
 #include "debug.h"
+#include "ewmh.h"
 
 XContext window_context;
 XContext frame_context;
@@ -66,7 +67,19 @@ client_t *client_create(Window w)
     client->prev_height = client->prev_width = -1;
     client->ignore_enternotify = 0;
     client->orig_border_width = xwa.border_width;
-    XSetWindowBorderWidth(dpy, w, 0);
+    
+    /* God, this sucks.  I want the border width to be zero on all
+     * clients, so I need to change the client's border width at some
+     * point.  Apparently, I can't do that here, because xterm listens
+     * for ConfigureNotify events, and this generates a
+     * ConfigureNotify event.  The problem is that if xterm receives
+     * this ConfigureNotify event it will segfault (xterm bug, not
+     * really my bug).  It took me three days of combing through the
+     * xterm source code to figure this out - it only manifests itself
+     * when xterm is started with a scroll bar 'xterm -sb', which I
+     * never use.  Anyway, reading through xterm source code sucks. */
+
+/*    XSetWindowBorderWidth(dpy, w, 0); */
 
     client_set_name(client);
     client_set_instance_class(client);
@@ -148,6 +161,7 @@ client_t *client_create(Window w)
         keyboard_grab_keys(client);
         mouse_grab_buttons(client);
         focus_add(client, event_timestamp);
+        ewmh_client_list_add(client);
     }
     
     return client;

@@ -11,6 +11,7 @@
 #include "focus.h"
 #include "event.h"
 #include "debug.h"
+#include "ewmh.h"
 
 #ifndef MIN
 #define MIN(x,y) ((x) < (y) ? (x) : (y))
@@ -55,11 +56,13 @@ void workspace_goto(XEvent *xevent, void *v)
     client = focus_stacks[workspace_current - 1];
     if (client != NULL) {
         XUnmapWindow(dpy, client->frame);
+        ewmh_client_list_remove(client);
         tmp = client;
         for (client = tmp->next_focus;
              client != tmp;
              client = client->next_focus) {
             XUnmapWindow(dpy, client->frame);
+            ewmh_client_list_remove(client);
         }
     }
     workspace_current = new_workspace;
@@ -72,11 +75,14 @@ void workspace_goto(XEvent *xevent, void *v)
              client != tmp;
              client = client->prev_focus) {
             client_raise(client);
+//            ewmh_client_list_add(client);
         }
         client_raise(client);
+//        ewmh_client_list_add(client);
     }
     focus_current = focus_stacks[workspace_current - 1];
     focus_ensure(event_timestamp);
+    ewmh_current_desktop_update();
 //    must_focus_this_client(focus_stacks[workspace_current - 1]);
 }
 
@@ -114,6 +120,7 @@ void workspace_client_moveto(XEvent *xevent, void *v)
          transient = transient->next_transient) {
         if (transient->workspace == client->workspace) {
             focus_remove(transient, event_timestamp);
+            ewmh_client_list_remove(transient);
             XUnmapWindow(dpy, transient->frame);
             transient->workspace = ws;
             focus_add(transient, event_timestamp);
@@ -121,6 +128,7 @@ void workspace_client_moveto(XEvent *xevent, void *v)
     }
 
     focus_remove(client, event_timestamp);
+    ewmh_client_list_remove(client);
     XUnmapWindow(dpy, client->frame);
     client->workspace = ws;
     focus_add(client, event_timestamp);

@@ -12,6 +12,7 @@
 #include "ewmh.h"
 #include "malloc.h"
 #include "debug.h"
+#include "focus.h"
 
 #define NO_SUPPORTED_HINTS 34
 
@@ -35,8 +36,26 @@ static Atom UTF_8_STRING;
 
 static Window ewmh_window;
 
+/*
+ * unsupported: _NET_DESKTOP_NAMES, _NET_CLIENT_LIST_STACKING, all the
+ * UTF-8 crap, anything having to do with icons
+ * 
+ * TODO:
+ * root messages:
+ * _NET_CLOSE_WINDOW
+ * _NET_WM_MOVERESIZE
+ * 
+ * client properties:
+ * _NET_WM_DESKTOP,
+ * _NET_WM_WINDOW_TYPE,
+ * _NET_WM_STATE,
+ * _NET_WM_STRUT,
+ */
+
 void ewmh_init()
 {
+    long l[4 * NO_WORKSPACES];
+    int i;
     XSetWindowAttributes xswa;
     Atom supported[NO_SUPPORTED_HINTS];
 
@@ -142,6 +161,43 @@ void ewmh_init()
     XChangeProperty(dpy, ewmh_window, _NET_WM_NAME,
                     UTF_8_STRING, 8, PropModeReplace,
                     (unsigned char *)"XWM", 4);
+    l[0] = NO_WORKSPACES;
+    XChangeProperty(dpy, root_window, _NET_NUMBER_OF_DESKTOPS,
+                    XA_CARDINAL, 32, PropModeReplace,
+                    (unsigned char *)l, 1);
+    l[0] = scr_width;
+    l[1] = scr_height;
+    XChangeProperty(dpy, root_window, _NET_DESKTOP_GEOMETRY,
+                    XA_CARDINAL, 32, PropModeReplace,
+                    (unsigned char *)l, 2);
+    for (i = 0; i < NO_WORKSPACES * 2; i++) {
+        l[i] = 0;
+    }
+    XChangeProperty(dpy, root_window, _NET_DESKTOP_VIEWPORT,
+                    XA_CARDINAL, 32, PropModeReplace,
+                    (unsigned char *)l, NO_WORKSPACES * 2);
+    for (i = 0; i < NO_WORKSPACES; i += 4) {
+        l[i] = 0;
+        l[i+1] = 0;
+        l[i+2] = scr_width;
+        l[i+3] = scr_height;
+    }
+    XChangeProperty(dpy, root_window, _NET_WORKAREA,
+                    XA_CARDINAL, 32, PropModeReplace,
+                    (unsigned char *)l, NO_WORKSPACES * 4);
+    l[0] = 0;
+    XChangeProperty(dpy, root_window, _NET_CURRENT_DESKTOP,
+                    XA_CARDINAL, 32, PropModeReplace,
+                    (unsigned char *)l, 1);
+}
+
+void ewmh_current_desktop_update()
+{
+    long l = workspace_current - 1;
+    
+    XChangeProperty(dpy, root_window, _NET_CURRENT_DESKTOP,
+                    XA_CARDINAL, 32, PropModeReplace,
+                    (unsigned char *)&l, 1);
 }
 
 static Window *ewmh_client_list = NULL;
@@ -154,12 +210,12 @@ void ewmh_client_list_add(client_t *client)
     
     if (nclients == nwindows_allocated) {
         if (ewmh_client_list == NULL) {
-            ewmh_client_list = Malloc(sizeof(Window));
+            ewmh_client_list = Malloc((nclients + 1) * sizeof(Window));
             if (ewmh_client_list == NULL) {
                 perror("XWM: malloc EWMH client list");
                 return;
             }
-            nwindows_allocated = 1;
+            nwindows_allocated = nclients + 1;
         } else {
             tmp = Realloc(ewmh_client_list, 2*nwindows_allocated*sizeof(Window));
             if (tmp == NULL) {
@@ -202,5 +258,7 @@ void ewmh_client_list_remove(client_t *client)
 
 void ewmh_active_window_update()
 {
-    ;
+    XChangeProperty(dpy, root_window, _NET_ACTIVE_WINDOW,
+                    XA_WINDOW, 32, PropModeReplace,
+                    (unsigned char *)&(focus_current->window), 1);
 }

@@ -5,4 +5,4 @@ out() {
 }
 trap out `seq 0 20`
 rm -f core
-xinit ./xinitrc -- :1 -fbbpp 16 2>&1 | tee errs
+xinit ./xinitrc -- :1 -fbbpp 24 2>&1 | tee errs

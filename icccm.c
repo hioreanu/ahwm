@@ -15,7 +15,7 @@ static Atom WM_Sn, MESSAGE, VERSION;
 
 static void failure(char *);
 
-void icccm_set_WM_Sn()
+void icccm_init()
 {
     XSetWindowAttributes xswa;
     XEvent event;

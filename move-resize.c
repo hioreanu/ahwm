@@ -85,18 +85,30 @@ static void set_keys();
 static void move_constrain(client_t *client);
 static int get_width_resize_inc(client_t *client);
 static int get_height_resize_inc(client_t *client);
+static int get_width_resize_base(client_t *client);
+static int get_height_resize_base(client_t *client);
+static int get_min_width(client_t *client);
+static int get_max_width(client_t *client);
+static int get_min_height(client_t *client);
+static int get_max_height(client_t *client);
 static void move_inform_client(client_t *client);
 static Bool mouse_over_client(client_t *client);
+static void geometry_string(char *s, char *buf, int len, client_t *client,
+                            int x, int y, int width, int height);
+static void resist(client_t *client, int *oldx, int *oldy, int x, int y);
 
+/* FIXME: use maximum height, width */
 void resize_maximize(XEvent *xevent, void *v)
 {
-    int h_inc, w_inc;
+    int h_inc, w_inc, h_base, w_base;
     client_t *client;
 
     client = client_find(xevent->xbutton.window);
     if (client == NULL) return;
     h_inc = get_height_resize_inc(client);
     w_inc = get_width_resize_inc(client);
+    h_base = get_height_resize_base(client);
+    w_base = get_width_resize_base(client);
 
     if (client->prev_width != -1 || client->prev_height != -1) {
         if (client->prev_height != -1) {
@@ -114,8 +126,8 @@ void resize_maximize(XEvent *xevent, void *v)
         client->prev_y = client->y;
         client->prev_width = client->width;
         client->prev_height = client->height;
-        client->width = (scr_width / w_inc) * w_inc;
-        client->height = (scr_height / h_inc) * h_inc;
+        client->width = ((scr_width - w_base) / w_inc) * w_inc + w_base;
+        client->height = ((scr_height - h_base) / h_inc) * h_inc + h_base;
         client->y = client->x = 0;
     }
     XMoveResizeWindow(dpy, client->frame, client->x, client->y,
@@ -222,13 +234,11 @@ void move_client(XEvent *xevent, void *v)
                     action = DONE;
                     break;
                 }
-                /* just move the window */
-                client->x += xevent->xbutton.x_root - x_start;
-                client->y += xevent->xbutton.y_root - y_start;
-
-                /* take out these two lines for a fun effect :) */
-                x_start = xevent->xbutton.x_root;
-                y_start = xevent->xbutton.y_root;
+                
+                resist(client, &x_start, &y_start,
+                       xevent->xbutton.x_root,
+                       xevent->xbutton.y_root);
+                
                 XMoveWindow(dpy, client->frame, client->x, client->y);
                 display_geometry("Moving", client);
 
@@ -312,8 +322,9 @@ void move_client(XEvent *xevent, void *v)
             case ButtonRelease:
                 if (have_mouse && xevent->xbutton.button == init_button) {
                     if (client) {
-                        client->x += xevent->xbutton.x_root - x_start;
-                        client->y += xevent->xbutton.y_root - y_start;
+                        resist(client, &x_start, &y_start,
+                               xevent->xbutton.x_root,
+                               xevent->xbutton.y_root);
                     }
                     action = DONE;
                     break;
@@ -364,6 +375,39 @@ void move_client(XEvent *xevent, void *v)
             event1.xkey.window = client->window;
         }
         resize_client(&event1, v);
+    }
+}
+
+static void resist(client_t *client, int *oldx, int *oldy, int x, int y)
+{
+    int delta;
+    
+    delta = x - *oldx;
+    if (client->x >= 0
+        && client->x + delta < 0
+        && client->x + delta > -40) {
+        client->x = 0;
+    } else if (client->x + client->width <= scr_width
+               && client->x + client->width + delta > scr_width
+               && client->x + client->width + delta < scr_width + 40) {
+        client->x = scr_width - client->width;
+    } else {
+        client->x += delta;
+        *oldx = x;
+    }
+
+    delta = y - *oldy;
+    if (client->y >= 0
+        && client->y + delta < 0
+        && client->y + delta > -40) {
+        client->y = 0;
+    } else if (client->y + client->height <= scr_height
+               && client->y + client->height + delta > scr_height
+               && client->y + client->height + delta < scr_height + 40) {
+        client->y = scr_height - client->height;
+    } else {
+        client->y += delta;
+        *oldy = y;
     }
 }
 
@@ -914,7 +958,8 @@ static void process_resize(client_t *client, int new_x, int new_y,
     title_height = (client->titlebar == None ? 0 : TITLE_HEIGHT);
     y_diff = new_y - *old_y;
     x_diff = new_x - *old_x;
-    
+
+    /* apply program's increment hints */
     if (direction == WEST || direction == EAST)
         y_diff = 0;
     if (direction == NORTH || direction == SOUTH)
@@ -938,6 +983,7 @@ static void process_resize(client_t *client, int new_x, int new_y,
         }
     }
 
+    /* constrain size to within program's hints */
     if (x_diff != 0) {
         switch (direction) {
             case WEST:
@@ -945,11 +991,9 @@ static void process_resize(client_t *client, int new_x, int new_y,
             case NW:
                 if (client->width - x_diff > 1
                     && new_x < orig->x + orig->width) {
-                    if (client->xsh->flags & PMinSize
-                        && client->width - x_diff < client->xsh->min_width)
+                    if (client->width - x_diff < get_min_width(client))
                         break;
-                    if (client->xsh->flags & PMaxSize
-                        && client->width - x_diff > client->xsh->max_width)
+                    if (client->width - x_diff > get_max_width(client))
                         break;
                     client->x += x_diff;
                     client->width -= x_diff;
@@ -960,11 +1004,9 @@ static void process_resize(client_t *client, int new_x, int new_y,
             case SE:
             case NE:
                 if (client->width + x_diff > 1) {
-                    if (client->xsh->flags & PMinSize
-                        && client->width + x_diff < client->xsh->min_width)
+                    if (client->width + x_diff < get_min_width(client))
                         break;
-                    if (client->xsh->flags & PMaxSize
-                        && client->width + x_diff > client->xsh->max_width)
+                    if (client->width + x_diff > get_max_width(client))
                         break;
                     client->width += x_diff;
                     *old_x += x_diff;
@@ -981,13 +1023,11 @@ static void process_resize(client_t *client, int new_x, int new_y,
             case NE:
                 if (client->height - y_diff > title_height + 1
                     && new_y < orig->y + orig->height) {
-                    if (client->xsh->flags & PMinSize
-                        && client->height - y_diff <
-                           client->xsh->min_height + title_height)
+                    if (client->height - y_diff
+                        < get_min_height(client) + title_height)
                         break;
-                    if (client->xsh->flags & PMaxSize
-                        && client->height - y_diff >
-                           client->xsh->max_height + title_height)
+                    if (client->height - y_diff
+                        > get_max_height(client) + title_height)
                         break;
                     client->y += y_diff;
                     client->height -= y_diff;
@@ -998,13 +1038,11 @@ static void process_resize(client_t *client, int new_x, int new_y,
             case SE:
             case SW:
                 if (client->height + y_diff > title_height + 1) {
-                    if (client->xsh->flags & PMinSize
-                        && client->height + y_diff <
-                           client->xsh->min_height + title_height)
+                    if (client->height + y_diff
+                        < get_min_height(client) + title_height)
                         break;
-                    if (client->xsh->flags & PMaxSize
-                        && client->height + y_diff >
-                           client->xsh->max_height + title_height)
+                    if (client->height + y_diff
+                        > get_max_height(client) + title_height)
                         break;
                     client->height += y_diff;
                     *old_y += y_diff;
@@ -1025,9 +1063,9 @@ static void process_resize(client_t *client, int new_x, int new_y,
      * 2. must draw a line IMMEDIATELY after erasing it
      * 
      * The second point makes a particularly impressive difference.
-     * We can't simply use XDrawRectangle for any of these because the
-     * rectangle we also have to draw the drafting lines and the
-     * rectangle may intersect the arrowheads and other pieces.
+     * We can't simply use XDrawRectangle for any of these because we
+     * also have to draw the drafting lines and the rectangle may
+     * intersect the arrowheads and other pieces.
      * 
      * There is also another problem:  we want to display the geometry
      * in the titlebar if possible, but this raises all sorts of
@@ -1046,17 +1084,14 @@ static void process_resize(client_t *client, int new_x, int new_y,
      */
 
     if (ordinal != FIRST && client->titlebar != None) {
-        snprintf(buf, 64, "%dx%d+%d+%d [Resizing]",
-                 w / get_width_resize_inc(client),
-                 (h - title_height) / get_height_resize_inc(client), x, y);
+        geometry_string("Resizing", buf, 64, client,
+                        x, y, w, h);
         XDrawString(dpy, client->titlebar, root_invert_gc, 2,
                     TITLE_HEIGHT - 4, buf, strlen(buf));
     }
     if (ordinal != LAST && client->titlebar != None) {
-        snprintf(buf, 64, "%dx%d+%d+%d [Resizing]",
-             client->width / get_width_resize_inc(client),
-             (client->height - title_height) / get_height_resize_inc(client),
-             client->x, client->y);
+        geometry_string("Resizing", buf, 64, client,
+                        client->x, client->y, client->width, client->height);
         XDrawString(dpy, client->titlebar, root_invert_gc, 2,
                     TITLE_HEIGHT - 4, buf, strlen(buf));
     }
@@ -1221,9 +1256,9 @@ static void drafting_lines(client_t *client, resize_direction_t direction,
     }
 
     if (direction == WEST || direction == EAST) {
-        tmp = (y2 - y1) / h_inc;
+        tmp = (y2 - y1 - get_height_resize_base(client)) / h_inc;
     } else {
-        tmp = (x2 - x1) / w_inc;
+        tmp = (x2 - x1 - get_width_resize_base(client)) / w_inc;
     }
     snprintf(label, 16, "%d", tmp);
     y_room = font_height / 2;
@@ -1309,8 +1344,8 @@ static void drafting_lines(client_t *client, resize_direction_t direction,
  * does not draw on top of the line already there.  I took a technical
  * drawing class in high school - the arrowheads are supposed to be
  * drawn at a 30 degree angle and are filled.  This also fills the
- * given point since we just drew a line there (remember, all the
- * drawing operations invert).
+ * given point since we just drew a line there (all the drawing
+ * operations invert).
  */
 /* we just draw a bunch of lines instead of using a pixmap, this is a
  * very small image; using lines instead of specifying each point saves
@@ -1391,6 +1426,18 @@ static void draw_arrowhead(int x, int y, resize_direction_t direction)
     }
 }
 
+static void geometry_string(char *s, char *buf, int len, client_t *client,
+                            int x, int y, int width, int height)
+{
+    width -= get_width_resize_base(client);
+    height -= get_height_resize_base(client);
+    if (client->titlebar != None) height -= TITLE_HEIGHT;
+    width /= get_width_resize_inc(client);
+    height /= get_height_resize_inc(client);
+    snprintf(buf, len, "%dx%d+%d+%d [%s %s]",
+             width, height, x, y, s, client->instance);
+}
+
 /*
  * changes the client's titlebar display to the geometry prefixed by a
  * given string
@@ -1401,19 +1448,15 @@ static void draw_arrowhead(int x, int y, resize_direction_t direction)
 
 static void display_geometry(char *s, client_t *client)
 {
-    int width, height;
-
     if (client->titlebar == None) return;
-    width = client->width / get_width_resize_inc(client);
-    height = (client->height - TITLE_HEIGHT) / get_height_resize_inc(client);
     if (titlebar_display == NULL || client->name != titlebar_display) {
         titlebar_display = Malloc(256); /* arbitrary, whatever */
         if (titlebar_display == NULL) return;
         if (client->name != NULL) Free(client->name);
         client->name = titlebar_display;
     }
-    snprintf(client->name, 256, "%dx%d+%d+%d [%s %s]",
-             width, height, client->x, client->y, s, client->instance);
+    geometry_string(s, client->name, 256, client,
+                    client->x, client->y, client->width, client->height);
     client_paint_titlebar(client);
 }
 
@@ -1437,6 +1480,56 @@ static void set_keys()
     keycode_d = XKeysymToKeycode(dpy, XK_d);
     keycode_Control_L = XKeysymToKeycode(dpy, XK_Control_L);
     keycode_Control_R = XKeysymToKeycode(dpy, XK_Control_R);
+}
+
+static int get_height_resize_base(client_t *client)
+{
+    if (client->xsh != NULL
+        && client->xsh->flags & PBaseSize) {
+        return client->xsh->base_height;
+    } else {
+        return 0;
+    }
+}
+
+static int get_min_width(client_t *client)
+{
+    if (client->xsh == NULL) return 0;
+    if (client->xsh->flags & PMinSize) return client->xsh->min_width;
+    if (client->xsh->flags & PBaseSize) return client->xsh->base_width;
+    return 0;
+}
+
+static int get_min_height(client_t *client)
+{
+    if (client->xsh == NULL) return 0;
+    if (client->xsh->flags & PMinSize) return client->xsh->min_height;
+    if (client->xsh->flags & PBaseSize) return client->xsh->base_height;
+    return 0;
+}
+
+static int get_max_width(client_t *client)
+{
+    if (client->xsh != NULL && client->xsh->flags & PMaxSize)
+        return client->xsh->max_width;
+    return client->width + 2000; /* arbitrary, works ok */
+}
+
+static int get_max_height(client_t *client)
+{
+    if (client->xsh != NULL && client->xsh->flags & PMaxSize)
+        return client->xsh->max_height;
+    return client->height + 2000;
+}
+
+static int get_width_resize_base(client_t *client)
+{
+    if (client->xsh != NULL
+        && client->xsh->flags & PBaseSize) {
+        return client->xsh->base_width;
+    } else {
+        return 0;
+    }
 }
 
 static int get_width_resize_inc(client_t *client)

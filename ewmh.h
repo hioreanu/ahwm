@@ -4,20 +4,27 @@
  * copyright privileges.
  */
 
+/*
+ * This implements a subset of the hints in the "Extended Window
+ * Manager Hints" document, version 1.1 (which is a standard
+ * replacement for the previously incompatible GNOME and KDE hints).
+ * The only application that really requires this (besides pagers,
+ * taskbars, etc) is Konqueror, which does not behave correctly
+ * without this.
+ */
+
 #ifndef EWMH_H
 #define EWMH_H
 
 #include <X11/Xlib.h>
 #include "client.h"
 
-extern Atom _NET_CURRENT_DESKTOP;
-
 void ewmh_init();
 
 void ewmh_client_list_add(client_t *client);
 void ewmh_client_list_remove(client_t *client);
-void ewmh_client_list_stacking_set_top(client_t *client);
-void ewmh_client_list_stacking_remove(client_t *client);
+void ewmh_client_list_stacking_set_top(client_t *client); /* FIXME */
+void ewmh_client_list_stacking_remove(client_t *client); /* FIXME */
 
 void ewmh_current_desktop_update();
 
