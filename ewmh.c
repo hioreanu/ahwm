@@ -32,7 +32,7 @@ static Atom _NET_WM_STATE_SHADED, _NET_WM_STATE_SKIP_TASKBAR;
 static Atom _NET_WM_STATE_SKIP_PAGER, _NET_WM_STATE_REMOVE;
 static Atom _NET_WM_STATE_ADD, _NET_WM_STATE_TOGGLE;
 static Atom _NET_WM_STRUT, _NET_WM_PING;
-static Atom UTF_8_STRING;
+static Atom UTF8_STRING;
 
 static Window ewmh_window;
 
@@ -106,7 +106,7 @@ void ewmh_init()
     _NET_WM_STATE_TOGGLE = XInternAtom(dpy, "_NET_WM_STATE_TOGGLE", False);
     _NET_WM_STRUT = XInternAtom(dpy, "_NET_WM_STRUT", False);
     _NET_WM_PING = XInternAtom(dpy, "_NET_WM_PING", False);
-    UTF_8_STRING = XInternAtom(dpy, "UTF-8_STRING", False);
+    UTF8_STRING = XInternAtom(dpy, "UTF8_STRING", False);
 
     supported[0] = _NET_SUPPORTED;
     supported[1] = _NET_CLIENT_LIST;
@@ -159,7 +159,7 @@ void ewmh_init()
                     XA_WINDOW, 32, PropModeReplace,
                     (unsigned char *)&ewmh_window, 1);
     XChangeProperty(dpy, ewmh_window, _NET_WM_NAME,
-                    UTF_8_STRING, 8, PropModeReplace,
+                    UTF8_STRING, 8, PropModeReplace,
                     (unsigned char *)"XWM", 4);
     l[0] = NO_WORKSPACES;
     XChangeProperty(dpy, root_window, _NET_NUMBER_OF_DESKTOPS,
