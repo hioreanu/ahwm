@@ -489,6 +489,12 @@ void resize_client(XEvent *xevent)
     XGrabKeyboard(dpy, root_window, True,
                   GrabModeAsync, GrabModeAsync,
                   CurrentTime);
+    /* we take over the titlebar display routines in process_resize() */
+    if (client->titlebar != None) {
+        free(client->name);
+        client->name = strdup("");
+        client_paint_titlebar(client);
+    }
     /* just draws the initial drafting lines with FIRST argument */
     process_resize(client, x_start, y_start,
                    resize_direction, old_resize_direction,
@@ -899,6 +905,7 @@ static void process_resize(client_t *client, int new_x, int new_y,
 {
     int x_diff, y_diff;
     int x, y, w, h, title_height;
+    char buf[64];
 
     x = client->x;
     y = client->y;
@@ -1009,10 +1016,47 @@ static void process_resize(client_t *client, int new_x, int new_y,
     
     /* now we draw the window rectangle
      * 
-     * first, we erase the previous rectangle (the gc has an xor function
-     * selected, so we simply draw on it to erase).
+     * First, we erase the previous rectangle (the gc has an xor
+     * function selected, so we simply draw on it to erase).  We want
+     * flicker-free animation here, so there are two things to keep in
+     * mind:
+     * 
+     * 1. only redraw lines that need to be redrawn
+     * 2. must draw a line IMMEDIATELY after erasing it
+     * 
+     * The second point makes a particularly impressive difference.
+     * We can't simply use XDrawRectangle for any of these because the
+     * rectangle we also have to draw the drafting lines and the
+     * rectangle may intersect the arrowheads and other pieces.
+     * 
+     * There is also another problem:  we want to display the geometry
+     * in the titlebar if possible, but this raises all sorts of
+     * problems if the titlebar intersects one of the lines we're
+     * drawing - we want the titlebar to be under any lines and the
+     * titlebar display routine simply redraws the entire titlebar
+     * rectangle.  In order not to erase any lines which will then be
+     * erased again (leaving them intact) and in order to not to erase
+     * any new lines, we would have to refresh the titlebar after
+     * we've erased all previous lines and before we draw any new
+     * lines.  This causes flicker.
+     * 
+     * After some experimentation, what is below appears to be the
+     * fastest and most eye-pleasing solution (although it's ugly
+     * code).
      */
 
+    if (ordinal != FIRST && client->titlebar != None) {
+        snprintf(buf, 64, "%dx%d+%d+%d [Resizing]", x, y, w, h);
+        XDrawString(dpy, client->titlebar, root_invert_gc, 2,
+                    TITLE_HEIGHT - 4, buf, strlen(buf));
+    }
+    if (ordinal != LAST && client->titlebar != None) {
+        snprintf(buf, 64, "%dx%d+%d+%d [Resizing]", client->x,
+                 client->y, client->width, client->height);
+        XDrawString(dpy, client->titlebar, root_invert_gc, 2,
+                    TITLE_HEIGHT - 4, buf, strlen(buf));
+    }
+    
     if (ordinal != MIDDLE || x != client->x
         || w != client->width || y != client->y) {
         /* redraw top bar */
@@ -1028,7 +1072,6 @@ static void process_resize(client_t *client, int new_x, int new_y,
                 if (client->titlebar != None)
                     drafting_lines(client, NORTH, x, y, x + w, y);
             }
-            
         }
         if (ordinal != LAST) {
             XDrawLine(dpy, root_window, root_invert_gc, client->x,
@@ -1085,7 +1128,6 @@ static void process_resize(client_t *client, int new_x, int new_y,
                     drafting_lines(client, WEST, x, y + title_height,
                                    x, y + h);
             }
-                
         }
         if (ordinal != LAST) {
             XDrawLine(dpy, root_window, root_invert_gc,
