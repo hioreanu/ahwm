@@ -523,7 +523,6 @@ static void event_maprequest(XMapRequestEvent *xevent)
  * according to client's gravity if it has a title bar
  */
 
-/* FIXME:  should send a synthetic ConfigureNotify, ICCCM 4.1.5 */
 static void event_configurerequest(XConfigureRequestEvent *xevent)
 {
     client_t *client;

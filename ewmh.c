@@ -161,7 +161,7 @@ void ewmh_init()
     XChangeProperty(dpy, root_window, _NET_DESKTOP_VIEWPORT,
                     XA_CARDINAL, 32, PropModeReplace,
                     (unsigned char *)l, NO_WORKSPACES * 2);
-    for (i = 0; i < NO_WORKSPACES; i += 4) {
+    for (i = 0; i < NO_WORKSPACES * 4; i += 4) {
         l[i] = 0;
         l[i+1] = 0;
         l[i+2] = scr_width;
@@ -273,4 +273,12 @@ void ewmh_client_list_remove(client_t *client)
     }
     debug(("\tClient not found in ewmh_client_list_remove\n"));
     return;
+}
+
+void ewmh_stacking_list_update(Window *w, int nwindows)
+{
+    printf("Updating _NET_CLIENT_LIST_STACKING, i=%d\n", nwindows);
+    XChangeProperty(dpy, root_window, _NET_CLIENT_LIST_STACKING,
+                    XA_WINDOW, 32, PropModeReplace,
+                    (unsigned char *)w, nwindows);
 }

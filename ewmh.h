@@ -69,8 +69,7 @@ Bool ewmh_handle_clientmessage(XClientMessageEvent *xevent);
 
 void ewmh_client_list_add(client_t *client);
 void ewmh_client_list_remove(client_t *client);
-void ewmh_client_list_stacking_set_top(client_t *client); /* FIXME */
-void ewmh_client_list_stacking_remove(client_t *client); /* FIXME */
+void ewmh_stacking_list_update(Window *w, int nwindows);
 
 /* update _NET_CURRENT_DESKTOP according to 'desktop_current' */
 void ewmh_current_desktop_update();

@@ -1,20 +1,27 @@
+# Generated automatically from Makefile.in by configure.
 # $Id$
 SHELL=/bin/sh
 
-CFLAGS=-DSHAPE -O2 -I/usr/X11R6/include -L/usr/X11R6/lib
-CFLAGS=-g -Wall -DSHAPE -DDEBUG=1 -I/usr/X11R6/include -L/usr/X11R6/lib
-LIBS=-lX11 -lXext
+CC=gcc
+LIBS=-lXext -lX11
+CFLAGS=-g -O2 -I/usr/X11R6/include
+LDFLAGS= -L/usr/X11R6/lib
+
+#CFLAGS=-g -Wall -DSHAPE -DDEBUG=1 -I/usr/X11R6/include -L/usr/X11R6/lib
 
 OBJS=xwm.o client.o event.o focus.o workspace.o keyboard-mouse.o xev.o cursor.o move-resize.o kill.o malloc.o icccm.o colormap.o ewmh.o debug.o place.o stacking.o
 
 all: xwm
 
 xwm: $(OBJS)
-	$(CC) $(CFLAGS) $(OBJS) -o $@ $(LIBS)
+	$(CC) $(CFLAGS) $(LDFLAGS) $(OBJS) -o $@ $(LIBS)
 
+install: xwm
+	@echo Still need to figure out this part
+.SUFFIXES:
 .SUFFIXES: .c .o
 .c.o:
-	$(CC) $(CFLAGS) -c -o $*.o $<
+	$(CC) $(CFLAGS) -c $<
 
 dep:
 	@-makedepend -Y *.c *.h > /dev/null 2>&1

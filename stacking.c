@@ -4,6 +4,16 @@
  * copyright privileges.
  */
 
+/*
+ * The stacking order is kept as a list of clients; whenever we change
+ * the stacking order, we build an array from the list and call
+ * XRestackWindows().  We never ask the server for the current
+ * stacking order via XQueryTree() as we are always in control of the
+ * stacking order (even on startup when we manage already-mapped
+ * windows, we add them to the list in stacking order
+ * (xwm.c:scan_windows)).
+ */
+
 #include <X11/Xlib.h>
 #include <stdio.h>
 #include "client.h"
@@ -15,8 +25,7 @@
 Window stacking_hiding_window = None;
 Window stacking_desktop_window = None;
 
-/* We keep around some extra pointers to avoid walking any lists when
- * adding a client */
+/* We keep around some extra pointers to avoid walking lists too often */
 static client_t *normal_list, *lowered_list, *raised_list;
 static client_t *normal_list_end, *lowered_list_end, *raised_list_end;
 
@@ -28,7 +37,7 @@ static void commit();
 static void raise_tree(client_t *client, client_t *ignore, Bool go_up);
 
 /* hopefully compiler can figure out how to inline this given the
- * static variables and whatnot - kinda hard */
+ * static variables and whatnot */
 client_t *stacking_top()
 {
     if (raised_list_end != NULL) return raised_list_end;
@@ -55,6 +64,7 @@ void stacking_raise(client_t *client)
     commit();
 }
 
+/* builds stacking array from list and calls XRestackWindows() */
 static void commit()
 {
     client_t *start, *client;
@@ -63,6 +73,7 @@ static void commit()
     static Window *buffer = NULL;
     static int nallocated = 0;
 
+    /* ensure buffer big enough */
     if (buffer == NULL) {
         buffer = Malloc((nstacking_clients + 2) * sizeof(Window));
         if (buffer == NULL) {
@@ -80,6 +91,7 @@ static void commit()
         nallocated = nstacking_clients;
     }
 
+    /* build the stacking array */
     start = stacking_top();
     if (start == NULL) return;
 
@@ -91,11 +103,24 @@ static void commit()
     }
     if (stacking_desktop_window != None)
         buffer[i++] = stacking_desktop_window;
+    
     debug(("\tCommitting stacking order\n"));
     XRestackWindows(dpy, buffer, i);
-    /* FIXME:  also do _NET_CLIENT_LIST_STACKING now */
+
+    /* update _NET_CLIENT_LIST_STACKING */
+    if (stacking_hiding_window == None) {
+        tmp = buffer;
+    } else {
+        tmp = buffer + 1;
+        i--;
+    }
+    if (stacking_desktop_window != None) i--;
+    ewmh_stacking_list_update(tmp, i);
 }
 
+/* all of the functions below just update pointers */
+/* these two get a bit ugly since we need to update the six pointers
+ * into the list, but we don't have to walk the list */
 static void stacking_add_internal(client_t *client)
 {
     client_t *next, *prev;
@@ -132,6 +157,7 @@ static void stacking_add_internal(client_t *client)
         normal_list_end = client;
         next = raised_list;
     }
+    
     if (next != NULL) next->prev_stacking = client;
     client->next_stacking = next;
     if (prev != NULL) prev->next_stacking = client;
@@ -172,49 +198,11 @@ static void stacking_remove_internal(client_t *client)
     }
 }
 
-static void raise_tree(client_t *node, client_t *ignore, Bool go_up)
-{
-    client_t *parent, *c;
-
-    /* go up if needed */
-    if (go_up && node->transient_for != None) {
-        parent = client_find(node->transient_for);
-        if (parent != NULL) {
-            raise_tree(parent, node, True);
-        }
-    }
-
-    /* visit node */
-    if (node->workspace == workspace_current
-        && node->state == NormalState) {
-        XMapWindow(dpy, node->frame);
-        stacking_remove_internal(node);
-        stacking_add_internal(node);
-        debug(("\tRaising client %#lx ('%.10s')\n", node, node->name));
-    }
-
-    /* go down */
-    for (c = node->transients; c != NULL; c = c->next_transient) {
-        if (c != ignore)
-            raise_tree(c, NULL, False);
-    }
-}
-
-#if 0
-
 /*
  * Raising a window presents a somewhat interesting problem because we
  * want to hold the following invariant:
  * 
  * A client's transient windows are always on top of the client.
- * 
- * The problem arises because one can have arbitrarily complex trees
- * of transient windows (a window may have any number of transients
- * but it will only have one or zero windows for which it is
- * transient).  In order to raise a window, we must raise the entire
- * tree, ensuring that each node along the path up from the window
- * requested to the root must be raised among all nodes at the same
- * height in the tree.
  * 
  * Consider the following tree, with the root node being 'A', and the
  * node we want raised being 'D' (with 'B' and 'C' being the path from
@@ -265,49 +253,9 @@ static void raise_tree(client_t *node, client_t *ignore, Bool go_up)
  * raise D
  * raise all subtrees of D
  * 
- * We don't want to generate a RaiseWindow request every time we visit
- * a node, so we do it all at once with an XRaiseWindow and an
- * XRestackWindows.  We also have to deal with windows that should be
- * kept on bottom and windows that should be kept on top - we hold the
- * invariants that for any windows A, B:
- * 
- * if (A.keep_on_bottom and not B.keep_on_bottom)
- *     A < B
- * if (A.keep_on_top and not B.keep_on_top)
- *     A > B
- * 
- * keep_on_top and keep_on_bottom are mutually exclusive.  We do raise
- * a keep_on_bottom window to the top of all lowered windows when we
- * receive this request, however (and the same for keep_on_top
- * windows).
  */
 
-typedef struct _window_buffer {
-    Window *w;
-    int nused;
-    int nallocated;
-} window_buffer;
-
-static void add_to_buffer(window_buffer *wb, Window w)
-{
-    Window *tmp;
-    
-    if (wb->nallocated == wb->nused) {
-        tmp = Realloc(wb->w, 2 * wb->nallocated * sizeof(Window));
-        if (tmp == NULL) {
-            fprintf(stderr,
-                    "XWM: Out of memory while raising window\n");
-            return;
-        }
-        wb->nallocated *= 2;
-        wb->w = tmp;
-    }
-    wb->w[wb->nused++] = node->frame;
-}
-
-static void raise_tree(client_t *node, client_t *ignore, Bool go_up,
-                       window_buffer *normal, window_buffer *lowered,
-                       window_buffer *raised)
+static void raise_tree(client_t *node, client_t *ignore, Bool go_up)
 {
     client_t *parent, *c;
 
@@ -315,7 +263,7 @@ static void raise_tree(client_t *node, client_t *ignore, Bool go_up,
     if (go_up && node->transient_for != None) {
         parent = client_find(node->transient_for);
         if (parent != NULL) {
-            raise_tree(parent, node, True, wb);
+            raise_tree(parent, node, True);
         }
     }
 
@@ -323,80 +271,14 @@ static void raise_tree(client_t *node, client_t *ignore, Bool go_up,
     if (node->workspace == workspace_current
         && node->state == NormalState) {
         XMapWindow(dpy, node->frame);
-        if (node->always_on_bottom) {
-            add_to_buffer(lower, node->frame);
-        } else if (node->always_on_top) {
-            add_to_buffer(raised, node->frame);
-        } else {
-            add_to_buffer(normal, node->frame);
-        }
+        stacking_remove_internal(node);
+        stacking_add_internal(node);
+        debug(("\tRaising client %#lx ('%.10s')\n", node, node->name));
     }
 
     /* go down */
     for (c = node->transients; c != NULL; c = c->next_transient) {
         if (c != ignore)
-            raise_tree(c, NULL, False, wb);
+            raise_tree(c, NULL, False);
     }
 }
-
-void client_raise(client_t *client)
-{
-    static window_buffer normal = {NULL, 0, 0};
-    static window_buffer lowered, raised;
-    Window lowest_normal, lowest_raised;
-    client_t *c1, *c2;
-    Window tmp;
-    int i;
-
-    if (normal.w == NULL) {
-        normal.w = Malloc(sizeof(Window));
-        raised.w = Malloc(sizeof(Window));
-        lowered.w = Malloc(sizeof(Window));
-        if (normal.w == NULL || raised.w == NULL || lowered.w == NULL) {
-            fprintf(stderr, "XWM: Out of memory while raising window\n");
-            if (normal.w != NULL) free(normal.w);
-            if (raised.w != NULL) free(raised.w);
-            if (lowered.w != NULL) free(lowered.w);
-            normal.w = raised.w = lowered.w = NULL;
-            XMapWindow(dpy, client->frame);
-            if (!client->always_on_bottom)
-                XRaiseWindow(dpy, client->frame);
-            return;
-        }
-        normal.nallocated = raised.nallocated = lowered.nallocated = 1;
-    }
-    normal.nused = raised.nused = lowered.nused = 0;
-
-    raise_tree(client, NULL, True, &normal, &lowered, &raised);
-
-    add_to_buffer(lowered, lowest_normal);
-    add_to_buffer(normal, lowest_raised);
-    
-    /* must reverse the arrays because XRestackWindows works backwards */
-    for (i = 0; 2 * i < normal.nused; i++) {
-        tmp = normal.w[i];
-        normal.w[i] = normal.w[normal.nused - i - 1];
-        normal.w[normal.nused - i - 1] = tmp;
-    }
-    for (i = 0; 2 * i < raised.nused; i++) {
-        tmp = raised.w[i];
-        raised.w[i] = raised.w[raised.nused - i - 1];
-        raised.w[raised.nused - i - 1] = tmp;
-    }
-    for (i = 0; 2 * i < lowered.nused; i++) {
-        tmp = lowered.w[i];
-        lowered.w[i] = lowered.w[lowered.nused - i - 1];
-        lowered.w[lowered.nused - i - 1] = tmp;
-    }
-
-    if (lowered.nused != 0)
-        XRestackWindows(dpy, lowered.w, lowered.nused);
-    if (normal.nused != 0)
-        XRestackWindows(dpy, normal.w, normal.nused);
-    if (raised.nused != 0) {
-        XRaiseWindow(dpy, raised.w[0]);
-        XRestackWindows(dpy, raised.w, raised.nused);
-    }
-}
-
-#endif
