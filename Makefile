@@ -26,17 +26,17 @@ clean:
 
 # DO NOT DELETE
 
-client.o: client.h xwm.h workspace.h keyboard.h
-cursor.o: cursor.h ew_cursor_black.xbm ne_cursor_black.xbm
+client.o: client.h xwm.h workspace.h keyboard.h cursor.h focus.h
+cursor.o: cursor.h xwm.h ew_cursor_black.xbm ne_cursor_black.xbm
 cursor.o: ns_cursor_black.xbm nw_cursor_black.xbm ew_cursor_white.xbm
 cursor.o: ne_cursor_white.xbm ns_cursor_white.xbm nw_cursor_white.xbm
-event.o: xwm.h event.h client.h workspace.h keyboard.h mouse.h
+event.o: xwm.h event.h client.h focus.h workspace.h keyboard.h mouse.h xev.h
 focus.o: focus.h client.h xwm.h workspace.h
 keyboard-test.o: keyboard.h client.h xwm.h
 keyboard.o: keyboard.h client.h xwm.h
-mouse.o: mouse.h client.h xwm.h
+mouse.o: mouse.h client.h xwm.h cursor.h event.h
 workspace.o: workspace.h client.h xwm.h
-xwm.o: xwm.h event.h client.h keyboard.h focus.h cursor.h
+xwm.o: xwm.h event.h client.h keyboard.h focus.h cursor.h mouse.h
 client.o: xwm.h
 focus.o: client.h xwm.h
 keyboard.o: client.h xwm.h

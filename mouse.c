@@ -57,108 +57,109 @@ static void process_resize(client_t *client, int new_x, int new_y,
                            resize_ordinal_t ordinal);
 static quadrant_t get_quadrant(client_t *client, int x, int y);
 static void display_geometry(char *s, client_t *client);
-static void constrain_geometry(client_t *);
+static void get_display_width_height(client_t *client, int *w, int *h);
+static void drafting_lines(client_t *client, resize_direction_t direction,
+                           int x1, int y1, int x2, int y2);
 
 /*
- * WindowMaker grabs the server while processing the motion events for
+ * windowmaker grabs the server while processing the motion events for
  * moving a window; that seems a bit antisocial, so we won't do that.
- * Window movement is opaque.
+ * window movement is opaque.
  * 
  * mouse_move:
  * select only one window, the one under the pointer
- * Grab the pointer
- * Grab the keyboard
- * Grab the server
+ * grab the pointer
+ * grab the keyboard
+ * grab the server
  * 
- * use XCheckMaskEvent to compress motion events
- * ButtonMotionMask, ButtonReleaseMask, ButtonPressMask
+ * use xcheckmaskevent to compress motion events
+ * buttonmotionmask, buttonreleasemask, buttonpressmask
  */
 
-void mouse_grab_buttons(Window w)
+void mouse_grab_buttons(window w)
 {
-    XGrabButton(dpy, Button1, Mod1Mask, w, True, ButtonPressMask,
-                GrabModeSync, GrabModeAsync, None, cursor_moving);
-    XGrabButton(dpy, Button3, Mod1Mask, w, True, ButtonPressMask,
-                GrabModeSync, GrabModeAsync, None, cursor_normal);
+    xgrabbutton(dpy, button1, mod1mask, w, true, buttonpressmask,
+                grabmodesync, grabmodeasync, none, cursor_moving);
+    xgrabbutton(dpy, button3, mod1mask, w, true, buttonpressmask,
+                grabmodesync, grabmodeasync, none, cursor_normal);
 }
 
 /*
- * This takes over the event loop and grabs the pointer until the move
+ * this takes over the event loop and grabs the pointer until the move
  * is complete
  */
-/* FIXME:  need to send a synthetic event according to ICCCM */
-void mouse_move_client(XEvent *xevent)
+void mouse_move_client(xevent *xevent)
 {
-    static client_t *client = NULL;
+    static client_t *client = null;
     static int x_start, y_start;
-    XEvent event1;
+    xevent event1;
 
     do {
         switch (xevent->type) {
-            case EnterNotify:
-            case LeaveNotify:
+            case enternotify:
+            case leavenotify:
                 /* we have a separate event loop here because we want
-                 * to gobble up all EnterNotify and LeaveNotify events
+                 * to gobble up all enternotify and leavenotify events
                  * while moving or resizing the window */
                 break;
-            case ButtonPress:
-                if (xevent->xbutton.button == Button1) {
-                    if (client != NULL) {
-                        /* Received button1 down while moving a window */
-                        fprintf(stderr, "Unexpected Button1 down\n");
+            case buttonpress:
+                if (xevent->xbutton.button == button1) {
+                    if (client != null) {
+                        /* received button1 down while moving a window */
+                        fprintf(stderr, "unexpected button1 down\n");
                         goto reset;
-                    } else if (xevent->xbutton.state & Mod1Mask) {
-                        /* received normal Mod1 + Button1 press */
+                    } else if (xevent->xbutton.state & mod1mask) {
+                        /* received normal mod1 + button1 press */
                         client = client_find(xevent->xbutton.window);
-                        if (client == NULL) {
-                            /* error - we should never do XGrabButton() on
+                        if (client == null) {
+                            /* error - we should never do xgrabbutton() on
                              * an override_redirect window */
-                            fprintf(stderr, "Not moving a non-client\n");
+                            fprintf(stderr, "not moving a non-client\n");
                             return;
                         }
-                        /* I kind of like being able to move a window
+                        /* i kind of like being able to move a window
                          * without giving it focus, and this doesn't
                          * cause any problems: */
                         /* focus_set(client); */
                         /* focus_ensure(); */
                         x_start = xevent->xbutton.x_root;
                         y_start = xevent->xbutton.y_root;
-#ifdef DEBUG
-                        printf("\tGrabbing the mouse for moving\n");
-#endif /* DEBUG */
-                        XGrabPointer(dpy, root_window, True,
-                                     PointerMotionMask | ButtonPressMask |
-                                     ButtonReleaseMask,
-                                     GrabModeAsync, GrabModeAsync, None,
-                                     cursor_moving, CurrentTime);
-                        display_geometry("Moving", client);
+#ifdef debug
+                        printf("\tgrabbing the mouse for moving\n");
+#endif /* debug */
+                        xgrabpointer(dpy, root_window, true,
+                                     pointermotionmask | buttonpressmask
+                                     | buttonreleasemask,
+                                     grabmodeasync, grabmodeasync, none,
+                                     cursor_moving, currenttime);
+                        display_geometry("moving", client);
                     } else {
                         /* error - we were called from somewhere else
                          * to deal with a button press that's not ours */
                         fprintf(stderr,
-                                "XWM: Received an unknown button press\n");
+                                "xwm: received an unknown button press\n");
                     }
                 } else {
                     /* not an error - user may have clicked another button
                      * while resizing a window */
-#ifdef DEBUG
-                    printf("\tIgnoring stray button press\n");
-#endif /* DEBUG */
+#ifdef debug
+                    printf("\tignoring stray button press\n");
+#endif /* debug */
                 }
                 break;
             
-            case MotionNotify:
+            case motionnotify:
                 xevent = compress_motion(xevent);
 
                 /* this can happen with the motion compressing */
-                if (!(xevent->xmotion.state & Button1Mask)) {
+                if (!(xevent->xmotion.state & button1mask)) {
                     fprintf(stderr,
-                            "XWM: Motion event without correct button\n");
+                            "xwm: motion event without correct button\n");
                     goto reset;
                 }
-                if (client == NULL) {
+                if (client == null) {
                     fprintf(stderr,
-                            "XWM: Error, null client while moving\n");
+                            "xwm: error, null client while moving\n");
                     goto reset;
                 }
                 /* just move the window */
@@ -168,11 +169,11 @@ void mouse_move_client(XEvent *xevent)
                 /* take out these two lines for a fun effect :) */
                 x_start = xevent->xbutton.x_root;
                 y_start = xevent->xbutton.y_root;
-                XMoveWindow(dpy, client->frame, client->x, client->y);
-                display_geometry("Moving", client);
+                xmovewindow(dpy, client->frame, client->x, client->y);
+                display_geometry("moving", client);
 
                 break;
-            case ButtonRelease:
+            case buttonrelease:
                 if (client) {
                     client->x += xevent->xbutton.x_root - x_start;
                     client->y += xevent->xbutton.y_root - y_start;
@@ -181,99 +182,100 @@ void mouse_move_client(XEvent *xevent)
             
                 break;
             default:
-#ifdef DEBUG
-                printf("\tStart recursive event processing\n");
-#endif /* DEBUG */
+#ifdef debug
+                printf("\tstart recursive event processing\n");
+#endif /* debug */
                 event_dispatch(xevent);
-#ifdef DEBUG
-                printf("\tEnd recursive event processing\n");
-#endif /* DEBUG */
+#ifdef debug
+                printf("\tend recursive event processing\n");
+#endif /* debug */
                 break;
         }
 
-        if (client != NULL) {
-            XNextEvent(dpy, &event1);
+        if (client != null) {
+            xnextevent(dpy, &event1);
             xevent = &event1;
         }
 
-        /* static client is set to NULL in reset code below (this
+        /* static client is set to null in reset code below (this
          * function may be nested arbitrarily */
-    } while (client != NULL);
+    } while (client != null);
         
     return;
     
  reset:
 
-    if (client != NULL) {
-        XMoveWindow(dpy, client->frame, client->x, client->y);
-        if (client->name != NULL) free(client->name);
+    if (client != null) {
+        xmovewindow(dpy, client->frame, client->x, client->y);
+        if (client->name != null) free(client->name);
         client_set_name(client);
         client_paint_titlebar(client);
-        /* must send a synthetic ConfigureNotify to the client
-         * according to ICCCM 4.1.5 */
-        /* FIXME:  make this a function in client.c */
-        event1.type = ConfigureNotify;
+        /* must send a synthetic configurenotify to the client
+         * according to icccm 4.1.5 */
+        /* fixme:  make this a function in client.c */
+        /* fixme:  breaks with netscape */
+        event1.type = configurenotify;
         event1.xconfigure.display = dpy;
         event1.xconfigure.event = client->window;
         event1.xconfigure.window = client->window;
         event1.xconfigure.x = client->x;
-        event1.xconfigure.y = client->y - TITLE_HEIGHT;
+        event1.xconfigure.y = client->y - title_height;
         event1.xconfigure.width = client->width;
-        event1.xconfigure.height = client->height - TITLE_HEIGHT;
+        event1.xconfigure.height = client->height - title_height;
         event1.xconfigure.border_width = 0;
-        event1.xconfigure.above = client->frame; /* FIXME */
-        event1.xconfigure.override_redirect = False;
-        XSendEvent(dpy, client->window, False, StructureNotifyMask, &event1);
-        XFlush(dpy);
+        event1.xconfigure.above = client->frame; /* fixme */
+        event1.xconfigure.override_redirect = false;
+        xsendevent(dpy, client->window, false, structurenotifymask, &event1);
+        xflush(dpy);
     }
 
-#ifdef DEBUG
-    printf("\tUngrabbing the mouse for move\n");
-#endif /* DEBUG */
+#ifdef debug
+    printf("\tungrabbing the mouse for move\n");
+#endif /* debug */
 
-    client = NULL;
+    client = null;
     x_start = y_start = -1;
-    XUngrabPointer(dpy, CurrentTime);
+    xungrabpointer(dpy, currenttime);
 }
     
 
 /*
- * This gets a bit hairy...similar to the move window code above but a
+ * this gets a bit hairy...similar to the move window code above but a
  * bit more complex
  */
 
 /*
- * Escape ends the resize, does not resize client window
- * Shift constrains resize to y->x->x+y->y->....
- * Shift with button press constrains to x or y
+ * escape ends the resize, does not resize client window
+ * shift constrains resize to y->x->x+y->y->....
+ * shift with button press constrains to x or y
  */
 
-void mouse_resize_client(XEvent *xevent)
+void mouse_resize_client(xevent *xevent)
 {
-    static client_t *client = NULL;
+    static client_t *client = null;
     static int x_start, y_start;
-    static resize_direction_t resize_direction = UNKNOWN;
-    static quadrant_t quadrant = IV;
+    static resize_direction_t resize_direction = unknown;
+    static quadrant_t quadrant = iv;
     static position_size orig;
-    XEvent event1;
+    xevent event1;
     
     do {
         switch (xevent->type) {
-            case EnterNotify:
-            case LeaveNotify:
+            case enternotify:
+            case leavenotify:
                 break;
-            case ButtonPress:
-                if (xevent->xbutton.button == Button3) {
-                    if (client != NULL) {
-                        /* Received button3 down while sizing a window */
-                        fprintf(stderr, "XWM: Unexpected Button3 down\n");
+            case buttonpress:
+                if (xevent->xbutton.button == button3) {
+                    if (client != null) {
+                        /* received button3 down while sizing a window */
+                        fprintf(stderr, "xwm: unexpected button3 down\n");
                         goto reset;
-                    } else if (xevent->xbutton.state & Mod1Mask) {
+                    } else if (xevent->xbutton.state & mod1mask) {
                         client = client_find(xevent->xbutton.window);
-                        if (client == NULL) {
-#ifdef DEBUG
-                            printf("\tNot resizing a non-client\n");
-#endif /* DEBUG */
+                        if (client == null) {
+#ifdef debug
+                            printf("\tnot resizing a non-client\n");
+#endif /* debug */
                             return;
                         }
                         x_start = xevent->xbutton.x_root;
@@ -281,161 +283,162 @@ void mouse_resize_client(XEvent *xevent)
                         quadrant = get_quadrant(client, xevent->xbutton.x_root,
                                                 xevent->xbutton.y_root);
                         switch (quadrant) {
-                            case I:
-                                resize_direction = NE;
+                            case i:
+                                resize_direction = ne;
                                 break;
-                            case II:
-                                resize_direction = NW;
+                            case ii:
+                                resize_direction = nw;
                                 break;
-                            case III:
-                                resize_direction = SW;
+                            case iii:
+                                resize_direction = sw;
                                 break;
-                            case IV:
-                                resize_direction = SE;
+                            case iv:
+                                resize_direction = se;
                                 break;
                         }
                         orig.x = client->x;
                         orig.y = client->y;
                         orig.width = client->width;
                         orig.height = client->height;
-#ifdef DEBUG
-                        printf("\tGrabbing the mouse for resizing\n");
-#endif /* DEBUG */
-                        XGrabPointer(dpy, root_window, True,
-                                     PointerMotionMask | ButtonPressMask |
-                                     ButtonReleaseMask,
-                                     GrabModeAsync, GrabModeAsync, None,
+#ifdef debug
+                        printf("\tgrabbing the mouse for resizing\n");
+#endif /* debug */
+                        xgrabpointer(dpy, root_window, true,
+                                     pointermotionmask | buttonpressmask
+                                     | buttonreleasemask,
+                                     grabmodeasync, grabmodeasync, none,
                                      cursor_direction_map[resize_direction],
-                                     CurrentTime);
+                                     currenttime);
                         process_resize(client, x_start, y_start,
                                        resize_direction, quadrant,
-                                       &x_start, &y_start, &orig, FIRST);
+                                       &x_start, &y_start, &orig, first);
                         
                     } else {
-                        fprintf(stderr, "Received an unexpected button press\n");
+                        fprintf(stderr,
+                                "received an unexpected button press\n");
                     }
                 } else {
-#ifdef DEBUG
-                    printf("\tIgnoring stray button press\n");
-#endif /* DEBUG */
+#ifdef debug
+                    printf("\tignoring stray button press\n");
+#endif /* debug */
                 }
                 break;
             
-            case MotionNotify:
+            case motionnotify:
                 xevent = compress_motion(xevent);
 
                 /* this can happen with motion compression */
-                if (!(xevent->xmotion.state & Button3Mask)) {
+                if (!(xevent->xmotion.state & button3mask)) {
                     fprintf(stderr,
-                            "XWM: Motion event w/o button while moving\n");
+                            "xwm: motion event w/o button while moving\n");
                     goto reset;
                 }
-                if (client == NULL) {
-                    fprintf(stderr, "XWM: Error, null client in resize\n");
+                if (client == null) {
+                    fprintf(stderr, "xwm: error, null client in resize\n");
                     goto reset;
                 }
 
-#ifdef DEBUG
-                printf("Sizing from (%d,%d) to (%d,%d)\n",
+#ifdef debug
+                printf("sizing from (%d,%d) to (%d,%d)\n",
                        x_start, y_start, xevent->xbutton.x_root,
                        xevent->xbutton.y_root);
-#endif /* DEBUG */
+#endif /* debug */
                 process_resize(client, xevent->xbutton.x_root,
                                xevent->xbutton.y_root, resize_direction,
-                               quadrant, &x_start, &y_start, &orig, MIDDLE);
+                               quadrant, &x_start, &y_start, &orig, middle);
                 break;
-            case ButtonRelease:
-                if (client == NULL) {
-                    fprintf(stderr, "XWM: Error, null client in resize\n");
+            case buttonrelease:
+                if (client == null) {
+                    fprintf(stderr, "xwm: error, null client in resize\n");
                     goto reset;
                 }
                 process_resize(client, xevent->xmotion.x_root,
                                xevent->xmotion.y_root, resize_direction,
-                               quadrant, &x_start, &y_start, &orig, LAST);
+                               quadrant, &x_start, &y_start, &orig, last);
                 goto done;
             
                 break;
             default:
-#ifdef DEBUG
-                printf("\tStart recursive event processing\n");
-#endif /* DEBUG */
+#ifdef debug
+                printf("\tstart recursive event processing\n");
+#endif /* debug */
                 event_dispatch(xevent);
-#ifdef DEBUG
-                printf("\tEnd recursive event processing\n");
-#endif /* DEBUG */
+#ifdef debug
+                printf("\tend recursive event processing\n");
+#endif /* debug */
                 break;
         }
-        XNextEvent(dpy, &event1);
+        xnextevent(dpy, &event1);
         xevent = &event1;
-    } while (client != NULL);
+    } while (client != null);
         
     return;
     
  reset:
-    XClearWindow(dpy, root_window);
+    xclearwindow(dpy, root_window);
 
  done:
 
-    if (client != NULL) {
-        XMoveResizeWindow(dpy, client->frame, client->x, client->y,
+    if (client != null) {
+        xmoveresizewindow(dpy, client->frame, client->x, client->y,
                           client->width, client->height);
-        XResizeWindow(dpy, client->window, client->width,
-                      client->height - TITLE_HEIGHT);
-        if (client->name != NULL) free(client->name);
+        xresizewindow(dpy, client->window, client->width,
+                      client->height - title_height);
+        if (client->name != null) free(client->name);
         client_set_name(client);
         client_paint_titlebar(client);
     }
 
-#ifdef DEBUG
-    printf("\tUngrabbing the mouse\n");
-#endif /* DEBUG */
+#ifdef debug
+    printf("\tungrabbing the mouse\n");
+#endif /* debug */
 
-    client = NULL;
+    client = null;
     x_start = y_start = -1;
-    resize_direction = UNKNOWN;
-    XUngrabPointer(dpy, CurrentTime);
+    resize_direction = unknown;
+    xungrabpointer(dpy, currenttime);
 }
 
-void mouse_handle_event(XEvent *xevent)
+void mouse_handle_event(xevent *xevent)
 {
-    if (xevent->type != ButtonPress) {
-        fprintf(stderr, "XWM: Error, mouse_handle_event called incorrectly\n");
+    if (xevent->type != buttonpress) {
+        fprintf(stderr, "xwm: error, mouse_handle_event called incorrectly\n");
         return;
     }
-    if (xevent->xbutton.button == Button1
-        && (xevent->xbutton.state & Mod1Mask)) {
+    if (xevent->xbutton.button == button1
+        && (xevent->xbutton.state & mod1mask)) {
         mouse_move_client(xevent);
-    } else if (xevent->xbutton.button == Button3
-               && (xevent->xbutton.state & Mod1Mask)) {
+    } else if (xevent->xbutton.button == button3
+               && (xevent->xbutton.state & mod1mask)) {
         mouse_resize_client(xevent);
     } else {
-#ifdef DEBUG
-        printf("\tIgnoring unknown mouse event\n");
-#endif /* DEBUG */
+#ifdef debug
+        printf("\tignoring unknown mouse event\n");
+#endif /* debug */
     }
 }
 
-/* compress motion events, idea taken from WindowMaker */
+/* compress motion events, idea taken from windowmaker */
 /* returns most recent event to deal with */
-/* FIXME:  deal with this more elegantly, process events
+/* fixme:  deal with this more elegantly, process events
  * which do not have right modifiers separately */
-static XEvent *compress_motion(XEvent *xevent)
+static xevent *compress_motion(xevent *xevent)
 {
-    static XEvent newer;
+    static xevent newer;
 
-    while (XCheckMaskEvent(dpy, ButtonMotionMask, &newer)) {
-        if (newer.type == MotionNotify
+    while (xcheckmaskevent(dpy, buttonmotionmask, &newer)) {
+        if (newer.type == motionnotify
             && newer.xmotion.window == xevent->xmotion.window
             && newer.xmotion.state == xevent->xmotion.state) {
             xevent = &newer;
-#ifdef DEBUG
-            printf("\tMotion event compressed (%d,%d)\n",
+#ifdef debug
+            printf("\tmotion event compressed (%d,%d)\n",
                    xevent->xmotion.x_root, xevent->xmotion.y_root);
-#endif /* DEBUG */
+#endif /* debug */
         } else {
-            /* Can't happen */
+            /* can't happen */
             fprintf(stderr,
-                    "XWM: Accidentally ate up an event!\n");
+                    "xwm: accidentally ate up an event!\n");
         }
     }
     return xevent;
@@ -456,18 +459,18 @@ static void process_resize(client_t *client, int new_x, int new_y,
     h = client->height;
     y_diff = new_y - *old_y;
     x_diff = new_x - *old_x;
-    if (direction == WEST || direction == EAST)
+    if (direction == west || direction == east)
         y_diff = 0;
-    if (direction == NORTH || direction == SOUTH)
+    if (direction == north || direction == south)
         x_diff = 0;
-#ifdef DEBUG
+#ifdef debug
     printf("\tx_diff = %d, y_diff = %d\n", x_diff, y_diff);
-#endif /* DEBUG */
-    if (client->xsh != NULL && (client->xsh->flags & PResizeInc)) {
-#ifdef DEBUG
+#endif /* debug */
+    if (client->xsh != null && (client->xsh->flags & presizeinc)) {
+#ifdef debug
         printf("\txsh->width_inc = %d, xsh->height_inc = %d\n",
                client->xsh->width_inc, client->xsh->height_inc);
-#endif /* DEBUG */
+#endif /* debug */
         if (y_diff > client->xsh->height_inc
             || (-y_diff) > client->xsh->height_inc) {
             y_diff -= (y_diff % client->xsh->height_inc);
@@ -482,22 +485,22 @@ static void process_resize(client_t *client, int new_x, int new_y,
         } else {
             x_diff = 0;
         }
-#ifdef DEBUG
+#ifdef debug
         printf("\t(after) x_diff = %d, y_diff = %d\n", x_diff, y_diff);
-#endif /* DEBUG */
+#endif /* debug */
     }
 
     if (x_diff != 0) {
         switch (direction) {
-            case WEST:
-            case SW:
-            case NW:
+            case west:
+            case sw:
+            case nw:
                 if (client->width - x_diff > 1
                     && new_x < orig->x + orig->width) {
-                    if (client->xsh->flags & PMinSize
+                    if (client->xsh->flags & pminsize
                         && client->width - x_diff < client->xsh->min_width)
                         break;
-                    if (client->xsh->flags & PMaxSize
+                    if (client->xsh->flags & pmaxsize
                         && client->width - x_diff > client->xsh->max_width)
                         break;
                     client->x += x_diff;
@@ -505,14 +508,14 @@ static void process_resize(client_t *client, int new_x, int new_y,
                     *old_x += x_diff;
                 }
                 break;
-            case EAST:
-            case SE:
-            case NE:
+            case east:
+            case se:
+            case ne:
                 if (client->width + x_diff > 1) {
-                    if (client->xsh->flags & PMinSize
+                    if (client->xsh->flags & pminsize
                         && client->width + x_diff < client->xsh->min_width)
                         break;
-                    if (client->xsh->flags & PMaxSize
+                    if (client->xsh->flags & pmaxsize
                         && client->width + x_diff > client->xsh->max_width)
                         break;
                     client->width += x_diff;
@@ -525,35 +528,35 @@ static void process_resize(client_t *client, int new_x, int new_y,
     
     if (y_diff != 0) {
         switch (direction) {
-            case NORTH:
-            case NW:
-            case NE:
-                if (client->height - y_diff > TITLE_HEIGHT + 1
+            case north:
+            case nw:
+            case ne:
+                if (client->height - y_diff > title_height + 1
                     && new_y < orig->y + orig->height) {
-                    if (client->xsh->flags & PMinSize
+                    if (client->xsh->flags & pminsize
                         && client->height - y_diff <
-                           client->xsh->min_height + TITLE_HEIGHT)
+                           client->xsh->min_height + title_height)
                         break;
-                    if (client->xsh->flags & PMaxSize
+                    if (client->xsh->flags & pmaxsize
                         && client->height - y_diff >
-                           client->xsh->max_height + TITLE_HEIGHT)
+                           client->xsh->max_height + title_height)
                         break;
                     client->y += y_diff;
                     client->height -= y_diff;
                     *old_y += y_diff;
                 }
                 break;
-            case SOUTH:
-            case SE:
-            case SW:
-                if (client->height + y_diff > TITLE_HEIGHT + 1) {
-                    if (client->xsh->flags & PMinSize
+            case south:
+            case se:
+            case sw:
+                if (client->height + y_diff > title_height + 1) {
+                    if (client->xsh->flags & pminsize
                         && client->height + y_diff <
-                           client->xsh->min_height + TITLE_HEIGHT)
+                           client->xsh->min_height + title_height)
                         break;
-                    if (client->xsh->flags & PMaxSize
+                    if (client->xsh->flags & pmaxsize
                         && client->height + y_diff >
-                           client->xsh->max_height + TITLE_HEIGHT)
+                           client->xsh->max_height + title_height)
                         break;
                     client->height += y_diff;
                     *old_y += y_diff;
@@ -563,80 +566,148 @@ static void process_resize(client_t *client, int new_x, int new_y,
         }
     }
     
-    /* Now we draw the window rectangle
+    /* now we draw the window rectangle
      * 
-     * First, we erase the previous rectangle (the GC has an XOR function
-     * selected, so we simply draw on it to erase).  We don't want any
+     * first, we erase the previous rectangle (the gc has an xor function
+     * selected, so we simply draw on it to erase).  we don't want any
      * flicker, so we only erase and redraw if we've made any changes
      * to the line segment */
 
-    if (ordinal != MIDDLE || x != client->x
+    if (ordinal != middle || x != client->x
         || w != client->width || y != client->y) {
         /* redraw top bar */
-        if (ordinal != FIRST)
-            XDrawLine(dpy, root_window, root_invert_gc,
+        if (ordinal != first) {
+            xdrawline(dpy, root_window, root_invert_gc,
                       x, y, x + w, y);
-        if (ordinal != LAST)
-            XDrawLine(dpy, root_window, root_invert_gc, client->x,
+            if (direction == north || direction == nw || direction == ne)
+                drafting_lines(client, north, x, y, x + w, y);
+        }
+        if (ordinal != last) {
+            xdrawline(dpy, root_window, root_invert_gc, client->x,
                       client->y, client->x + client->width, client->y);
-        
+            if (direction == north || direction == nw || direction == ne)
+                drafting_lines(client, north, client->x, client->y,
+                               client->x + client->width, client->y);
+        }
     }
-    if (ordinal != MIDDLE || x != client->x || w != client->width
+    if (ordinal != middle || x != client->x || w != client->width
         || y + h != client->y + client->height) {
         /* redraw bottom bar */
-        if (ordinal != FIRST)
-            XDrawLine(dpy, root_window, root_invert_gc,
+        if (ordinal != first) {
+            xdrawline(dpy, root_window, root_invert_gc,
                       x, y + h, x + w, y + h);
-        if (ordinal != LAST)
-            XDrawLine(dpy, root_window, root_invert_gc,
+            if (direction == south || direction == sw || direction == se)
+                drafting_lines(client, south, x, y + h, x + w, y + h);
+        }
+        if (ordinal != last) {
+            xdrawline(dpy, root_window, root_invert_gc,
                       client->x, client->y + client->height,
                       client->x + client->width,
                       client->y + client->height);
+            if (direction == south || direction == sw || direction == se)
+                drafting_lines(client, south, client->x,
+                               client->y + client->height,
+                               client->x + client->width,
+                               client->y + client->height);
+        }
     }
-    if (ordinal != MIDDLE || y != client->y ||
+    if (ordinal != middle || y != client->y ||
         h != client->height || x != client->x) {
         /* redraw left bar */
-        if (ordinal != FIRST)
-            XDrawLine(dpy, root_window, root_invert_gc,
+        if (ordinal != first) {
+            xdrawline(dpy, root_window, root_invert_gc,
                       x, y, x, y + h);
-        if (ordinal != LAST)
-            XDrawLine(dpy, root_window, root_invert_gc,
+            if (direction == west || direction == nw || direction == sw)
+                drafting_lines(client, west, x, y, x, y + h);
+                
+        }
+        if (ordinal != last) {
+            xdrawline(dpy, root_window, root_invert_gc,
                       client->x, client->y, client->x,
                       client->y + client->height);
+            if (direction == west || direction == nw || direction == sw)
+                drafting_lines(client, west, client->x, client->y,
+                               client->x, client->y + client->height);
+        }
     }
-    if (ordinal != MIDDLE || y != client->y || h != client->height
+    if (ordinal != middle || y != client->y || h != client->height
         || x + w != client->x + client->width) {
         /* redraw right bar */
-        if (ordinal != FIRST)
-            XDrawLine(dpy, root_window, root_invert_gc,
+        if (ordinal != first) {
+            xdrawline(dpy, root_window, root_invert_gc,
                       x + w, y, x + w, y + h);
-        if (ordinal != LAST)
-            XDrawLine(dpy, root_window, root_invert_gc,
+            if (direction == east || direction == ne || direction == se)
+                drafting_lines(client, east, x + w, y, x + w, y + h);
+        }
+        if (ordinal != last) {
+            xdrawline(dpy, root_window, root_invert_gc,
                       client->x + client->width,
                       client->y,
                       client->x + client->width,
                       client->y + client->height);
+            if (direction == east || direction == ne || direction == se)
+                drafting_lines(client, east, client->x + client->width,
+                      client->y, client->x + client->width,
+                      client->y + client->height);
+        }
     }
 
-    if (ordinal == FIRST || x != client->x || y != client->y
+    if (ordinal == first || x != client->x || y != client->y
         || w != client->width || h != client->height) {
-        display_geometry("Resizing", client);
+        display_geometry("resizing", client);
     }
 }
 
-/* FIXME:  display in increments if available */
-static void display_geometry(char *s, client_t *client)
+static void get_display_width_height(client_t *client, int *w, int *h)
 {
-    static char *titlebar_display = NULL;
     int w_inc, h_inc;
+    
+    if (client->xsh != null && (client->xsh->flags & presizeinc)) {
+        w_inc = client->xsh->width_inc;
+        h_inc = client->xsh->height_inc;
+    } else {
+        w_inc = h_inc = 1;
+    }
+    *w = client->width / w_inc;
+    *h = (client->height - title_height) / h_inc;
+}
 
-    if (client->xsh != NULL && (client->xsh->flags & PResizeInc)) {
+#define drafting_offset 15
+
+static void drafting_lines(client_t *client, resize_direction_t direction,
+                           int x1, int y1, int x2, int y2)
+{
+    int display_int, h_inc, w_inc;
+    
+    if (client->xsh != null && (client->xsh->flags & presizeinc)) {
         w_inc = client->xsh->width_inc;
         h_inc = client->xsh->height_inc;
     } else {
         w_inc = h_inc = 1;
     }
     
+    if (direction == WEST) {
+        x1 -= DRAFTING_OFFSET;
+        x2 -= DRAFTING_OFFSET;
+    } else if (direction == EAST) {
+        x1 += DRAFTING_OFFSET;
+        x2 += DRAFTING_OFFSET;
+    } else if (direction == NORTH) {
+        y1 -= DRAFTING_OFFSET;
+        y2 -= DRAFTING_OFFSET;
+    } else if (direction == SOUTH) {
+        y1 += DRAFTING_OFFSET;
+        y2 += DRAFTING_OFFSET;
+    }
+        
+}
+
+static void display_geometry(char *s, client_t *client)
+{
+    static char *titlebar_display = NULL;
+    int width, height;
+
+    get_display_width_height(client, &width, &height);
     if (client->name != titlebar_display) {
         titlebar_display = malloc(256); /* arbitrary, whatever */
         if (titlebar_display == NULL) return;
@@ -644,29 +715,8 @@ static void display_geometry(char *s, client_t *client)
         client->name = titlebar_display;
     }
     snprintf(client->name, 256, "%dx%d+%d+%d [%s %s]",
-             client->x, client->y, client->width / w_inc,
-             (client->height - TITLE_HEIGHT) / h_inc,
-             s, client->instance);
+             client->x, client->y, width, height, s, client->instance);
     client_paint_titlebar(client);
-}
-
-/* FIXME: remove */
-static void constrain_geometry(client_t *client)
-{
-    if (client->width < 1) client->width = 1;
-    if (client->height < TITLE_HEIGHT + 1)
-        client->height = TITLE_HEIGHT + 1;
-    if (client->xsh != NULL) {
-        if (client->xsh->flags & PMinSize) {
-            client->width = MAX(client->width, client->xsh->min_width);
-            client->height = MAX(client->height, client->xsh->min_height + TITLE_HEIGHT);
-        }
-        if (client->xsh->flags & PMaxSize) {
-            client->width = MIN(client->width, client->xsh->max_width);
-            client->height = MIN(client->height, client->xsh->max_height + TITLE_HEIGHT);
-        }
-    }
-    /* we are allowing the client to move off-screen */
 }
 
 static quadrant_t get_quadrant(client_t *client, int x, int y)
