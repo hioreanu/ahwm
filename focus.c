@@ -415,8 +415,6 @@ void focus_ensure(Time timestamp)
         debug(("\tDoesn't use TAKE_FOCUS protocol\n"));
     }
     colormap_install(focus_current);
-
-//    stacking_raise(focus_current); /* FIXME: remove */
 }
 
 /*
@@ -620,7 +618,9 @@ void focus_cycle_next(XEvent *xevent, arglist *ignored)
         if (orig_focus->client->focus_policy == ClickToFocus) {
             focus_policy_to_click(orig_focus->client);
         }
-        if (focus_current->focus_policy == ClickToFocus) {
+        if (focus_current != NULL &&
+            focus_current->focus_policy == ClickToFocus) {
+
             focus_policy_from_click(focus_current);
         }
     }
