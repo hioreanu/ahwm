@@ -695,8 +695,15 @@ static void drafting_lines(client_t *client, resize_direction_t direction,
     }
     font_width = (fontstruct->max_bounds.rbearing
                   - fontstruct->min_bounds.lbearing + 1);
-    font_height = (fontstruct->max_bounds.ascent
-                   + fontstruct->max_bounds.descent + 1);
+
+    /* this puts too much room on bottom of the numbers; in most
+     * fonts, the characters 1 through 9 don't have a 'descent.'  If
+     * this is used with a font that has, for example, 4s or 9s that
+     * have a descent, it probably won't look right.
+     * font_height = (fontstruct->max_bounds.ascent
+     *                + fontstruct->max_bounds.descent + 1);
+     */
+    font_height = fontstruct->max_bounds.ascent + 1;
 
     if (x1 > x2) {
         tmp = x1;
@@ -717,53 +724,214 @@ static void drafting_lines(client_t *client, resize_direction_t direction,
     snprintf(label, 16, "%d", tmp);
     y_room = font_height / 2;
     x_room = XTextWidth(fontstruct, label, strlen(label)) / 2;
-    
+
     if (direction == WEST) {
-        x1 -= x_room + 3;
-        x2 -= x_room + 3;
+        x1 -= x_room + 5;
+        x2 -= x_room + 5;
         XDrawLine(dpy, root_window, root_invert_gc,
                   x1, y1, x2,
                   ((y2 + y1) / 2) - (y_room + 1));
         XDrawLine(dpy, root_window, root_invert_gc,
                   x1, y2, x2,
                   ((y2 + y1) / 2) + (y_room + 1));
-        /* FIXME:  working on this statement */
         XDrawString(dpy, root_window, root_invert_gc,
                     x2 - x_room,
-                    ((y2 + y1) / 2) + y_room,
+                    ((y2 + y1) / 2) + (y_room - 1),
                     label, strlen(label));
+        draw_arrowhead(x1, y1, NORTH);
+        draw_arrowhead(x2, y2, SOUTH);
     } else if (direction == EAST) {
-        x1 += x_room;
-        x2 += x_room;
+        x1 += x_room + 5;
+        x2 += x_room + 5;
         XDrawLine(dpy, root_window, root_invert_gc,
-                  x1, y1, x2, y1 + ((y2 - y1) / 2) - ((font_height / 2) + 1));
+                  x1, y1, x2,
+                  ((y2 + y1) / 2) - (y_room + 1));
         XDrawLine(dpy, root_window, root_invert_gc,
-                  x1, y2, x2, y2 - ((y2 - y1) / 2) + ((font_height / 2) + 1));
+                  x1, y2, x2,
+                  ((y2 + y1) / 2) + (y_room + 1));
         XDrawString(dpy, root_window, root_invert_gc,
-                    x2 - 2 * font_width,
-                    y2 - ((y2 - y1) / 2) + (font_height / 2),
+                    x2 - x_room,
+                    ((y2 + y1) / 2) + (y_room - 1),
                     label, strlen(label));
+        draw_arrowhead(x1, y1, NORTH);
+        draw_arrowhead(x2, y2, SOUTH);
     } else if (direction == NORTH) {
-        y1 -= y_room;
-        y2 -= y_room;
+        y1 -= y_room + 5;
+        y2 -= y_room + 5;
         XDrawLine(dpy, root_window, root_invert_gc, x1, y1,
-                  x1 + ((x2 - x1) / 2) - (2 * font_width + 1), y2);
+                  ((x2 + x1) / 2) - (x_room + 1), y2);
+        /* we give a bit more room here - just makes it look
+         * better in most fonts */
         XDrawLine(dpy, root_window, root_invert_gc, x2, y1,
-                  x2 - ((x2 - x1) / 2) + (2 * font_width + 1), y2);
+                  ((x2 + x1) / 2) + (x_room + 3), y2);
         XDrawString(dpy, root_window, root_invert_gc,
-                    x1 + ((x2 - x1) / 2) - (2 * font_width),
-                    y2 + (font_height / 2), label, strlen(label));
+                    ((x2 + x1) / 2) - (x_room - 1),
+                    y2 + y_room, label, strlen(label));
+        draw_arrowhead(x1, y1, WEST);
+        draw_arrowhead(x2, y2, EAST);
     } else if (direction == SOUTH) {
-        y1 += y_room;
-        y2 += y_room;
+        y1 += y_room + 5;
+        y2 += y_room + 5;
         XDrawLine(dpy, root_window, root_invert_gc, x1, y1,
-                  x1 + ((x2 - x1) / 2) - (2 * font_width + 1), y2);
+                  ((x2 + x1) / 2) - (x_room + 1), y2);
         XDrawLine(dpy, root_window, root_invert_gc, x2, y1,
-                  x2 - ((x2 - x1) / 2) + (2 * font_width + 1), y2);
+                  ((x2 + x1) / 2) + (x_room + 3), y2);
         XDrawString(dpy, root_window, root_invert_gc,
-                    x1 + ((x2 - x1) / 2) - (2 * font_width),
-                    y2 + (font_height / 2), label, strlen(label));
+                    ((x2 + x1) / 2) - (x_room - 1),
+                    y2 + y_room, label, strlen(label));
+        draw_arrowhead(x1, y1, WEST);
+        draw_arrowhead(x2, y2, EAST);
     }
+}
+
+/* took me a half hour to draw this thing in 'bitmap'
+ * I suck at this artsy stuff */
+/* we just draw a bunch of lines instead of using a pixmap, this is a
+ * very small image */
+
+#define INVSQRT3 0.577350269189625764509148780502 /* = (1 / sqrt(3)) */
+#define SQRT3 1.732050807568877293527446341505
+#define ARROWHEAD_LENGTH 8
+
+static void draw_arrowhead(int x, int y, resize_direction_t direction)
+{
+    
+    if (direction == WEST) {
+        XDrawLine(dpy, root_window, root_invert_gc,
+                  x + 2, y + 1, x + 8, y + 1);
+        XDrawLine(dpy, root_window, root_invert_gc,
+                  x + 4, y + 2, x + 8, y + 2);
+        XDrawLine(dpy, root_window, root_invert_gc,
+                  x + 6, y + 3, x + 8, y + 3);
+        XDrawPoint(dpy, root_window, root_invert_gc,
+                   x + 8, y + 4);
+        XDrawLine(dpy, root_window, root_invert_gc,
+                  x + 2, y - 1, x + 8, y - 1);
+        XDrawLine(dpy, root_window, root_invert_gc,
+                  x + 4, y - 2, x + 8, y - 2);
+        XDrawLine(dpy, root_window, root_invert_gc,
+                  x + 6, y - 3, x + 8, y - 3);
+        XDrawPoint(dpy, root_window, root_invert_gc,
+                   x + 8, y - 4);
+    } else if (direction == EAST) {
+        XDrawLine(dpy, root_window, root_invert_gc,
+                  x - 2, y + 1, x - 8, y + 1);
+        XDrawLine(dpy, root_window, root_invert_gc,
+                  x - 4, y + 2, x - 8, y + 2);
+        XDrawLine(dpy, root_window, root_invert_gc,
+                  x - 6, y + 3, x - 8, y + 3);
+        XDrawPoint(dpy, root_window, root_invert_gc,
+                   x - 8, y + 4);
+        XDrawLine(dpy, root_window, root_invert_gc,
+                  x - 2, y - 1, x - 8, y - 1);
+        XDrawLine(dpy, root_window, root_invert_gc,
+                  x - 4, y - 2, x - 8, y - 2);
+        XDrawLine(dpy, root_window, root_invert_gc,
+                  x - 6, y - 3, x - 8, y - 3);
+        XDrawPoint(dpy, root_window, root_invert_gc,
+                   x - 8, y - 4);
+    } else if (direction == NORTH) {
+        XDrawLine(dpy, root_window, root_invert_gc,
+                  x + 1, y + 2, x + 1, y + 8);
+        XDrawLine(dpy, root_window, root_invert_gc,
+                  x + 2, y + 4, x + 2, y + 8);
+        XDrawLine(dpy, root_window, root_invert_gc,
+                  x + 3, y + 6, x + 3, y + 8);
+        XDrawPoint(dpy, root_window, root_invert_gc,
+                   x + 4, y + 8);
+        XDrawLine(dpy, root_window, root_invert_gc,
+                  x - 1, y + 2, x - 1, y + 8);
+        XDrawLine(dpy, root_window, root_invert_gc,
+                  x - 2, y + 4, x - 2, y + 8);
+        XDrawLine(dpy, root_window, root_invert_gc,
+                  x - 3, y + 6, x - 3, y + 8);
+        XDrawPoint(dpy, root_window, root_invert_gc,
+                   x - 4, y + 8);
+    } else if (direction == SOUTH) {
+        XDrawLine(dpy, root_window, root_invert_gc,
+                  x + 1, y - 2, x + 1, y - 8);
+        XDrawLine(dpy, root_window, root_invert_gc,
+                  x + 2, y - 4, x + 2, y - 8);
+        XDrawLine(dpy, root_window, root_invert_gc,
+                  x + 3, y - 6, x + 3, y - 8);
+        XDrawPoint(dpy, root_window, root_invert_gc,
+                   x + 4, y - 8);
+        XDrawLine(dpy, root_window, root_invert_gc,
+                  x - 1, y - 2, x - 1, y - 8);
+        XDrawLine(dpy, root_window, root_invert_gc,
+                  x - 2, y - 4, x - 2, y - 8);
+        XDrawLine(dpy, root_window, root_invert_gc,
+                  x - 3, y - 6, x - 3, y - 8);
+        XDrawPoint(dpy, root_window, root_invert_gc,
+                   x - 4, y - 8);
+    }
+    
+#if 0
+    XPoint above[3];
+    XPoint below[3];
+    
+//    if (direction == NORTH) {
+        above[0].x = x + 1;
+        above[0].y = y + 1;
+        above[1].x = ARROWHEAD_LENGTH + 1;
+        above[1].y = 0;
+        above[2].x = 0;
+        above[2].y = -((ARROWHEAD_LENGTH + 1) / SQRT3);
+        below[0].x = x - 1;
+        below[0].y = y - 1;
+        below[1].x = ARROWHEAD_LENGTH + 1;
+        below[1].y = 0;
+        below[2].x = 0;
+        below[2].y = (ARROWHEAD_LENGTH + 1) / SQRT3;
+//    }
+    
+    
+    XFillPolygon(dpy, root_window, root_invert_gc,
+                 above, 3, Convex, CoordModePrevious);
+    XFillPolygon(dpy, root_window, root_invert_gc,
+                 below, 3, Convex, CoordModePrevious);
+    
+#endif
+#if 0
+#define ARROWHEAD_NO_LINES 3
+    int i;
+    
+    if (direction == WEST) {
+        for (i = 1; i < ARROWHEAD_NO_LINES + 1; i++) {
+            
+
+
+
+            
+            XDrawLine(dpy, root_window, root_invert_gc,
+                      x + i, y + i, x + ARROWHEAD_NO_LINES, y + i);
+            XDrawLine(dpy, root_window, root_invert_gc,
+                      x + i, y - i, x + ARROWHEAD_NO_LINES, y - i);
+        }
+    } else if (direction == EAST) {
+        for (i = 1; i < ARROWHEAD_NO_LINES + 1; i++) {
+            XDrawLine(dpy, root_window, root_invert_gc,
+                      x - ARROWHEAD_NO_LINES, y + i, x - i, y + i);
+            XDrawLine(dpy, root_window, root_invert_gc,
+                      x - ARROWHEAD_NO_LINES, y - i, x - i, y - i);
+        }
+    } else if (direction == NORTH) {
+        for (i = 1; i < ARROWHEAD_NO_LINES + 1; i++) {
+            XDrawLine(dpy, root_window, root_invert_gc,
+                      x + i, y + i, x + i, y + ARROWHEAD_NO_LINES);
+            XDrawLine(dpy, root_window, root_invert_gc,
+                      x - i, y + i, x - i, y + ARROWHEAD_NO_LINES);
+        }
+    } else if (direction == SOUTH) {
+        for (i = 1; i < ARROWHEAD_NO_LINES + 1; i++) {
+            XDrawLine(dpy, root_window, root_invert_gc,
+                      x + i, y - i, x + i, y - ARROWHEAD_NO_LINES);
+            XDrawLine(dpy, root_window, root_invert_gc,
+                      x - i, y - i, x - i, y - ARROWHEAD_NO_LINES);
+        }
+    }
+#undef ARROWHEAD_NO_LINES
+#endif
 }
 
 static void display_geometry(char *s, client_t *client)
