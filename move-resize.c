@@ -257,7 +257,10 @@ void move_client(XEvent *xevent, arglist *ignored)
         XUngrabPointer(dpy, CurrentTime);
         return;
     }
-    if (client->sticky) return;
+    if (client->sticky) {
+        XUngrabPointer(dpy, CurrentTime);
+        return;
+    }
     
     moving = 1;
     orig_x = client->x;
@@ -596,7 +599,10 @@ void resize_client(XEvent *xevent, arglist *ignored)
         XUngrabPointer(dpy, CurrentTime);
         return;
     }
-    if (client->sticky) return;
+    if (client->sticky) {
+        XUngrabPointer(dpy, CurrentTime);
+        return;
+    }
     
     sizing = 1;
     orig.x = client->x;
@@ -1560,7 +1566,6 @@ static void resize_display_geometry(client_t *client, int x, int y,
                 TITLE_HEIGHT - 4, buf, strlen(buf));
 }
 
-/* FIXME:  export from keyboard.c */
 static void set_keys()
 {
     keycode_Escape = XKeysymToKeycode(dpy, XK_Escape);

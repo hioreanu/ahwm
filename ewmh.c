@@ -142,6 +142,7 @@ static Window ewmh_window;
 static void no_titlebar(client_t *client);
 static void click_to_focus(client_t *client);
 static void skip_cycle(client_t *client);
+static void sticky(client_t *client);
 void ewmh_to_desktop(client_t *client);
 void ewmh_to_dock(client_t *client);
 void ewmh_to_normal(client_t *client);
@@ -558,13 +559,19 @@ static void skip_cycle(client_t *client)
     }
 }
 
+static void sticky(client_t *client)
+{
+    if (client->sticky_set <= HintSet) {
+        client->sticky = 1;
+        client->sticky_set = HintSet;
+    }
+}
+
 /*
  * make a window a "desktop" window.  No titlebar, omnipresent, Skip
  * alt-tab, force click-to-focus, force pass-through-click,
  * always-on-bottom.  Of course, user can override any of these using
  * unconditional option settings.
- * 
- * FIXME:  also sticky
  */
 
 void ewmh_to_desktop(client_t *client)
@@ -572,6 +579,7 @@ void ewmh_to_desktop(client_t *client)
     no_titlebar(client);
     skip_cycle(client);
     click_to_focus(client);
+    sticky(client);
     if (client->omnipresent_set <= HintSet) {
         client->omnipresent = 1;
         client->omnipresent_set = HintSet;
@@ -602,6 +610,7 @@ void ewmh_to_dock(client_t *client)
     no_titlebar(client);
     click_to_focus(client);
     skip_cycle(client);
+    sticky(client);
     if (client->always_on_top_set <= HintSet) {
         stacking_remove(client);
         client->always_on_top = 1;

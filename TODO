@@ -1,6 +1,3 @@
-working on sticky, done in move-resize.c
-
-
 TODO before release:
 - option WorkspaceSendTransients (boolean)
 - on alt tab, delay between titlebar color change and raise, mebbe stacking_raise()
@@ -25,9 +22,9 @@ Wishlist:
 - allow window titles to be centered and right-aligned
 - 'mouse' map_policy placement algorithm - map window under mouse
 - finish support for DontRaise for CycleBehaviour
+- for focus click, grab all combinations of click and modifier
 - cascade placement algorithm
 - change window according to prefs when changes ws, becomes shaped, etc.
-- sticky windows: don't bind move/resize actions
 - deal with window "strut"
 - placement algos to config file
 - 2-bit struct fields not portable, use autoconf
@@ -131,6 +128,7 @@ Finished, no longer TODO:
 - clean up the AltTab() crap, see .xwmrc for ideas
 - function composition
 - options DontBindKeys, DontBindMouse (boolean)
+- sticky windows: don't bind move/resize actions
 
 Abandoned, no longer TODO:
 - "stop" focus, detect when pointer stops in a window (no timeout) -

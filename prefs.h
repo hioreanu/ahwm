@@ -119,7 +119,8 @@ struct _option {
            COLORTEXTFOCUSED,
            NWORKSPACES,
            DONTBINDMOUSE,
-           DONTBINDKEYS } option_name;
+           DONTBINDKEYS,
+           STICKY } option_name;
     option_setting option_setting;
     type *option_value;
 };

@@ -170,9 +170,11 @@ client_t *client_create(Window w)
     /* see if in window group (ICCCM, 4.1.11) */
     if (client->xwmh != NULL
         && client->xwmh->flags & WindowGroupHint) {
+        
         client->group_leader = client_find((Window)client->xwmh->window_group);
         if (client->group_leader != NULL
             && client->group_leader->xwmh != NULL) {
+            
             XFree(client->xwmh);
             client->xwmh = client->group_leader->xwmh;
         }

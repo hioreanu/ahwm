@@ -90,6 +90,8 @@ typedef struct _prefs {
     option_setting dont_bind_mouse_set;
     Bool dont_bind_keys;
     option_setting dont_bind_keys_set;
+    Bool sticky;
+    option_setting sticky_set;
 } prefs;
 
 /* ADDOPT 6: set default value */
@@ -107,14 +109,14 @@ static prefs defaults = {
     NULL, UnSet,                /* titlebar_text_color */
     NULL, UnSet,                /* titlebar_text_focused_color */
     False, UnSet,               /* dont_bind_mouse */
-    False, UnSet                /* dont_bind_keys */
+    False, UnSet,               /* dont_bind_keys */
+    False, UnSet                /* sticky */
 };
 
 static line *contexts;
 static definition **definitions = NULL;
 static int ndefinitions = 0;
 
-static void set_default(option *opt);
 static void make_definition(definition *def);
 static void invocation_string_to_int(arglist *arg);
 static void get_int(type *typ, int *val);
@@ -220,83 +222,6 @@ void prefs_init()
         }
     }
     contexts = first_context;
-}
-
-/* FIXME: remove, use option_apply */
-static void set_default(option *opt)
-{
-    int i;
-    
-    /* ADDOPT 7: set default if in global context */
-    switch (opt->option_name) {
-        case NWORKSPACES:
-            /* special case: option only applies globally */
-            get_int(opt->option_value, &i);
-            if (i < 1) {
-                fprintf(stderr,
-                        "XWM: NumberOfWorkspaces must be at least one\n");
-            } else {
-                nworkspaces = i;
-            }
-            break;
-        case DISPLAYTITLEBAR:
-            get_bool(opt->option_value, &defaults.titlebar);
-            defaults.titlebar_set = opt->option_setting;
-            break;
-        case OMNIPRESENT:
-            get_bool(opt->option_value, &defaults.omnipresent);
-            defaults.omnipresent_set = opt->option_setting;
-            break;
-        case DEFAULTWORKSPACE:
-            get_int(opt->option_value, &defaults.workspace);
-            defaults.workspace_set = opt->option_setting;
-            break;
-        case FOCUSPOLICY:
-            get_int(opt->option_value, &defaults.focus_policy);
-            defaults.focus_policy_set = opt->option_setting;
-            break;
-        case ALWAYSONTOP:
-            get_bool(opt->option_value, &defaults.always_on_top);
-            defaults.always_on_top_set = opt->option_setting;
-            break;
-        case ALWAYSONBOTTOM:
-            get_bool(opt->option_value, &defaults.always_on_bottom);
-            defaults.always_on_bottom_set = opt->option_setting;
-            break;
-        case PASSFOCUSCLICK:
-            get_bool(opt->option_value, &defaults.pass_focus_click);
-            defaults.pass_focus_click_set = opt->option_setting;
-            break;
-        case CYCLEBEHAVIOUR:
-            get_int(opt->option_value, &defaults.cycle_behaviour);
-            defaults.cycle_behaviour_set = opt->option_setting;
-            break;
-        case COLORTITLEBAR:
-            get_string(opt->option_value, &defaults.titlebar_color);
-            defaults.titlebar_color_set = opt->option_setting;
-            break;
-        case COLORTITLEBARFOCUSED:
-            get_string(opt->option_value, &defaults.titlebar_focused_color);
-            defaults.titlebar_focused_color_set = opt->option_setting;
-            break;
-        case COLORTEXT:
-            get_string(opt->option_value, &defaults.titlebar_text_color);
-            defaults.titlebar_text_color_set = opt->option_setting;
-            break;
-        case COLORTEXTFOCUSED:
-            get_string(opt->option_value,
-                       &defaults.titlebar_text_focused_color);
-            defaults.titlebar_text_focused_color_set = opt->option_setting;
-            break;
-        case DONTBINDMOUSE:
-            get_bool(opt->option_value, &defaults.dont_bind_mouse);
-            defaults.dont_bind_mouse = opt->option_setting;
-            break;
-        case DONTBINDKEYS:
-            get_bool(opt->option_value, &defaults.dont_bind_keys);
-            defaults.dont_bind_keys = opt->option_setting;
-            break;
-    }
 }
 
 static void make_definition(definition *def)
@@ -438,7 +363,7 @@ static Bool type_check_option(option *opt)
     Bool retval;
     
     switch (opt->option_name) {
-        /* ADDOPT 8: define option's type */
+        /* ADDOPT 7: define option's type */
         case NWORKSPACES:
             retval = option_check_helper(opt->option_value,
                                          INTEGER, "NumberOfWorkspaces");
@@ -506,6 +431,10 @@ static Bool type_check_option(option *opt)
         case DONTBINDKEYS:
             retval = option_check_helper(opt->option_value,
                                          BOOLEAN, "DontBindKeys");
+            break;
+        case STICKY:
+            retval = option_check_helper(opt->option_value,
+                                         BOOLEAN, "Sticky");
             break;
         default:
             fprintf(stderr, "XWM: unknown option type found...\n");
@@ -778,7 +707,7 @@ static Bool context_applies(client_t *client, context *cntxt)
 static void option_apply(client_t *client, option *opt, prefs *p)
 {
     switch (opt->option_name) {
-        /* ADDOPT 9: set option if found within a context */
+        /* ADDOPT 8: set option if found within a context */
         case DISPLAYTITLEBAR:
             get_bool(opt->option_value, &p->titlebar);
             p->titlebar_set = opt->option_setting;
@@ -834,6 +763,10 @@ static void option_apply(client_t *client, option *opt, prefs *p)
         case DONTBINDKEYS:
             get_bool(opt->option_value, &p->dont_bind_keys);
             p->dont_bind_mouse = opt->option_setting;
+            break;
+        case STICKY:
+            get_bool(opt->option_value, &p->sticky);
+            p->sticky = opt->option_setting;
             break;
     }
 }
@@ -1034,8 +967,12 @@ void prefs_apply(client_t *client)
         client->dont_bind_keys = p.dont_bind_keys;
         client->dont_bind_keys_set = p.dont_bind_keys_set;
     }
+    if (client->sticky_set <= p.sticky_set) {
+        client->sticky = p.sticky;
+        client->sticky_set = p.sticky_set;
+    }
     
-    /* ADDOPT 10: apply the option to the client */
+    /* ADDOPT 9: apply the option to the client */
 }
 
 /* FIXME:  this should probably get its own module */

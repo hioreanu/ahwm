@@ -64,6 +64,7 @@
 %token TOK_NWORKSPACES
 %token TOK_DONTBINDMOUSE
 %token TOK_DONTBINDKEYS
+%token TOK_STICKY
 
 %token TOK_SLOPPY_FOCUS
 %token TOK_CLICK_TO_FOCUS
@@ -256,6 +257,7 @@ option_name: TOK_DISPLAYTITLEBAR { $$ = DISPLAYTITLEBAR; }
            | TOK_NWORKSPACES { $$ = NWORKSPACES; }
            | TOK_DONTBINDMOUSE { $$ = DONTBINDMOUSE; }
            | TOK_DONTBINDKEYS { $$ = DONTBINDKEYS; }
+           | TOK_STICKY { $$ = STICKY; }
 
 type: boolean
       {
