@@ -3,19 +3,18 @@
  * This code is in the public domain and the author disclaims all
  * copyright privileges.
  */
+
+/*
+ * This contains functions to bind actions to mouse clicks and key
+ * strokes, and various other utilities for dealing with the mouse and
+ * keyboard.
+ */
+
 #ifndef KEYBOARD_H
 #define KEYBOARD_H
 
 #include <X11/Xlib.h>
 #include "client.h"
-
-/*
- * Array of booleans specifying whether a given bit is a 'locking'
- * modifier bit - for example, if XK_Num_Lock generates Mod3 (Mod3Mask
- * == 0x20, bit 5 set), then keyboard_is_lock[5] == True.
- */
-
-extern Bool keyboard_is_lock[8];
 
 /*
  * Modifier masks which may be arbitrarily mapped by the user
@@ -36,70 +35,18 @@ extern unsigned int AllLocksMask;
 
 void keyboard_init();
 
-/*
- * This will return an array of all the posible combinations of MODS
- * and the various 'lock' modifiers the user has mapped.  The number
- * of elements in the array is put in N and the array should not be
- * freed or otherwise messed with.
- * 
- * For example, if the user has XK_Caps_Lock generating the 'lock'
- * modifier, XK_Num_Lock generating the 'Mod3' modifier and
- * XK_Scroll_Lock generating 'Mod4', and the argument passed in is
- * 'Mod1Mask', this will return:
- * 
- * Mod1Mask | LockMask
- * Mod1Mask | LockMask | Mod3Mask
- * Mod1Mask | LockMask | Mod3Mask | Mod4Mask
- * Mod1Mask | Mod3Mask
- * Mod1Mask | Mod3Mask | Mod4Mask
- * Mod1Mask | Mod4Mask
- * 
- * Note that the original modifiers (without locking modifiers ORed
- * in) is not returned.  Of course, this takes an exponential amount
- * of time and space (specifically factorial of the number of locking
- * modifiers, which is exponential), so hopefully the user doesn't
- * have six locking modifiers.  To quote Knuth (Art of Computer
- * Programming, 1.2.5):
- * 
- * "It is helpful to keep the value 10! = 3,628,800 in mind; one
- * should remember that 10! is about 3 and half million.  In a sense,
- * this number represents an approximate dividing line between things
- * that are practical to compute and things that are not."
- * 
- * I am considering the following keysyms 'locking' modifiers (based
- * purely upon the fact that they end with '_Lock'):
- * 
- *      XK_Scroll_Lock
- *      XK_Num_Lock
- *      XK_Caps_Lock
- *      XK_Shift_Lock
- *      XK_Kana_Lock
- *      XK_ISO_Lock
- *      XK_ISO_Level3_Lock
- *      XK_ISO_Group_Lock
- *      XK_ISO_Next_Group_Lock
- *      XK_ISO_Prev_Group_Lock
- *      XK_ISO_First_Group_Lock
- *      XK_ISO_Last_Group_Lock
- * 
- * The only reason this mess is exported is because the mousebinding
- * module needs to use it.
- */
 
-unsigned int *keyboard_modifier_combinations(unsigned int mods, int *n);
-
-/* FIXME */
-KeySym keyboard_event_to_keysym(XKeyEvent *);
-
-/* Functions which are called in response to keyboard events: */
+/* Functions which are called in response to mouse and keyboard events: */
 
 typedef void (*key_fn)(XEvent *, void *);
+typedef key_fn mouse_fn;
 
 /*
  * An example function of the above type which does nothing
  */
 
 void keyboard_ignore(XEvent *, void *);
+extern mouse_fn mouse_ignore;
 
 /*
  * A special function of the above type, put here for lack of a better
@@ -112,10 +59,7 @@ void keyboard_ignore(XEvent *, void *);
  */
 
 void keyboard_quote(XEvent *, void *);
-
-/* these go with the above function and are used by the mouse module */
-extern Bool quoting;
-extern Time last_quote_time;
+extern mouse_fn mouse_quote;
 
 /*
  * When we 'unquote' and event, this function is called.  This will
@@ -139,6 +83,15 @@ extern Time last_quote_time;
 void keyboard_replay(XKeyEvent *);
 
 /*
+ * This function parallels keyboard_replay() - it tries to send the
+ * given event to a client using XSendEvent().  Works in all cases
+ * I've seen but may not have the exact same semantics as a 'real'
+ * event.
+ */
+
+void mouse_replay(XButtonEvent *);
+
+/*
  * Bind a key to a function.  KEYCODE and MODIFIERS are the Keycode
  * and Modifiers to bind; DEPRESS is KEYBOARD_DEPRESS or
  * KEYBOARD_RELEASE (one or the other, not a logical OR), indicating
@@ -152,6 +105,33 @@ void keyboard_set_function_ex(unsigned int keycode, unsigned int modifiers,
 
 #define KEYBOARD_DEPRESS KeyPress
 #define KEYBOARD_RELEASE KeyRelease
+
+/*
+ * Set a function to be called in response to a mouse button event,
+ * very similar to keyboard_set_function_ex().  The "location"
+ * argument denotes where we are to listen for the mouse event - NB
+ * that it is NOT possible to listen for button events on the actual
+ * client window (against ICCCM and raises all sorts of implementation
+ * problems).  If you need to listen for an event on the client
+ * window, listen for an event on the client frame and set the
+ * function for the client titlebar to mouse_ignore.  The "location"
+ * parameter may be a logical OR of the locations defined below.
+ */
+
+void mouse_set_function_ex(unsigned int button, unsigned int modifiers,
+                           int depress, int location, mouse_fn fn, void *arg);
+
+#define MOUSE_DEPRESS ButtonPress
+#define MOUSE_RELEASE ButtonRelease
+
+#define MOUSE_NOWHERE    00
+#define MOUSE_TITLEBAR   01
+#define MOUSE_ROOT       02
+#define MOUSE_FRAME      04
+#define MOUSE_EVERYWHERE (MOUSE_NOWHERE | MOUSE_TITLEBAR | \
+                          MOUSE_ROOT | MOUSE_FRAME)
+
+/* FIXME:  parsing routines should be private */
 
 /*
  * Function to convert a string which describes a keyboard binding to
@@ -223,6 +203,26 @@ int keyboard_parse_string(char *keystring, unsigned int *keycode,
                           unsigned int *modifiers);
 
 /*
+ * This works very similar to keyboard_parse_string except the grammar
+ * is a bit different:
+ * 
+ * STRING       ::= MODLIST* WHITESPACE BUTTON
+ * WHITESPACE   ::= ('\t' | ' ' | '\v' | '\f' | '\n' | '\r')*
+ * MODLIST      ::= MODIFIER WHITESPACE '|' WHITESPACE
+ * MODIFIER     ::= <any MODIFIER as in keyboard_parse_string()>
+ * BUTTON       ::= 'Button1'
+ *               |  'Button2'
+ *               |  'Button3'
+ *               |  'Button4'
+ *               |  'Button5'
+ * 
+ * This function treats all tokens as case-insensitive.
+ */
+
+int mouse_parse_string(char *mousestring, unsigned int *button,
+                       unsigned int *modifiers);
+
+/*
  * Utility function which calls keyboard_parse_string() and then
  * keyboard_set_function_ex()
  */
@@ -231,18 +231,52 @@ void keyboard_set_function(char *keystring, int depress,
                            key_fn fn, void *arg);
 
 /*
+ * convenience function which parses "mousestring" using
+ * mouse_parse_string() and calls mouse_set_function_ex()
+ */
+
+void mouse_set_function(char *mousestring, int depress,
+                        int location, mouse_fn fn, void *arg);
+
+
+
+/*
  * Do a "soft" grab on all the keys that are of interest to us - this
  * should be called once when the window is mapped.
  */
 
 void keyboard_grab_keys(client_t *client);
 
+/*
+ * Grab the mouse buttons we use for a specified window
+ * 
+ * NB:  while you should call keyboard_grab_keys() on every window
+ * (including those with override_redirect), you should NOT grab the
+ * mouse buttons of any window with override_redirect.  This does not
+ * check for override_redirect.  Shouldn't make a big difference
+ * really as most override_redirect windows will grab the keyboard and
+ * mouse.
+ */
+
+void mouse_grab_buttons(client_t *client);
+
 /* 
  * process a key event
  */
+
 void keyboard_process(XKeyEvent *xevent);
 
-/* FIXME:  there should be a function to unmap a key if we really want
- * this to be dynamic */
+/*
+ * Whenever a mouse event is received it should be passed to this
+ * function; this includes XButtonEvent, etc, except for XMotionEvent,
+ * which is dealt with as a special case within the event loops of the
+ * functions that care about mouse motion.  The pointer will NOT be
+ * grabbed when this function returns.
+ */
+
+void mouse_handle_event(XEvent *);
+
+/* FIXME:  there should be a function to unmap keys and buttons if we
+ * really want this to be dynamic */
 
 #endif /* KEYBOARD_H */

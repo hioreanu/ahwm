@@ -5,7 +5,7 @@ CFLAGS=-DSHAPE -O2 -I/usr/X11R6/include -L/usr/X11R6/lib
 CFLAGS=-g -Wall -DSHAPE -DDEBUG=1 -I/usr/X11R6/include -L/usr/X11R6/lib
 LIBS=-lX11 -lXext
 
-OBJS=xwm.o client.o event.o focus.o workspace.o keyboard.o xev.o mouse.o cursor.o move-resize.o error.o kill.o malloc.o icccm.o colormap.o ewmh.o debug.o
+OBJS=xwm.o client.o event.o focus.o workspace.o keyboard.o xev.o cursor.o move-resize.o error.o kill.o malloc.o icccm.o colormap.o ewmh.o debug.o
 
 all: xwm
 

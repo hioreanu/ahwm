@@ -8,9 +8,6 @@
  * This implements a subset of the hints in the "Extended Window
  * Manager Hints" document, version 1.1 (which is a standard
  * replacement for the previously incompatible GNOME and KDE hints).
- * The only application that really requires this (besides pagers,
- * taskbars, etc) is Konqueror, which does not behave correctly
- * without this.
  */
 
 #ifndef EWMH_H

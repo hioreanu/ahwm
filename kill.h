@@ -8,7 +8,16 @@
 
 #include "client.h"
 
+/*
+ * Send a DELETE client message if the client supports it, otherwise
+ * use XKillClient().  Meant to be bound to a key or pointer event.
+ */
+
 void kill_nicely(XEvent *, void *);
+
+/*
+ * XKillClient() wrapper, to be bound to a keystroke or click.
+ */
 
 void kill_with_extreme_prejudice(XEvent *, void *);
 

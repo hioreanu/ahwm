@@ -75,10 +75,8 @@ void focus_ensure(Time);
  * We don't display any icons on Alt-Tab, so we actually raise and
  * focus each window whenever Tab is hit with Alt down, but we don't
  * modify the stack until Alt is released.  The keyboard is grabbed in
- * this function, so any focused windows will not actually receive any
- * keystrokes, but we still set the focus so that applications can
- * update themselves showing a focused state (like how xterm changes
- * its cursor from an empty box to a filled box).
+ * this function, and no window will actually receive the input focus
+ * until user lets go of Alt.
  */
 
 void focus_alt_tab(XEvent *, void *);
