@@ -132,7 +132,7 @@ static prefs defaults = {
     DisplayLeft, UserSet,         /* title_position */
     True, UserSet,                /* keep_transients_on_top */
     0, UserSet,                   /* raise_delay */
-    False, UserSet,               /* use_net_wm_pid */
+    True, UserSet,               /* use_net_wm_pid */
 };
 
 /* names of the types

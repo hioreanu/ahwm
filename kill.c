@@ -29,6 +29,7 @@
 #include <sys/types.h>
 #include <sys/utsname.h>
 #include <signal.h>
+#include <stdlib.h>
 
 #include <X11/Xlib.h>
 #include <X11/Xproto.h>         /* for CARD32 */
@@ -37,9 +38,30 @@
 #include "kill.h"
 #include "event.h"
 #include "debug.h"
+#include "timer.h"
+
+/*
+ * Sometimes we'll set a timer on a client and unconditionally kill
+ * the client when time runs out.  Problem is that client might
+ * already be killed by the time the timer triggers and the client
+ * pointer is a stale pointer.  Same problem just holding a window
+ * XID; the XID may have already been recycled.  Can't figure out any
+ * way to use X to uniquely identify a client, so doing some bogus
+ * heuristics.  Works fine in practice.
+ */
+
+typedef struct _murder_info {
+    client_t *client;
+    Window window;
+    unsigned long hash;
+} murder_info;
 
 static char my_hostname[SYS_NMLN];
 static Atom _NET_WM_PID;
+
+static void set_murder_timer(client_t *client);
+static void murder_on_timeout(timer_t *timer, void *v);
+static unsigned long compute_hash(client_t *client);
 
 /*
  * ICCCM is somewhat vague about exactly what this is supposed to
@@ -81,6 +103,7 @@ void kill_nicely(XEvent *xevent, arglist *ignored)
         debug(("\tPolitely requesting window to die\n"));
         client_sendmessage(client, WM_DELETE_WINDOW, event_timestamp,
                            0, 0, 0);
+        set_murder_timer(client);
     } else {
         debug(("\tWindow isn't civilized, exterminating it\n"));
         kill_with_extreme_prejudice(xevent, ignored);
@@ -147,5 +170,61 @@ void kill_with_extreme_prejudice(XEvent *xevent, arglist *ignored)
     if (client->use_net_wm_pid) {
         kill_using_net_wm_pid(client);
     }
+    XKillClient(dpy, client->window);
+}
+
+static unsigned long compute_hash(client_t *client)
+{
+    int i, offset;
+    unsigned long hash;
+    char *s;
+
+    if (client->instance != NULL) {
+        s = client->instance;
+    } else if (client->class != NULL) {
+        s = client->class;
+    } else {
+        s = client->name;
+    }
+    hash = offset = 0;
+    for (i = 0; i < strlen(s); i++) {
+        hash ^= s[i] << offset * 8;
+        offset = (offset + 1) % sizeof(unsigned long);
+    }
+    return hash ^ client->frame;
+}
+
+static void set_murder_timer(client_t *client)
+{
+    murder_info *info;
+
+    info = malloc(sizeof(murder_info));
+    if (info == NULL) {
+        return;
+    }
+    info->window = client->window;
+    info->client = client;
+    info->hash = compute_hash(client);
+    timer_new(1000, murder_on_timeout, info);
+}
+
+static void murder_on_timeout(timer_t *timer, void *v)
+{
+    client_t *client;
+    murder_info *info = (murder_info *)v;
+
+    timer_cancel(timer);
+    client = info->client;
+    if (client != client_find(info->window)) {
+        free(info);
+        return;
+    }
+    if (info->hash != compute_hash(client)) {
+        free(info);
+        return;
+    }
+    free(info);
+    fflush(stdout);
+    kill_using_net_wm_pid(client);
     XKillClient(dpy, client->window);
 }

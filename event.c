@@ -71,6 +71,7 @@ static void event_expose(XExposeEvent *);
 static void event_focusin(XFocusChangeEvent *);
 static void event_map(XMapEvent *);
 static void configure_nonclient(XConfigureRequestEvent *xevent);
+static void raise_on_timeout(timer_t *t, void *v);
 static void set_raise_timer(unsigned int milliseconds);
 static struct timeval *get_raise_timer();
 
@@ -134,8 +135,11 @@ void event_get(int xfd, XEvent *event)
         }
         FD_ZERO(&fds);
         FD_SET(xfd, &fds);
-        if (have_timeout) timeout = &tv;
-        else timeout = NULL;
+        if (have_timeout) {
+            timeout = &tv;
+        } else {
+            timeout = NULL;
+        }
         if (select(xfd + 1, &fds, NULL, NULL, timeout) > 0) {
             continue;
         } else if (errno != EINTR) {
@@ -1018,41 +1022,4 @@ static Time figure_timestamp(XEvent *event)
 #endif /* SHAPE */
             return CurrentTime;
     }
-}
-
-/*
- * Now I was originally intending to do a gettimeofday() when the
- * timer is set and do another gettimeofday() whenever the timer is
- * read to ensure we have the correct timeout value.  However, this
- * seems to work very nicely as is.  In fact, this is probably nicer
- * than using the "correct" value as we won't raise until we run out
- * of XEvents to deal with (ie, until the mouse stops jumping in and
- * out of windows).  In addition, it's probably not a good idea to
- * wrap each call to select() around two other system calls.  So I'm
- * leaving this as it is.
- */
-
-static unsigned int timer_val = 0;
-
-static void set_raise_timer(unsigned int msecs)
-{
-    if (msecs == 0) {
-        timer_val = 0;
-    } else {
-        timer_val = msecs;
-    }
-}
-
-static struct timeval *get_raise_timer()
-{
-    static struct timeval tv;
-    
-    if (timer_val == 0) {
-        return NULL;
-    }
-
-    tv.tv_usec = timer_val * 1000;
-    tv.tv_sec = 0;
-
-    return &tv;                 /* tv is static */ /* (except maybe PBS :) */
 }

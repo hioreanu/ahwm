@@ -64,12 +64,12 @@ static void remove_timer(timer_t *t);
 void timer_init()
 {
     /* start out with eight timers */
-    timers = malloc(sizeof(timer_t *) * 8);
+    timers = malloc(sizeof(timer_t *) * 1);
     if (timers == NULL) {
         perror("malloc");
         exit(1);
     }
-    nallocated = 8;
+    nallocated = 1;
 }
 
 int timer_pending(timer_t *t)
@@ -89,8 +89,9 @@ timer_t *timer_new(int msecs, timer_fn fn, void *arg)
     }
     /* enlarge array if needed (we never shrink it again) */
     if (nused == nallocated) {
-        tmp2 = realloc(timers, nallocated * 2);
+        tmp2 = realloc(timers, sizeof(timer_t *) * nallocated * 2);
         if (tmp2 == NULL) {
+            free(t);
             return NULL;
         }
         timers = tmp2;
@@ -149,6 +150,8 @@ static void remove_timer(timer_t *t)
     tmp = t;
     timers[i] = timers[nused - 1];
     timers[nused - 1] = tmp;
+    timers[i]->index = i;
+    timers[nused - 1]->index = nused - 1;
     nused--;
 
     for (;;) {
@@ -203,9 +206,7 @@ static int timeval_compare(struct timeval *tv1, struct timeval *tv2)
 
 void timer_cancel(timer_t *t)
 {
-    if (t->state == ACTIVE) {
-        remove_timer(t);
-    }
+    remove_timer(t);
     free(t);
 }
 
@@ -249,8 +250,13 @@ void timer_run_first()
 
 static void timer_run_with_tv(struct timeval *now)
 {
+    timer_t *t;
+    
     while (nused > 0 && timeval_compare(now, &timers[0]->tv) <= 0) {
-        (timers[0]->fn)(timers[0], timers[0]->arg);
-        remove_timer(timers[0]);
+        /* must remove before calling user function - user function
+         * might call timer_cancel, which calls free() */
+        t = timers[0];
+        remove_timer(t);
+        (t->fn)(t, t->arg);
     }
 }
