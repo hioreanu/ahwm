@@ -472,6 +472,7 @@ static void event_unmap(XUnmapEvent *xevent)
         debug(("\tUnmapping frame in event_unmap\n"));
         XUnmapWindow(dpy, client->frame);
     }
+    /* FIXME: maybe reset client->workspace? */
     client->state = WithdrawnState;
     debug(("\tUnreparenting\n"));
     client_unreparent(client);

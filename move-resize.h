@@ -88,4 +88,22 @@ void resize_maximize(XEvent *xevent, arglist *ignored);
 void resize_maximize_horizontally(XEvent *xevent, arglist *ignored);
 void resize_maximize_vertically(XEvent *xevent, arglist *ignored);
 
+/* FIXME: comment */
+
+enum max_horiz_vert {
+    MAX_BOTH,
+    MAX_HORIZ,
+    MAX_VERT
+};
+
+enum max_toggle_ensure {
+    MAX_TOGGLE,
+    MAX_MAXED,
+    MAX_UNMAXED
+};
+
+void resize_maximize_client(client_t *client,
+                            enum max_horiz_vert hv,
+                            enum max_toggle_ensure toggle_ensure);
+
 #endif /* MOVE_RESIZE_H */

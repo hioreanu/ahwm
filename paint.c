@@ -68,8 +68,8 @@ static int find(unsigned long normal, unsigned long focused,
 static unsigned long calc(unsigned long orig, XColor exact, long offset,
                           char *color_text);
 
-unsigned long *colors = NULL;
-int nallocated = 0;
+unsigned long *colors = NULL;  /* treated as a 2-D array */
+int nallocated = 0;            /* dimension of "colors" is "nallocated" by 8 */
 
 /*
  * Allocates default colors

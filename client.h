@@ -48,7 +48,7 @@ typedef enum _option_setting {
  * this is the information we store with each top-level window EXCEPT
  * for those windows which have override_redirect set (the ONLY thing
  * we do with override_redirect windows is an XGrabKeys since we want
- * our global keybindings to work globally - we don't event listen for
+ * our global keybindings to work globally - we don't even listen for
  * events on override_redirect windows and we will never give them the
  * focus (if they want the focus, they can take it themselves).  If
  * you haven't played around with this, the most common kind of
@@ -58,7 +58,7 @@ typedef enum _option_setting {
  * Regular top-level windows are reparented to a frame window we
  * create which may or may not have an area for a titlebar.  We
  * reparent windows even if they don't have a titlebar since a lot of
- * X apps ASSUME that they will be reparented by a windowmanager upon
+ * X apps assume that they will be reparented by a windowmanager upon
  * creation and it's a bit easier to listen for some events on our
  * frame rather than their app window.  We also reset the client's
  * border width to zero since I hate borders on windows.  The old

@@ -36,6 +36,7 @@
 #include "debug.h"
 #include "focus.h"
 #include "kill.h"
+#include "move-resize.h"
 
 /*
  * TODO:
@@ -52,20 +53,24 @@
  *   MENU:  SkipCycle, modal?
  *   DIALOG:  nothing special
  *   NORMAL:  nothing special
- * - _NET_WM_STATE:  
+ * x _NET_WM_STATE:  
  *   MODAL:  nothing special
  *   STICKY:  sticky
  *   MAXMIZED_HORIZ, VERT:  separate maximization states
  *   SHADED:  add a shaded state, only for clients with titlebars
- *   SKIP_TASKBAR:  skip alt-tab
+ *   SKIP_TASKBAR:  nothing special
  *   SKIP_PAGER:  nothing special
  * - _NET_WM_STRUT:  recalculate _NET_WORKAREA
  * - _NET_WM_PING, _NET_WM_PID
+ * x add horiz, and vert max.
  * - kicker has a KEEP_ON_TOP WM_STATE not mentioned in EWMH 1.1
- * - some properties must be updated on window if set by ahwm
  * - proxy clicks for GNOME
- * 
- * Need to implement horiz, and vert max., sticky windows.
+ * - some properties must be updated on window if set by ahwm:
+ *   _NET_WM_DESKTOP
+ *   _NET_WM_STATE
+ *   _WIN_STATE
+ *   _WIN_WORKSPACE
+ *   _WIN_LAYER
  */
 
 /* bitmasks for _WIN_STATE: */
@@ -98,9 +103,9 @@
 
 /*
  * EWMH 1.1 does not clearly state which atoms are "hints" and belong
- * in _NET_SUPPORTED_HINTS.  Not much of a specification.  I'm putting
- * every atom EWMH mentions into _NET_SUPPORTED_HINTS, even those
- * which don't really look like "hints."
+ * in _NET_SUPPORTED_HINTS.  I'm putting every atom EWMH mentions into
+ * _NET_SUPPORTED_HINTS, even those which don't really look like
+ * "hints."
  */
 
 #define NO_SUPPORTED_HINTS 35
@@ -143,6 +148,8 @@ static void no_titlebar(client_t *client);
 static void click_to_focus(client_t *client);
 static void skip_cycle(client_t *client);
 static void sticky(client_t *client);
+static void on_top(client_t *client);
+static void on_bottom(client_t *client);
 void ewmh_to_desktop(client_t *client);
 void ewmh_to_dock(client_t *client);
 void ewmh_to_normal(client_t *client);
@@ -197,7 +204,7 @@ void ewmh_init()
         XInternAtom(dpy, "_NET_WM_WINDOW_TYPE_NORMAL", False);
     _NET_WM_STATE = XInternAtom(dpy, "_NET_WM_STATE", False);
     _NET_WM_STATE_MODAL = XInternAtom(dpy, "_NET_WM_STATE_MODAL", False);
-    _NET_WM_STATE_STICKY = XInternAtom(dpy, "FIXME_NET_WM_STATE_STICKY", False);
+    _NET_WM_STATE_STICKY = XInternAtom(dpy, "_NET_WM_STATE_STICKY", False);
     _NET_WM_STATE_MAXIMIZED_VERT =
         XInternAtom(dpy, "_NET_WM_STATE_MAXIMIZED_VERT", False);
     _NET_WM_STATE_MAXIMIZED_HORZ =
@@ -377,17 +384,36 @@ void ewmh_init()
     
 }
 
+/*
+ * EWMH is very, very vague about how this works.  The only way I
+ * figured it out was by observing KDE applications and comparing this
+ * to the GNOME _WIN spec.
+ * 
+ * Some properties on the client window must be kept updated by the
+ * window manager.  For these properties, the way a client can change
+ * the property is by sending a ClientMessage.  However, the client
+ * may simply set the property directly before the client maps the
+ * window or after the client unmaps the window.
+ * 
+ * Some other properties on the client window are not kept updated by
+ * the window manager.  For these properties, the client can change
+ * the property at any time by simply using XChangeProperty().
+ */
+
 void ewmh_wm_state_apply(client_t *client)
 {
     Atom actual, *states;
     int fmt, i;
     long bytes_after_return, nitems;
+    int max_v, max_h;
 
+    if (client->state != WithdrawnState) return;
+    
     if (XGetWindowProperty(dpy, client->window, _NET_WM_STATE, 0,
                            sizeof(Atom), False, XA_ATOM,
                            &actual, &fmt, &nitems, &bytes_after_return,
                            (unsigned char **)&states) != Success) {
-        debug(("XGetWindowProperty(_NET_WM_STATE) FAILED!\n"));
+        debug(("XGetWindowProperty(_NET_WM_STATE) failed\n"));
         return;
     }
 
@@ -396,36 +422,29 @@ void ewmh_wm_state_apply(client_t *client)
         return;
     }
 
+    max_v = max_h = 0;
     for (i = 0; i < nitems; i++) {
-        if (states[i] == _NET_WM_STATE_SKIP_PAGER) {
-            if (client->cycle_behaviour_set <= HintSet) {
-                client->cycle_behaviour = SkipCycle;
-                client->cycle_behaviour_set = HintSet;
-            }
+        if (states[i] == _NET_WM_STATE_STICKY) {
+            sticky(client);
+        } else if (states[i] == _NET_WM_STATE_MAXIMIZED_HORZ) {
+            max_h = 1;
+        } else if (states[i] == _NET_WM_STATE_MAXIMIZED_VERT) {
+            max_v = 1;
         }
     }
+    if (max_h && max_v) {
+        /* do both atomically instead of one at a time */
+        resize_maximize_client(client, MAX_BOTH, MAX_MAXED);
+    } else if (max_h) {
+        resize_maximize_client(client, MAX_HORIZ, MAX_MAXED);
+    } else if (max_v) {
+        resize_maximize_client(client, MAX_VERT, MAX_MAXED);
+    }
 }
 
-void ewmh_win_state_apply(client_t *client)
-{
-    Atom actual;
-    int fmt;
-    unsigned long *hint, bytes_after_return, nitems;
-
-    if (XGetWindowProperty(dpy, client->window, _WIN_STATE, 0,
-                           sizeof(Atom), False, XA_CARDINAL,
-                           &actual, &fmt, &nitems, &bytes_after_return,
-                           (unsigned char **)&hint) != Success) {
-        debug(("XGetWindowProperty(_WIN_STATE) FAILED!\n"));
-        return;
-    }
-    if (nitems == 0 || fmt != 32 || actual != XA_CARDINAL) {
-        debug(("nitems = %d, fmt = %d\n", nitems, fmt));
-        return;
-    }
-    /* FIXME:  must implement */
-}
-
+/* _WIN_HINTS is only changed by the application.  Thus, the
+ * application tells us to change something by just doing an
+ * XChangeProperty instead of using a ClientMessage */
 void ewmh_win_hints_apply(client_t *client)
 {
     Atom actual;
@@ -436,7 +455,7 @@ void ewmh_win_hints_apply(client_t *client)
                            sizeof(Atom), False, XA_CARDINAL,
                            &actual, &fmt, &nitems, &bytes_after_return,
                            (unsigned char **)&hint) != Success) {
-        debug(("XGetWindowProperty(_WIN_HINTS) FAILED!\n"));
+        debug(("XGetWindowProperty(_WIN_HINTS) failed\n"));
         return;
     }
     if (nitems == 0 || fmt != 32 || actual != XA_CARDINAL) {
@@ -451,19 +470,104 @@ void ewmh_win_hints_apply(client_t *client)
     }
 }
 
+void ewmh_win_state_apply(client_t *client)
+{
+    Atom actual;
+    int fmt;
+    unsigned long *hint, bytes_after_return, nitems;
+
+    if (client->state != WithdrawnState) return;
+    
+    if (XGetWindowProperty(dpy, client->window, _WIN_STATE, 0,
+                           sizeof(Atom), False, XA_CARDINAL,
+                           &actual, &fmt, &nitems, &bytes_after_return,
+                           (unsigned char **)&hint) != Success) {
+        debug(("XGetWindowProperty(_WIN_STATE) failed\n"));
+        return;
+    }
+    if (nitems == 0 || fmt != 32 || actual != XA_CARDINAL) {
+        debug(("nitems = %d, fmt = %d\n", nitems, fmt));
+        return;
+    }
+    
+    if ((*hint & WIN_STATE_MAXIMIZED_HORIZ) &&
+        (*hint & WIN_STATE_MAXIMIZED_VERT)) {
+        
+        resize_maximize_client(client, MAX_BOTH, MAX_MAXED);
+    } else {
+        if (*hint & WIN_STATE_MAXIMIZED_VERT) {
+            resize_maximize_client(client, MAX_VERT, MAX_MAXED);
+        }
+        if (*hint & WIN_STATE_MAXIMIZED_HORIZ) {
+            resize_maximize_client(client, MAX_HORIZ, MAX_MAXED);
+        }
+    }
+    if (*hint & WIN_STATE_FIXED_POSITION) {
+        sticky(client);
+    }
+}
+
 void ewmh_win_workspace_apply(client_t *client)
 {
-    ;
+    Atom actual;
+    int fmt;
+    unsigned long *hint, bytes_after_return, nitems;
+
+    if (client->state != WithdrawnState) return;
+    
+    if (XGetWindowProperty(dpy, client->window, _WIN_WORKSPACE, 0,
+                           sizeof(Atom), False, XA_CARDINAL,
+                           &actual, &fmt, &nitems, &bytes_after_return,
+                           (unsigned char **)&hint) != Success) {
+        debug(("XGetWindowProperty(_WIN_STATE) failed\n"));
+        return;
+    }
+    if (nitems == 0 || fmt != 32 || actual != XA_CARDINAL) {
+        debug(("nitems = %d, fmt = %d\n", nitems, fmt));
+        return;
+    }
+    if (client->workspace_set <= HintSet) {
+        client->workspace = (*hint) + 1;
+        client->workspace_set = HintSet;
+    }
 }
 
 void ewmh_win_layer_apply(client_t *client)
 {
-    ;
+    Atom actual;
+    int fmt;
+    unsigned long *hint, bytes_after_return, nitems;
+
+    if (client->state != WithdrawnState) return;
+    
+    if (XGetWindowProperty(dpy, client->window, _WIN_LAYER, 0,
+                           sizeof(Atom), False, XA_CARDINAL,
+                           &actual, &fmt, &nitems, &bytes_after_return,
+                           (unsigned char **)&hint) != Success) {
+        debug(("XGetWindowProperty(_WIN_STATE) failed\n"));
+        return;
+    }
+    if (nitems == 0 || fmt != 32 || actual != XA_CARDINAL) {
+        debug(("nitems = %d, fmt = %d\n", nitems, fmt));
+        return;
+    }
+    if (*hint == 0) {
+        ewmh_to_desktop(client);
+    } else if (*hint == 12) {
+        ewmh_to_menu(client);
+    } else if (*hint < 4) {
+        on_bottom(client);
+    } else if (*hint > 8) {
+        ewmh_to_dock(client);
+    } else if (*hint > 4) {
+        on_top(client);
+    }
 }
 
+/* client changes at any time using XChangeProperty() */
 void ewmh_wm_strut_apply(client_t *client)
 {
-    
+
 }
 
 void ewmh_wm_desktop_apply(client_t *client)
@@ -471,12 +575,14 @@ void ewmh_wm_desktop_apply(client_t *client)
     Atom actual;
     int fmt;
     unsigned long *ws, bytes_after_return, nitems;
+
+    if (client->state != WithdrawnState) return;
     
     if (XGetWindowProperty(dpy, client->window, _NET_WM_DESKTOP, 0,
                            sizeof(Atom), False, XA_CARDINAL,
                            &actual, &fmt, &nitems, &bytes_after_return,
                            (unsigned char **)&ws) != Success) {
-        debug(("XGetWindowProperty(_NET_WM_DESKTOP) FAILED!\n"));
+        debug(("XGetWindowProperty(_NET_WM_DESKTOP) failed\n"));
         return;
     }
     if (nitems == 0 || fmt != 32 || actual != XA_CARDINAL) {
@@ -496,6 +602,13 @@ void ewmh_wm_desktop_apply(client_t *client)
     }
 }
 
+/*
+ * EWMH does not specify how the application can change this.  We will
+ * assume the application can change this property at any time.  We
+ * won't touch this property, but EWMH should specify whether or not
+ * the window manager is allowed to change this property.
+ */
+
 void ewmh_window_type_apply(client_t *client)
 {
     Atom actual, *types;
@@ -506,7 +619,7 @@ void ewmh_window_type_apply(client_t *client)
                            sizeof(Atom), False, XA_ATOM,
                            &actual, &fmt, &nitems, &bytes_after_return,
                            (unsigned char **)&types) != Success) {
-        debug(("XGetWindowProperty(_NET_WM_WINDOW_TYPE) FAILED!\n"));
+        debug(("XGetWindowProperty(_NET_WM_WINDOW_TYPE) failed\n"));
         return;
     }
     if (fmt != 32 || nitems == 0) return;
@@ -567,11 +680,41 @@ static void sticky(client_t *client)
     }
 }
 
+static void on_top(client_t *client)
+{
+    stacking_remove(client);
+    if (client->always_on_bottom_set <= HintSet) {
+        client->always_on_bottom = 0;
+        client->always_on_bottom_set = HintSet;
+    }
+    if (client->always_on_top_set <= HintSet) {
+        client->always_on_top = 1;
+        client->always_on_top_set = HintSet;
+    }
+    stacking_add(client);
+}
+
+static void on_bottom(client_t *client)
+{
+    stacking_remove(client);
+    if (client->always_on_top_set <= HintSet) {
+        client->always_on_top = 0;
+        client->always_on_top_set = HintSet;
+    }
+    if (client->always_on_bottom_set <= HintSet) {
+        client->always_on_bottom = 1;
+        client->always_on_bottom_set = HintSet;
+    }
+    stacking_add(client);
+}
+
 /*
  * make a window a "desktop" window.  No titlebar, omnipresent, Skip
  * alt-tab, force click-to-focus, force pass-through-click,
  * always-on-bottom.  Of course, user can override any of these using
  * unconditional option settings.
+ * 
+ * FIXME:  use stacking_desktop_window
  */
 
 void ewmh_to_desktop(client_t *client)
@@ -580,17 +723,10 @@ void ewmh_to_desktop(client_t *client)
     skip_cycle(client);
     click_to_focus(client);
     sticky(client);
+    on_bottom(client);
     if (client->omnipresent_set <= HintSet) {
         client->omnipresent = 1;
         client->omnipresent_set = HintSet;
-    }
-    if (client->always_on_bottom_set <= HintSet) {
-        if (client->always_on_bottom == 0) {
-            stacking_remove(client);
-            client->always_on_bottom = 1;
-            client->always_on_bottom_set = HintSet;
-            stacking_add(client);
-        }
     }
     if (client->dont_bind_mouse_set <= HintSet) {
         if (client->dont_bind_mouse == 0) {
@@ -611,12 +747,7 @@ void ewmh_to_dock(client_t *client)
     click_to_focus(client);
     skip_cycle(client);
     sticky(client);
-    if (client->always_on_top_set <= HintSet) {
-        stacking_remove(client);
-        client->always_on_top = 1;
-        client->always_on_top_set = HintSet;
-        stacking_add(client);
-    }
+    on_top(client);
 }
 
 /* small problem here:
@@ -652,12 +783,7 @@ void ewmh_to_menu(client_t *client)
     no_titlebar(client);
     skip_cycle(client);
     click_to_focus(client);
-    if (client->always_on_top_set <= HintSet) {
-        stacking_remove(client);
-        client->always_on_top = 1;
-        client->always_on_top_set = HintSet;
-        stacking_add(client);
-    }
+    on_top(client);
 }
 
 void ewmh_to_toolbar(client_t *client)
@@ -670,14 +796,17 @@ void ewmh_to_toolbar(client_t *client)
 Bool ewmh_handle_clientmessage(XClientMessageEvent *xevent)
 {
     client_t *client;
-    long data;
+    long data, data2, data3;
+    
+    client = client_find(xevent->window);
+    data = xevent->data.l[0];
+    data2 = xevent->data.l[1];
+    data3 = xevent->data.l[2];
     
     if (xevent->message_type == _NET_CURRENT_DESKTOP) {
-        data = xevent->data.l[0] + 1;
-        workspace_goto((unsigned int)data);
+        workspace_goto((unsigned int)(data + 1));
         return True;
     } else if (xevent->message_type == _NET_ACTIVE_WINDOW) {
-        client = client_find(xevent->window);
         if (client != NULL) {
             focus_set(client, CurrentTime);
         }
@@ -686,8 +815,6 @@ Bool ewmh_handle_clientmessage(XClientMessageEvent *xevent)
         kill_nicely((XEvent *)xevent, NULL); /* ugly but works ok */
         return True;
     } else if (xevent->message_type == _NET_WM_DESKTOP) {
-        client = client_find(xevent->window);
-        data = xevent->data.l[0];
         if (data == 0xFFFFFFFF) {
             if (client->omnipresent_set <= HintSet) {
                 client->omnipresent = 1;
@@ -700,7 +827,145 @@ Bool ewmh_handle_clientmessage(XClientMessageEvent *xevent)
             }
         }
         return True;
+    } else if (xevent->message_type == _NET_WM_STATE) {
+        /* "data" is:
+         * 0: toggle state
+         * 1: ensure state ON
+         * 2: ensure state OFF
+         * "data2" and "data3" are atoms to change */
+
+        /* ensure maximizing in both directions happens atomically: */
+        if ((data2 == _NET_WM_STATE_MAXIMIZED_HORZ &&
+             data3 == _NET_WM_STATE_MAXIMIZED_VERT) ||
+            (data2 == _NET_WM_STATE_MAXIMIZED_VERT &&
+             data3 == _NET_WM_STATE_MAXIMIZED_HORZ)) {
+            if (data == 2) {
+                resize_maximize_client(client, MAX_BOTH, MAX_TOGGLE);
+            } else if (data == 1) {
+                resize_maximize_client(client, MAX_BOTH, MAX_MAXED);
+            } else if (data == 0) {
+                resize_maximize_client(client, MAX_BOTH, MAX_UNMAXED);
+            }
+            return True;
+        }
+        if (data2 == _NET_WM_STATE_MAXIMIZED_HORZ ||
+            data3 == _NET_WM_STATE_MAXIMIZED_HORZ) {
+
+            if (data == 2) {
+                resize_maximize_client(client, MAX_HORIZ, MAX_TOGGLE);
+            } else if (data == 1) {
+                resize_maximize_client(client, MAX_HORIZ, MAX_MAXED);
+            } else if (data == 0) {
+                resize_maximize_client(client, MAX_HORIZ, MAX_UNMAXED);
+            }
+        }
+        if (data2 == _NET_WM_STATE_MAXIMIZED_VERT ||
+            data3 == _NET_WM_STATE_MAXIMIZED_VERT) {
+
+            if (data == 2) {
+                resize_maximize_client(client, MAX_VERT, MAX_TOGGLE);
+            } else if (data == 1) {
+                resize_maximize_client(client, MAX_VERT, MAX_MAXED);
+            } else if (data == 0) {
+                resize_maximize_client(client, MAX_VERT, MAX_UNMAXED);
+            }
+        }
+        if (data2 == _NET_WM_STATE_STICKY ||
+            data3 == _NET_WM_STATE_STICKY) {
+
+            if (client->sticky_set <= HintSet) {
+                client->sticky_set = HintSet;
+                if (data == 2) {
+                    if (client->sticky) {
+                        client->sticky = 0;
+                    } else {
+                        client->sticky = 1;
+                    }
+                } else if (data == 1) {
+                    client->sticky = 1;
+                } else if (data == 0) {
+                    client->sticky = 0;
+                }
+            }
+        }
+        
+        return True;
+    } else if (xevent->message_type == _WIN_LAYER) {
+        if (data == 0) {
+            ewmh_to_desktop(client);
+        } else if (data == 12) {
+            ewmh_to_menu(client);
+        } else if (data < 4) {            /* 0 < data < 4 */
+            on_bottom(client);
+        } else if (data > 8) {            /* 12 > data > 8 */
+            ewmh_to_dock(client);
+        } else if (data > 4) {            /* 8 >= data > 4 */
+            on_top(client);
+        } else {                          /* data == 4, normal layer */
+            stacking_remove(client);
+            if (client->always_on_top_set <= HintSet) {
+                client->always_on_top = 0;
+                client->always_on_top_set = HintSet;
+            }
+            if (client->always_on_bottom_set <= HintSet) {
+                client->always_on_bottom = 0;
+                client->always_on_bottom_set = HintSet;
+            }
+            stacking_add(client);
+        }
+        return True;
+    } else if (xevent->message_type == _WIN_STATE) {
+        /* "data" is mask of which members of "data2" have changed
+         * "data2" is mask - bit i is on means state i is on
+         * we also want to ensure maximizing both horizontally
+         * and vertically at the same time is an atomic operation,
+         * so this gets a little ugly */
+        if (data & WIN_STATE_FIXED_POSITION) {
+            if (data2 & WIN_STATE_FIXED_POSITION) {
+                sticky(client);
+            } else {
+                if (client->sticky_set <= HintSet) {
+                    client->sticky = 0;
+                    client->sticky_set = HintSet;
+                }
+            }
+        }
+        if (data & WIN_STATE_MAXIMIZED_VERT) {
+            if (data & WIN_STATE_MAXIMIZED_HORIZ) {
+                if ((data2 & WIN_STATE_MAXIMIZED_VERT) &&
+                    (data2 & WIN_STATE_MAXIMIZED_HORIZ)) {
+                    
+                    resize_maximize_client(client, MAX_BOTH, MAX_MAXED);
+                    return True;
+                } else if (!(data2 & WIN_STATE_MAXIMIZED_VERT) &&
+                           !(data2 & WIN_STATE_MAXIMIZED_HORIZ)) {
+                    resize_maximize_client(client, MAX_BOTH, MAX_UNMAXED);
+                    return True;
+                }
+                if (data2 & WIN_STATE_MAXIMIZED_HORIZ)
+                    resize_maximize_client(client, MAX_HORIZ, MAX_MAXED);
+                else
+                    resize_maximize_client(client, MAX_HORIZ, MAX_UNMAXED);
+            }
+            if (data2 & WIN_STATE_MAXIMIZED_VERT)
+                resize_maximize_client(client, MAX_VERT, MAX_MAXED);
+            else
+                resize_maximize_client(client, MAX_VERT, MAX_UNMAXED);
+        } else if (data & WIN_STATE_MAXIMIZED_HORIZ) {
+            if (data2 & WIN_STATE_MAXIMIZED_HORIZ)
+                resize_maximize_client(client, MAX_HORIZ, MAX_MAXED);
+            else
+                resize_maximize_client(client, MAX_HORIZ, MAX_UNMAXED);
+        }
+        return True;
+    } else if (xevent->message_type == _WIN_WORKSPACE) {
+        if (client->workspace_set <= HintSet) {
+            client->workspace_set = HintSet;
+            workspace_client_moveto(client, (unsigned int)(data + 1));
+        }
+        return True;
     }
+    
     return False;
 }
 

@@ -5,6 +5,8 @@ TODO before release:
 - colormaps
 - user-settable font, global option
 - titlebar height depends on font height or user pref, experiment
+- remove ewmh rants from code
+- manage client on first maprequest, not window creation
 - deal with build problems on Debian and Solaris 8
 - test with a modern version of Sun's X implementation
 - test final build with various options at least two weeks before initial release

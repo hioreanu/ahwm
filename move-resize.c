@@ -183,17 +183,71 @@ static void apply_max_state(client_t *client)
     }
 }
 
+void resize_maximize_client(client_t *client,
+                            enum max_horiz_vert hv,
+                            enum max_toggle_ensure toggle_ensure)
+{
+    void (*fn)(client_t *);
+    
+    if (client->sticky) return;
+
+    if (hv == MAX_BOTH) {
+        if (toggle_ensure == MAX_TOGGLE) {
+            /* if maximized in only one direction, maximize in both */
+            if (client->prev_width == -1 && client->prev_height != -1) {
+                client->prev_height = -1;
+            }
+            if (client->prev_width != -1 && client->prev_height == -1) {
+                client->prev_width = -1;
+            }
+            max_vert(client);
+            max_horiz(client);
+        } else if (toggle_ensure == MAX_MAXED) {
+            if (client->prev_width != -1 && client->prev_height != -1)
+                return;
+            if (client->prev_width == -1)
+                max_horiz(client);
+            if (client->prev_height == -1)
+                max_vert(client);
+        } else if (toggle_ensure == MAX_UNMAXED) {
+            if (client->prev_width == -1 && client->prev_height == -1)
+                return;
+            if (client->prev_width != -1)
+                max_horiz(client);
+            if (client->prev_height != -1)
+                max_vert(client);
+        }
+    } else if (hv == MAX_HORIZ) {
+        if (toggle_ensure == MAX_TOGGLE) {
+            max_horiz(client);
+        } else if (toggle_ensure == MAX_MAXED) {
+            if (client->prev_width != -1) return;
+            max_horiz(client);
+        } else if (toggle_ensure == MAX_UNMAXED) {
+            if (client->prev_width == -1) return;
+            max_horiz(client);
+        }
+    } else {
+        if (toggle_ensure == MAX_TOGGLE) {
+            max_vert(client);
+        } else if (toggle_ensure == MAX_MAXED) {
+            if (client->prev_height != -1) return;
+            max_vert(client);
+        } else if (toggle_ensure == MAX_UNMAXED) {
+            if (client->prev_height == -1) return;
+            max_vert(client);
+        }
+    }
+    apply_max_state(client);
+}
+
 void resize_maximize(XEvent *xevent, arglist *ignored)
 {
     client_t *client;
 
     client = client_find(xevent->xbutton.window);
     if (client == NULL) return;
-    if (client->sticky) return;
-
-    max_horiz(client);
-    max_vert(client);
-    apply_max_state(client);
+    resize_maximize_client(client, MAX_BOTH, MAX_TOGGLE);
 }
 
 void resize_maximize_vertically(XEvent *xevent, arglist *ignored)
@@ -202,10 +256,7 @@ void resize_maximize_vertically(XEvent *xevent, arglist *ignored)
 
     client = client_find(xevent->xbutton.window);
     if (client == NULL) return;
-    if (client->sticky) return;
-
-    max_vert(client);
-    apply_max_state(client);
+    resize_maximize_client(client, MAX_VERT, MAX_TOGGLE);
 }
 
 void resize_maximize_horizontally(XEvent *xevent, arglist *ignored)
@@ -214,10 +265,7 @@ void resize_maximize_horizontally(XEvent *xevent, arglist *ignored)
 
     client = client_find(xevent->xbutton.window);
     if (client == NULL) return;
-    if (client->sticky) return;
-
-    max_horiz(client);
-    apply_max_state(client);
+    resize_maximize_client(client, MAX_HORIZ, MAX_TOGGLE);
 }
 
 /*
