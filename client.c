@@ -96,7 +96,7 @@ client_t *client_create(Window w)
         return NULL;
     }
     memset(client, 0, sizeof(client_t));
-    
+
     client->window = w;
     client->transient_for = None;
     client->group_leader = NULL;
@@ -111,6 +111,9 @@ client_t *client_create(Window w)
     client->reparented = 0;
     client->ignore_unmapnotify = 0;
     client->color_index = 0;
+    client->colormap = xwa.colormap;
+    client->colormap_windows = NULL;
+    client->ncolormap_windows = 0;
     client->pass_focus_click = 1;
     client->focus_policy = SloppyFocus;
     client->cycle_behaviour = RaiseImmediately;
@@ -167,6 +170,7 @@ client_t *client_create(Window w)
     client_set_xwmh(client);
     client_set_xsh(client);
     client_set_protocols(client);
+    colormap_update_windows_property(client);
 
     /* see if in window group (ICCCM, 4.1.11) */
     if (client->xwmh != NULL
@@ -191,7 +195,8 @@ client_t *client_create(Window w)
     XSelectInput(dpy, client->window,
                  xwa.your_event_mask
                  | StructureNotifyMask
-                 | PropertyChangeMask);
+                 | PropertyChangeMask
+                 | ColormapChangeMask);
 
     requested_geometry.x = xwa.x;
     requested_geometry.y = xwa.y;

@@ -35,6 +35,32 @@
 
 #include "client.h"
 
+extern Atom WM_COLORMAP_WINDOWS;
+
+/*
+ * Initialize the colormap module.
+ * No dependencies.
+ */
+
+void colormap_init();
+
+/*
+ * Install the client's colormaps.
+ */
+
 void colormap_install(client_t *client);
+
+/*
+ * Update client->colormap_windows based on WM_COLORMAP_WINDOWS
+ * property
+ */
+
+void colormap_update_windows_property(client_t *client);
+
+/*
+ * Try to handle a ClientMessage.  Returns True if handled it.
+ */
+
+Bool colormap_handle_clientmessage(XClientMessageEvent *xevent);
 
 #endif /* COLORMAP_H */

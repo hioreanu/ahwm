@@ -1,5 +1,6 @@
 TODO before release:
 - transient for self means something?  Directory property window in konq
+- use XInternAtoms for ewmh.c
 - figure out what the hell 'sticky' means to EWMH
 - colormaps
 - user-settable font, global option
@@ -17,6 +18,7 @@ Wishlist:
 - unbindings don't work at all
 - shading, perhaps with an optional animation
 - may need fake client struct for revert_to window for dynamic bindings
+- contact author of 'kpager', figure out what the problem is
 - allow binding to click and drag on same place
 - 'mouse' map_policy placement algorithm - map window under mouse
 - finish support for DontRaise for CycleBehaviour

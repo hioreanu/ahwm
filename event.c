@@ -48,6 +48,7 @@
 #include "stacking.h"
 #include "paint.h"
 #include "mwm.h"
+#include "colormap.h"
 
 #ifdef SHAPE
 #include <X11/extensions/shape.h>
@@ -480,6 +481,12 @@ static void event_maprequest(XMapRequestEvent *xevent)
             debug(("\tCould not create client, ignoring event\n"));
             return;
         }
+        /* "kpager" wants _NET_WM_DESKTOP set before window
+         * is added to _NET_CLIENT_LIST */
+        if (client->workspace == 0) {
+            client->workspace = workspace_current;
+            ewmh_desktop_update(client);
+        }
         ewmh_client_list_add(client);
     }
     if (client->state == NormalState) {
@@ -729,12 +736,24 @@ static void event_property(XPropertyEvent *xevent)
         ewmh_wm_strut_apply(client);
     } else if (xevent->atom == _NET_WM_DESKTOP) {
         ewmh_wm_desktop_apply(client);
+    } else if (xevent->atom == WM_COLORMAP_WINDOWS) {
+        colormap_update_windows_property(client);
     }
 }
 
 static void event_colormap(XColormapEvent *xevent)
 {
-    /* FIXME: deal with this later */
+    client_t *client;
+    
+    if (xevent->new == True) {
+        client = client_find(xevent->window);
+        if (client != NULL) {
+            client->colormap = xevent->colormap;
+            if (client == focus_current) {
+                colormap_install(client);
+            }
+        }
+    }
 }
 
 /*
@@ -761,7 +780,9 @@ static void event_clientmessage(XClientMessageEvent *xevent)
 /*             ewmh_client_list_remove(client); */ /* FIXME */
         }
     } else {
-        ewmh_handle_clientmessage(xevent);
+        if (ewmh_handle_clientmessage(xevent) == False) {
+            colormap_handle_clientmessage(xevent);
+        }
     }
 }
 

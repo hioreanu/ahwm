@@ -60,6 +60,7 @@
 #include "ewmh.h"
 #include "paint.h"
 #include "mwm.h"
+#include "colormap.h"
 
 Display *dpy;
 int scr;
@@ -237,7 +238,8 @@ int main(int argc, char **argv)
                                  &xgcv);
 
     /* call initialization functions of various modules (order matters) */
-    
+
+    colormap_init();
     client_init();
     cursor_init();
     paint_init();

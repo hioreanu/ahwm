@@ -74,6 +74,9 @@ typedef struct _client_t {
     struct _client_t *group_leader; /* group leader, ICCCM 4.1.11 */
     XWMHints *xwmh;             /* Hints or NULL (ICCCM, 4.1.2.4) */
     XSizeHints *xsh;            /* Size hints or NULL (ICCCM, 4.1.2.3) */
+    Colormap colormap;          /* from XGetWindowAttributes() */
+    Window *colormap_windows;   /* ICCCM WM_COLORMAP_WINDOWS property */
+    long ncolormap_windows;     /* number of windows in colormap_windows */
     int x;                      /* frame's actual position when mapped */
     int y;                      /* frame's actual position when mapped */
     int width;                  /* frame's actual size when mapped */

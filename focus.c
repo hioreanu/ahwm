@@ -65,6 +65,7 @@
 #include "stacking.h"
 #include "malloc.h"
 #include "paint.h"
+#include "colormap.h"
 
 typedef struct _focus_node {
     struct _focus_node *next;
@@ -400,6 +401,7 @@ void focus_ensure(Time timestamp)
     } else {
         debug(("\tDoesn't use TAKE_FOCUS protocol\n"));
     }
+    colormap_install(focus_current);
 
     stacking_raise(focus_current);
 }

@@ -42,7 +42,7 @@
 /*
  * TODO:
  * 
- * - figure out if _NET_CLIENT_LIST[_STACKING] has windows on all workspaces
+ * x figure out if _NET_CLIENT_LIST[_STACKING] has windows on all workspaces
  * - use _NET_WORKAREA for move/resize/placement
  * - _NET_WM_MOVERESIZE, should be easy
  * x honor _NET_WM_DESKTOP, also omnipresence
@@ -67,11 +67,11 @@
  * - kicker has a KEEP_ON_TOP WM_STATE not mentioned in EWMH 1.1
  * - proxy clicks for GNOME
  * - some properties must be updated on window if set by ahwm:
- *   _NET_WM_DESKTOP
- *   _NET_WM_STATE
- *   _WIN_STATE
- *   _WIN_WORKSPACE
- *   _WIN_LAYER
+ *   x _NET_WM_DESKTOP
+ *   - _NET_WM_STATE
+ *   - _WIN_STATE
+ *   - _WIN_WORKSPACE
+ *   - _WIN_LAYER
  */
 
 /* bitmasks for _WIN_STATE: */
@@ -356,7 +356,7 @@ void ewmh_init()
      * the property contains the correct number of strings.  We can't
      * simply look for NULs: we need a full UTF8 parser, which is a
      * non-trivial task.  Thus, we simply overwrite any property
-     * that's already there */
+     * that's already there. */
     for (i = 0; i < nworkspaces; i++) {
         /* _NET_DESKTOP_NAMES is simply a big array that
          * contains all the desktop names, separated by
@@ -374,13 +374,11 @@ void ewmh_init()
     l[0] = nworkspaces;
     XChangeProperty(dpy, root_window, _WIN_WORKSPACE_COUNT, XA_CARDINAL, 32,
                     PropModeReplace, (unsigned char *)l, 1);
-    
 }
 
 /*
- * EWMH is very vague about how this works.  The only way I figured it
- * out was by observing KDE applications and comparing this to the
- * GNOME _WIN spec.
+ * EWMH does not specify the reason for using both ClientMessages and
+ * setting properties on the root window.
  * 
  * Some properties on the client window must be kept updated by the
  * window manager.  For these properties, the way a client can change
@@ -392,8 +390,8 @@ void ewmh_init()
  * the window manager.  For these properties, the client can change
  * the property at any time by simply using XChangeProperty().
  * 
- * The whole reason for the ClientMessage thing is because it is much
- * more work to try to figure out if a PropertyChanged event
+ * The whole reason for the ClientMessage thing is probably because it
+ * is much more work to try to figure out if a PropertyChanged event
  * originated from the client or the window manager.
  */
 
@@ -565,7 +563,7 @@ void ewmh_win_layer_apply(client_t *client)
 /* client changes at any time using XChangeProperty() */
 void ewmh_wm_strut_apply(client_t *client)
 {
-
+    /* FIXME */
 }
 
 void ewmh_wm_desktop_apply(client_t *client)
@@ -960,7 +958,8 @@ Bool ewmh_handle_clientmessage(XClientMessageEvent *xevent)
                 resize_maximize_client(client, MAX_HORIZ, MAX_UNMAXED);
         }
         return True;
-    } else if (xevent->message_type == _WIN_WORKSPACE) {
+    } else if (xevent->message_type == _WIN_WORKSPACE ||
+               xevent->message_type == _NET_WM_DESKTOP) {
         if (client->workspace_set <= HintSet) {
             client->workspace_set = HintSet;
             workspace_client_moveto(client, (unsigned int)(data + 1));
@@ -1000,12 +999,10 @@ void ewmh_desktop_update(client_t *client)
     XChangeProperty(dpy, client->window, _NET_WM_DESKTOP,
                     XA_CARDINAL, 32, PropModeReplace,
                     (unsigned char *)&i, 1);
+    XChangeProperty(dpy, client->window, _WIN_WORKSPACE,
+                    XA_CARDINAL, 32, PropModeReplace,
+                    (unsigned char *)&i, 1);
 }
-
-
-
-
-
 
 static Window *ewmh_client_list = NULL;
 static unsigned int nclients = 0;
