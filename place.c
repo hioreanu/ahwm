@@ -4,7 +4,10 @@
  * copyright privileges.
  */
 
+#include "config.h"
+
 #include <X11/Xlib.h>
+
 #include "place.h"
 #include "workspace.h"
 #include "debug.h"

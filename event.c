@@ -4,6 +4,7 @@
  * copyright privileges.
  */
 
+#include "config.h"
 
 #include <X11/Xatom.h>
 #include <sys/types.h>

@@ -6,6 +6,8 @@
 #ifndef KILL_H
 #define KILL_H
 
+#include "config.h"
+
 #include "client.h"
 
 /*

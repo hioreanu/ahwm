@@ -7,6 +7,8 @@
 #ifndef WORKSPACE_H
 #define WORKSPACE_H
 
+#include "config.h"
+
 #include "client.h"
 
 /* 

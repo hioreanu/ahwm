@@ -28,6 +28,8 @@
  * real input focus will be once some condition has been satisfied.
  */
 
+#include "config.h"
+
 #include <X11/Xlib.h>
 #include <X11/keysym.h>
 #include <X11/Xresource.h>

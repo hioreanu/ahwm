@@ -6,6 +6,8 @@
 #ifndef EVENT_H
 #define EVENT_H
 
+#include "config.h"
+
 #include <X11/Xlib.h>
 
 /*

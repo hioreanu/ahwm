@@ -7,6 +7,8 @@
 #ifndef CURSORS_H
 #define CURSORS_H
 
+#include "config.h"
+
 #include <X11/Xlib.h>
 
 /*

@@ -7,6 +7,8 @@
 #ifndef DEBUG_H
 #define DEBUG_H
 
+#include "config.h"
+
 /*
  * This is the only way to conditionally define a variable length
  * function in current C implementations (C99 has a feature for

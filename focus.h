@@ -7,6 +7,8 @@
 #ifndef FOCUS_H
 #define FOCUS_H
 
+#include "config.h"
+
 #include "client.h"
 #include "workspace.h"
 

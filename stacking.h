@@ -7,7 +7,10 @@
 #ifndef STACKING_H
 #define STACKING_H
 
+#include "config.h"
+
 #include <X11/Xlib.h>
+
 #include "client.h"
 
 /*

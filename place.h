@@ -11,6 +11,8 @@
 #ifndef PLACE_H
 #define PLACE_H
 
+#include "config.h"
+
 #include "client.h"
 
 /*

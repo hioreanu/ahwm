@@ -4,7 +4,11 @@
  * copyright privileges.
  */
 
+#include "config.h"
+
 #include <stdio.h>
+
+#include "xwm.h"
 #include "malloc.h"
 
 #ifdef DEBUG

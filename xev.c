@@ -36,6 +36,8 @@ from the X Consortium.
  * Author:  Jim Fulton, MIT X Consortium
  */
 
+#include "config.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <X11/Xos.h>

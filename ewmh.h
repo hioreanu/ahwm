@@ -51,7 +51,10 @@
 #ifndef EWMH_H
 #define EWMH_H
 
+#include "config.h"
+
 #include <X11/Xlib.h>
+
 #include "client.h"
 
 /*

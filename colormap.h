@@ -12,6 +12,8 @@
 #ifndef COLORMAP_H
 #define COLORMAP_H
 
+#include "config.h"
+
 #include "client.h"
 
 void colormap_install(client_t *client);

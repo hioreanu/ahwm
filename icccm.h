@@ -7,6 +7,10 @@
 #ifndef ICCCM_H
 #define ICCCM_H
 
+#include "config.h"
+
+#include <X11/Xlib.h>
+
 /*
  * Set up "WM_Sn" selection for default screen.  This should be called
  * in the initialization phase, after convenience globals are set up

@@ -6,6 +6,8 @@
 #ifndef CLIENT_H
 #define CLIENT_H
 
+#include "config.h"
+
 #include "xwm.h"
 
 /* height of the titlebar, should probably be configurable */

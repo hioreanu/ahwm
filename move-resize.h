@@ -7,6 +7,8 @@
 #ifndef MOVE_RESIZE_H
 #define MOVE_RESIZE_H
 
+#include "config.h"
+
 #include <X11/Xlib.h>
 
 /* one if moving/resizing, zero otherwise */

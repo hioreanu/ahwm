@@ -9,6 +9,8 @@
  * before the implementation files when reading my code.
  */
 
+#include "config.h"
+
 #include <X11/Xlib.h>
 #include <X11/Xatom.h>
 #include <X11/Xproto.h>
@@ -361,3 +363,15 @@ void mark(XEvent *e, void *arg)
     printf("-------------------------------------\n");
 }
 #endif
+
+#ifndef HAVE_STRDUP
+char *strdup(char *s)
+{
+    char *n;
+
+    n = malloc(strlen(s));
+    if (n == NULL) return NULL;
+    strcpy(n, s);
+    return n;
+}
+#endif /* ! HAVE_STRDUP */

@@ -4,6 +4,8 @@
  * copyright privileges.
  */
 
+#include "config.h"
+
 #include <stdio.h>
 
 #include "colormap.h"

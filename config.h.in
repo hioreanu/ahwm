@@ -32,8 +32,14 @@
 /* Define if you have the select function.  */
 #undef HAVE_SELECT
 
+/* Define if you have the poll function. */
+#undef HAVE_POLL
+
 /* Define if you have the snprintf function.  */
 #undef HAVE_SNPRINTF
+
+/* Define if you have the _snprintf function. */
+#undef HAVE__SNPRINTF
 
 /* Define if you have the strdup function.  */
 #undef HAVE_STRDUP
@@ -46,3 +52,41 @@
 
 /* Define if you have the <unistd.h> header file.  */
 #undef HAVE_UNISTD_H
+
+#ifndef HAVE_SYS_WAIT_H
+# error "XWM needs porting to your system (no sys/wait.h); please contact the author."
+#endif
+
+#ifndef HAVE_UNISTD_H
+# error "XWM needs porting to your system (no unistd.h); please contact the author."
+#endif
+
+#ifndef HAVE_FCNTL_H
+# error "XWM needs porting to your system (no fcntl.h); please contact the author."
+#endif
+
+/* Could try to work around this, but I want to see every line
+ * of code in action before I put it in a distribution. */
+#ifdef SETVBUF_REVERSED
+# error "XWM needs porting to your system (setvbuf reversed); please contact the author."
+#endif
+
+#ifndef HAVE_SELECT
+# ifdef HAVE_POLL
+#  error "XWM needs porting to your system (use poll instead of select); please contact the author."
+# else
+#  error "XWM needs porting to your system (no poll or select); please contact the author."
+# endif
+#endif
+
+/* Windows uses '_snprintf' instead of 'snprintf' for some reason.  I
+ * have a portable implementation of snprintf ready to go if you need
+ * to use XWM on SunOS 4.x or some other system that doesn't have
+ * snprintf. */
+#ifndef HAVE_SNPRINTF
+# ifdef HAVE__SNPRINTF
+#  define snprintf _snprintf
+# else
+#  error "XWM needs porting to your system (no snprintf); please contact the author."
+# endif
+#endif

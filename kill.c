@@ -4,7 +4,10 @@
  * copyright privileges.
  */
 
+#include "config.h"
+
 #include <stdio.h>
+
 #include "kill.h"
 #include "event.h"
 #include "debug.h"

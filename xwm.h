@@ -7,6 +7,8 @@
 #ifndef XWM_H
 #define XWM_H
 
+#include "config.h"
+
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 
@@ -53,5 +55,9 @@ extern int shape_event_base;
  * 8.  Scan already-mapped windows and manage them
  * 9.  Do the main event loop
  */
+
+#ifndef HAVE_STRDUP
+char *strdup(char *s);
+#endif
 
 #endif /* XWM_H */

@@ -36,7 +36,7 @@ AC_TYPE_SIZE_T
 
 AC_FUNC_SETVBUF_REVERSED
 AC_FUNC_VPRINTF
-AC_CHECK_FUNCS(select strdup snprintf)
+AC_CHECK_FUNCS(select poll strdup snprintf _snprintf)
 
 AC_CONFIG_HEADER(config.h)
 

@@ -14,8 +14,11 @@
  * (xwm.c:scan_windows)).
  */
 
+#include "config.h"
+
 #include <X11/Xlib.h>
 #include <stdio.h>
+
 #include "client.h"
 #include "stacking.h"
 #include "malloc.h"
