@@ -1,7 +1,7 @@
 Bindings look like this:
 verbatim(\
 BindKey "Control | Shift | Meta | t" Launch("xterm");
-BindButton Titlebar "Mod1 | Button3" Maximize();
+BindClick Titlebar "Mod1 | Button3" Maximize();
 BindDrag Titlebar "Button1" MoveInteractively();)
 Options can be set as follows:
 verbatim(\
