@@ -20,6 +20,7 @@
 #include "error.h"
 #include "kill.h"
 #include "workspace.h"
+#include "icccm.h"
 
 #ifdef SHAPE
 #include <X11/extensions/shape.h>
@@ -165,6 +166,8 @@ int main(int argc, char **argv)
     window_context = XUniqueContext(); /* client.c */
     frame_context = XUniqueContext();
     title_context = XUniqueContext();
+
+    icccm_set_WM_Sn();
 
     keyboard_set_function("Control | Alt | Shift | l", KEYBOARD_DEPRESS,
                           mark, NULL);
