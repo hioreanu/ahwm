@@ -19,7 +19,7 @@ client_t *focus_current = NULL;
 client_t *focus_stacks[NO_WORKSPACES] = { NULL };
 
 static void focus_change_current(client_t *, Time);
-static void swap_circular_nodes(client_t *, client_t *);
+static void permute(client_t *, client_t *);
 
 /* 
  * invariant:
@@ -89,7 +89,7 @@ void focus_remove(client_t *client, Time timestamp)
     } while (stack != orig);
 }
 
-void focus_set(client_t *client, Time timestamp)
+static void focus_set_internal(client_t *client, Time timestamp)
 {
     client_t *p;
 
@@ -120,16 +120,13 @@ void focus_set(client_t *client, Time timestamp)
     fprintf(stderr, "XWM: client not found on focus list, shouldn't happen\n");
 }
 
-void focus_next(Time timestamp)
+void focus_set(client_t *client, Time timestamp)
 {
-    if (focus_current != NULL)
-        focus_set(focus_current->next_focus, timestamp);
-}
-
-void focus_prev(Time timestamp)
-{
-    if (focus_current != NULL)
-        focus_set(focus_current->prev_focus, timestamp);
+    client_t *old = focus_current;
+    
+    focus_set_internal(client, timestamp);
+    if (old != NULL && client != NULL)
+        permute(old, client);
 }
 
 void focus_ensure(Time timestamp)
@@ -203,9 +200,11 @@ void focus_alt_tab(XEvent *xevent, void *v)
             case KeyPress:
                 if (xevent->xkey.keycode == action_keycode) {
                     if (xevent->xkey.state & ShiftMask) {
-                        focus_prev(event_timestamp);
+                        focus_set_internal(focus_current->prev_focus,
+                                           event_timestamp);
                     } else {
-                        focus_next(event_timestamp);
+                        focus_set_internal(focus_current->next_focus,
+                                           event_timestamp);
                     }
                 }
                 break;
@@ -216,7 +215,7 @@ void focus_alt_tab(XEvent *xevent, void *v)
                     debug(("\tfocus_current = '%s'\n",
                            focus_current ? focus_current->name : "NULL"));
                     if (focus_current != NULL) {
-                        swap_circular_nodes(orig_focus, focus_current);
+                        permute(orig_focus, focus_current);
                     }
                     XUngrabKeyboard(dpy, event_timestamp);
                     debug(("RETURNING FROM ALT-TAB\n"));
@@ -244,49 +243,52 @@ static void focus_change_current(client_t *new, Time timestamp)
 
 /*
  * ring looks like this:
- * A <-> B <-> ... <-> C <-> D <-> E <-> ... <-> F <-> A
- * and we want to exchange A and D like this:
- * D <-> B <-> ... <-> C <-> A <-> E <-> ... <-> F <-> D
+ * A-B-...-C-D-E-...-F-A
+ * and we want it to look like this:
+ * D-A-B-...-C-E-...-F-D
+ * 
+ * special cases:
+ * A-A-...  ->  A-A-...  (no change)
+ * A-B-A-...  ->  B-A-B-... (no change, just update focus_current)
+ * A-D-E-...-F-A  ->  D-A-E-...-F-D  (just swap A & D)
+ * A-B-...-C-D-A  ->  D-A-B-...-C-D  (no change, just update focus_current)
+ * We actually don't change B in any way, so it's left out.
  */
 
-static void swap_circular_nodes(client_t *A, client_t *D)
+static void permute(client_t *A, client_t *D)
 {
-    client_t *B, *C, *E, *F;
+    client_t *C, *E, *F;
 
-    /* if have only one or two elements, or not swapping, done */
+    /* if have only one or two elements, or not moving, done */
     if (A == D || (A->next_focus == D && D->next_focus == A))
         return;
 
     F = A->prev_focus;
-    B = A->next_focus;
     C = D->prev_focus;
     E = D->next_focus;
 
     if (A->next_focus == D) {
-        /* no B or C */
-        F->next_focus = D;
-        E->prev_focus = A;
+        /* no B or C, just swap A & D */
         A->prev_focus = D;
-        A->next_focus = E;
-        D->prev_focus = F;
         D->next_focus = A;
-    } else if (A->prev_focus == D) {
-        /* no E or F */
-        C->next_focus = A;
-        B->prev_focus = D;
-        A->prev_focus = C;
-        A->next_focus = D;
-        D->next_focus = B;
-        D->prev_focus = A;
-    } else {
-        /* B and D are separated by at least on node on each side */
+        
         A->next_focus = E;
-        A->prev_focus = C;
-        D->next_focus = B;
-        D->prev_focus = F;
-        F->next_focus = D;
-        B->prev_focus = D;
         E->prev_focus = A;
-        C->next_focus = A;
+        
+        F->next_focus = D;
+        D->prev_focus = F;
+        
+    } else if (A->prev_focus == D) {
+        /* no E or F, no need for change */
+    } else {
+        /* B and D are separated by at least one node on each side */
+        C->next_focus = E;
+        E->prev_focus = C;
+
+        F->next_focus = D;
+        D->prev_focus = F;
+
+        D->next_focus = A;
+        A->prev_focus = D;
     }
 }

@@ -132,13 +132,19 @@ void workspace_client_moveto(XEvent *xevent, void *v)
 static void must_focus_this_client(client_t *client)
 {
     XEvent event;
+    Bool changed_mask;
 
     if (client == NULL) {
         focus_set(NULL, CurrentTime);
         return;
     }
-    client->frame_event_mask |= StructureNotifyMask;
-    XSelectInput(dpy, client->frame, client->frame_event_mask);
+    if (!(client->frame_event_mask & StructureNotifyMask)) {
+        changed_mask = True;
+        client->frame_event_mask |= StructureNotifyMask;
+        XSelectInput(dpy, client->frame, client->frame_event_mask);
+    } else {
+        changed_mask = False;
+    }
 
     for (;;) {
         event_get(ConnectionNumber(dpy), &event);
@@ -156,8 +162,10 @@ static void must_focus_this_client(client_t *client)
         }
     }
 
-    client->frame_event_mask &= ~StructureNotifyMask;
-    XSelectInput(dpy, client->frame, client->frame_event_mask);
+    if (changed_mask) {
+        client->frame_event_mask &= ~StructureNotifyMask;
+        XSelectInput(dpy, client->frame, client->frame_event_mask);
+    }
 }
 
 /* addition and subtraction without overflow */

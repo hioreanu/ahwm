@@ -7,8 +7,11 @@
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 #include <X11/Xatom.h>
+#include <stdio.h>
 #include "xwm.h"
 #include "ewmh.h"
+#include "malloc.h"
+#include "debug.h"
 
 #define NO_SUPPORTED_HINTS 34
 
@@ -84,7 +87,7 @@ void ewmh_init()
     _NET_WM_STATE_TOGGLE = XInternAtom(dpy, "_NET_WM_STATE_TOGGLE", False);
     _NET_WM_STRUT = XInternAtom(dpy, "_NET_WM_STRUT", False);
     _NET_WM_PING = XInternAtom(dpy, "_NET_WM_PING", False);
-    UTF_8_STRING = XInternAtom(dpy, "UTF_8_STRING", False);
+    UTF_8_STRING = XInternAtom(dpy, "UTF-8_STRING", False);
 
     supported[0] = _NET_SUPPORTED;
     supported[1] = _NET_CLIENT_LIST;
@@ -132,13 +135,69 @@ void ewmh_init()
                                 CWOverrideRedirect, &xswa);
     XChangeProperty(dpy, root_window, _NET_SUPPORTING_WM_CHECK,
                     XA_WINDOW, 32, PropModeReplace,
-                    (unsigned char *)ewmh_window, 1);
+                    (unsigned char *)&ewmh_window, 1);
     XChangeProperty(dpy, ewmh_window, _NET_SUPPORTING_WM_CHECK,
                     XA_WINDOW, 32, PropModeReplace,
-                    (unsigned char *)ewmh_window, 1);
+                    (unsigned char *)&ewmh_window, 1);
     XChangeProperty(dpy, ewmh_window, _NET_WM_NAME,
                     UTF_8_STRING, 8, PropModeReplace,
                     (unsigned char *)"XWM", 4);
+}
+
+static Window *ewmh_client_list = NULL;
+static unsigned int nclients = 0;
+static unsigned int nwindows_allocated = 0;
+
+void ewmh_client_list_add(client_t *client)
+{
+    Window *tmp;
+    
+    if (nclients == nwindows_allocated) {
+        if (ewmh_client_list == NULL) {
+            ewmh_client_list = Malloc(sizeof(Window));
+            if (ewmh_client_list == NULL) {
+                perror("XWM: malloc EWMH client list");
+                return;
+            }
+            nwindows_allocated = 1;
+        } else {
+            tmp = Realloc(ewmh_client_list, 2*nwindows_allocated*sizeof(Window));
+            if (tmp == NULL) {
+                perror("XWM: realloc EWMH client list");
+                return;
+            }
+            ewmh_client_list = tmp;
+            nwindows_allocated *= 2;
+        }
+    }
+    ewmh_client_list[nclients++] = client->window;
+    debug(("Adding window 0x%08X to client list, %d clients\n",
+           client->window, nclients));
+    XChangeProperty(dpy, root_window, _NET_CLIENT_LIST,
+                    XA_WINDOW, 32, PropModeReplace,
+                    (unsigned char *)ewmh_client_list, nclients);
+}
+
+void ewmh_client_list_remove(client_t *client)
+{
+    int i;
+
+    for (i = 0; i < nclients; i++) {
+        if (ewmh_client_list[i] == client->window) {
+            while (++i < nclients) {
+                ewmh_client_list[i - 1] = ewmh_client_list[i];
+            }
+            nclients--;
+            debug(("Removing window 0x%08X from client list, %d clients\n",
+                   client->window, nclients));
+            XChangeProperty(dpy, root_window, _NET_CLIENT_LIST,
+                            XA_WINDOW, 32, PropModeReplace,
+                            (unsigned char *)ewmh_client_list, nclients);
+            return;
+        }
+    }
+    debug(("\tClient not found in ewmh_client_list_remove\n"));
+    return;
 }
 
 void ewmh_active_window_update()

@@ -4,6 +4,10 @@
  * copyright privileges.
  */
 
+#include <X11/Xlib.h>
+#include <X11/Xutil.h>
+#include <X11/Xatom.h>
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -21,6 +25,7 @@
 #include "kill.h"
 #include "workspace.h"
 #include "icccm.h"
+#include "ewmh.h"
 
 #ifdef SHAPE
 #include <X11/extensions/shape.h>
@@ -187,11 +192,12 @@ int main(int argc, char **argv)
                                  | GCPlaneMask | GCSubwindowMode,
                                  &xgcv);
 
-    window_context = XUniqueContext(); /* client.c */
+    window_context = XUniqueContext();
     frame_context = XUniqueContext();
     title_context = XUniqueContext();
 
     icccm_set_WM_Sn();
+    ewmh_init();
 
     keyboard_set_function("Control | Alt | Shift | l", KEYBOARD_DEPRESS,
                           mark, NULL);
@@ -265,7 +271,7 @@ int main(int argc, char **argv)
     scan_windows();
 
     XSetInputFocus(dpy, root_window, RevertToPointerRoot, CurrentTime);
-    focus_ensure(CurrentTime);  /* focus.c */
+    focus_ensure(CurrentTime);
     
     xfd = ConnectionNumber(dpy);
     fcntl(xfd, F_SETFD, FD_CLOEXEC);
@@ -273,8 +279,8 @@ int main(int argc, char **argv)
     XSync(dpy, 0);
 
     for (;;) {
-        event_get(xfd, &event); /* event.c */
-        event_dispatch(&event); /* event.c */
+        event_get(xfd, &event);
+        event_dispatch(&event);
     }
     return 0;
 }
@@ -291,21 +297,23 @@ static void scan_windows()
 
     XQueryTree(dpy, root_window, &junk, &junk, &wins, &n);
     for (i = 0; i < n; i++) {
-        client = client_create(wins[i]); /* client.c */
+        client = client_create(wins[i]);
     }
     if (wins != NULL) XFree(wins);
 }
 
 void alt_tab(XEvent *e, void *arg)
 {
-    XUngrabKeyboard(dpy, event_timestamp);
-    focus_next(event_timestamp);
+    focus_alt_tab(e, arg);
+//    XUngrabKeyboard(dpy, event_timestamp);
+//    focus_next(event_timestamp);
 }
 
 void alt_shift_tab(XEvent *e, void *arg)
 {
-    XUngrabKeyboard(dpy, event_timestamp);
-    focus_prev(event_timestamp);
+    focus_alt_tab(e, arg);
+//    XUngrabKeyboard(dpy, event_timestamp);
+//    focus_prev(event_timestamp);
 }
 
 void run_program(XEvent *e, void *arg)

@@ -14,7 +14,7 @@ extern Atom _NET_CURRENT_DESKTOP;
 
 void ewmh_init();
 
-void ewmh_client_list_set_top(client_t *client);
+void ewmh_client_list_add(client_t *client);
 void ewmh_client_list_remove(client_t *client);
 void ewmh_client_list_stacking_set_top(client_t *client);
 void ewmh_client_list_stacking_remove(client_t *client);

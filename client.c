@@ -87,7 +87,7 @@ client_t *client_create(Window w)
     }
 
     client->frame_event_mask = SubstructureRedirectMask | EnterWindowMask
-                              | FocusChangeMask;
+                              | FocusChangeMask | StructureNotifyMask;
     client->window_event_mask = xwa.your_event_mask | StructureNotifyMask
                                 | PropertyChangeMask;
     XSelectInput(dpy, client->window, client->window_event_mask);

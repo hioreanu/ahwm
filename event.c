@@ -24,6 +24,7 @@
 #include "malloc.h"
 #include "move-resize.h"
 #include "debug.h"
+#include "ewmh.h"
 
 #ifdef SHAPE
 #include <X11/extensions/shape.h>
@@ -74,6 +75,7 @@ void event_get(int xfd, XEvent *event)
             perror("XWM: select:");
         }
     }
+    event_timestamp = figure_timestamp(event);
 }
 
 void event_dispatch(XEvent *event)
@@ -126,8 +128,6 @@ void event_dispatch(XEvent *event)
                xevent_names[event->type], event->type));
     xev_print(event);
 #endif /* DEBUG */
-
-    event_timestamp = figure_timestamp(event);
     
     /* check the event number, jump to appropriate function */
     switch(event->type) {
@@ -359,7 +359,7 @@ static void event_destroy(XDestroyWindowEvent *xevent)
     if (client == NULL) {
         return;
     }
-    if (client->titlebar == xevent->window) return;
+    if (client->window != xevent->window) return;
     if (client->state == NormalState) {
         /* received a DestroyNotify before or without an UnmapNotify
          * 
@@ -413,6 +413,10 @@ static void event_unmap(XUnmapEvent *xevent)
                          under_mouse->frame_event_mask);
         }
         return;
+    }
+
+    if (xevent->window == client->frame) {
+        ewmh_client_list_remove(client);
     }
 
     /* if we unmapped it ourselves, no need to do anything */
@@ -800,7 +804,12 @@ static void event_map(XMapEvent *xevent)
     client_t *client;
 
     client = client_find(xevent->window);
-    if (client != NULL && client == focus_current) {
+    if (client != NULL && client->frame == xevent->window) {
+        ewmh_client_list_add(client);
+    }
+    if (client != NULL
+        && client->window == xevent->window
+        && client == focus_current) {
         debug(("\tCalling XSetInputFocus\n"));
         XSetInputFocus(dpy, client->window, RevertToPointerRoot, CurrentTime);
     } else {

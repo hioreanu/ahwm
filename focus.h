@@ -47,18 +47,6 @@ void focus_remove(client_t *, Time);
 void focus_set(client_t *, Time);
 
 /*
- * Set the input focus to the next on the ring
- */
-
-void focus_next(Time);
-
-/*
- * Set the input focus to the previous on the ring
- */
-
-void focus_prev(Time);
-
-/*
  * Ensure some window in the current workspace is focused if possible;
  * the timestamp should be the timestamp of the event that caused the
  * focus change, or CurrentTime if the event doesn't have a timestamp.
@@ -66,9 +54,33 @@ void focus_prev(Time);
 void focus_ensure(Time);
 
 /*
- * returns one if the client accepts keyboard focus, zero o/w
+ * A function to bind to a key which behaves similarly to the Alt-Tab
+ * action in Microsoft Windows.  This behaves like in Windows because
+ * the algorithm Windows uses for this is superior to anything else -
+ * it shifts the most frequently used applications to be available
+ * with fewer keystrokes.
+ * 
+ * Specifically, the algorithm works as follows:
+ * 
+ * 1. All windows are maintained on a stack.
+ * 
+ * 2. Whenever a window is mapped, it is pushed onto the stack.
+ * 
+ * 3. Whenever you switch to a window, it is removed from its current
+ *    position in the stack and is pushed onto the top of the stack.
+ * 
+ * 4. When you hit Alt-Tab, it does not switch to any windows until
+ *    the Alt key is released.
+ * 
+ * We don't display any icons on Alt-Tab, so we actually raise and
+ * focus each window whenever Tab is hit with Alt down, but we don't
+ * modify the stack until Alt is released.  The keyboard is grabbed in
+ * this function, so any focused windows will not actually receive any
+ * keystrokes, but we still set the focus so that applications can
+ * update themselves showing a focused state (like how xterm changes
+ * its cursor from an empty box to a filled box).
  */
 
-int focus_canfocus(client_t *);
+void focus_alt_tab(XEvent *, void *);
 
 #endif /* FOCUS_H */

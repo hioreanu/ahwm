@@ -1417,6 +1417,7 @@ static void display_geometry(char *s, client_t *client)
     client_paint_titlebar(client);
 }
 
+/* FIXME:  export from keyboard.c */
 static void set_keys()
 {
     keycode_Escape = XKeysymToKeycode(dpy, XK_Escape);
