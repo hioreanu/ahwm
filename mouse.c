@@ -660,6 +660,7 @@ static void process_resize(client_t *client, int new_x, int new_y,
         || w != client->width || h != client->height) {
         display_geometry("Resizing", client);
     }
+
 }
 
 static void get_display_width_height(client_t *client, int *w, int *h)
@@ -678,10 +679,11 @@ static void get_display_width_height(client_t *client, int *w, int *h)
 
 #define DRAFTING_OFFSET 15
 
+/* FIXME: get and use text extents */
 static void drafting_lines(client_t *client, resize_direction_t direction,
                            int x1, int y1, int x2, int y2)
 {
-    int display_int, h_inc, w_inc;
+    int h_inc, w_inc, tmp;
     char label[16];
     
     if (client->xsh != NULL && (client->xsh->flags & PResizeInc)) {
@@ -690,25 +692,59 @@ static void drafting_lines(client_t *client, resize_direction_t direction,
     } else {
         w_inc = h_inc = 1;
     }
+
+    if (x1 > x2) {
+        tmp = x1;
+        x1 = x2;
+        x2 = tmp;
+    }
+    if (y1 > y2) {
+        tmp = y1;
+        y1 = y2;
+        y2 = tmp;
+    }
     
     if (direction == WEST) {
         x1 -= DRAFTING_OFFSET;
         x2 -= DRAFTING_OFFSET;
-        display_int = ABS(y1 - y2 - TITLE_HEIGHT) / h_inc;
+        snprintf(label, 16, "%d", (y2 - y1 - TITLE_HEIGHT) / h_inc);
+        XDrawLine(dpy, root_window, root_invert_gc,
+                  x1, y1, x2, y1 + ((y2 - y1) / 2) - 8);
+        XDrawLine(dpy, root_window, root_invert_gc,
+                  x1, y2, x2, y2 - ((y2 - y1) / 2) + 8);
+        XDrawString(dpy, root_window, root_invert_gc,
+                    x2 - 6, y2 - ((y2 - y1) / 2) + 6, label, strlen(label));
     } else if (direction == EAST) {
         x1 += DRAFTING_OFFSET;
         x2 += DRAFTING_OFFSET;
-        display_int = ABS(y1 - y2 - TITLE_HEIGHT) / h_inc;
+        snprintf(label, 16, "%d", (y2 - y1 - TITLE_HEIGHT) / h_inc);
+        XDrawLine(dpy, root_window, root_invert_gc,
+                  x1, y1, x2, y1 + ((y2 - y1) / 2) - 8);
+        XDrawLine(dpy, root_window, root_invert_gc,
+                  x1, y2, x2, y2 - ((y2 - y1) / 2) + 8);
+        XDrawString(dpy, root_window, root_invert_gc,
+                    x2 - 6, y2 - ((y2 - y1) / 2) + 6, label, strlen(label));
     } else if (direction == NORTH) {
         y1 -= DRAFTING_OFFSET;
         y2 -= DRAFTING_OFFSET;
-        display_int = ABS(x1 - x2) / w_inc;
+        snprintf(label, 16, "%d", (x2 - x1) / w_inc);
+        XDrawLine(dpy, root_window, root_invert_gc,
+                  x1, y1, x1 + ((x2 - x1) / 2) - 8, y2);
+        XDrawLine(dpy, root_window, root_invert_gc,
+                  x2, y1, x2 - ((x2 - x1) / 2) + 8, y2);
+        XDrawString(dpy, root_window, root_invert_gc,
+                    x1 + ((x2 - x1) / 2) - 6, y2 + 6, label, strlen(label));
     } else if (direction == SOUTH) {
         y1 += DRAFTING_OFFSET;
         y2 += DRAFTING_OFFSET;
-        display_int = ABS(x1 - x2) / w_inc;
+        snprintf(label, 16, "%d", (x2 - x1) / w_inc);
+        XDrawLine(dpy, root_window, root_invert_gc,
+                  x1, y1, x1 + ((x2 - x1) / 2) - 8, y2);
+        XDrawLine(dpy, root_window, root_invert_gc,
+                  x2, y1, x2 - ((x2 - x1) / 2) + 8, y2);
+        XDrawString(dpy, root_window, root_invert_gc,
+                    x1 + ((x2 - x1) / 2) - 6, y2 + 6, label, strlen(label));
     }
-    XDrawLine(dpy, root_window, root_invert_gc, x1, y1, x2, y2);
 }
 
 static void display_geometry(char *s, client_t *client)
