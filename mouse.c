@@ -10,6 +10,7 @@
 #include <ctype.h>
 
 #include "mouse.h"
+#include "keyboard.h"
 #include "move-resize.h"
 #include "xwm.h"
 #include "cursor.h"
@@ -165,7 +166,6 @@ int mouse_parse_string(char *keystring, unsigned int *button_ret,
         memcpy(buf, keystring, MIN(511, cp2 - keystring + 1));
         buf[MIN(511, cp2 - keystring + 1)] = '\0';
 
-        /* FIXME: strcasecmp may not be very standard, rewrite */
         if (strcasecmp(buf, "Mod1") == 0) {
             tmp_modifier = Mod1Mask;
         } else if (strcasecmp(buf, "Mod1Mask") == 0) {
@@ -195,21 +195,21 @@ int mouse_parse_string(char *keystring, unsigned int *button_ret,
         } else if (strcasecmp(buf, "ControlMask") == 0) {
             tmp_modifier = ControlMask;
         } else if (strcasecmp(buf, "Meta") == 0) {
-            tmp_modifier = Mod1Mask;
+            tmp_modifier = MetaMask;
         } else if (strcasecmp(buf, "MetaMask") == 0) {
-            tmp_modifier = Mod1Mask;
+            tmp_modifier = MetaMask;
         } else if (strcasecmp(buf, "Super") == 0) {
-            tmp_modifier = Mod3Mask;
+            tmp_modifier = SuperMask;
         } else if (strcasecmp(buf, "SuperMask") == 0) {
-            tmp_modifier = Mod3Mask;
+            tmp_modifier = SuperMask;
         } else if (strcasecmp(buf, "Hyper") == 0) {
-            tmp_modifier = Mod4Mask;
+            tmp_modifier = HyperMask;
         } else if (strcasecmp(buf, "HyperMask") == 0) {
-            tmp_modifier = Mod4Mask;
+            tmp_modifier = HyperMask;
         } else if (strcasecmp(buf, "Alt") == 0) {
-            tmp_modifier = Mod1Mask;
+            tmp_modifier = AltMask;
         } else if (strcasecmp(buf, "AltMask") == 0) {
-            tmp_modifier = Mod1Mask;
+            tmp_modifier = AltMask;
         } else {
             fprintf(stderr, "XWM: Could not figure out modifier '%s'\n", buf);
             return 0;

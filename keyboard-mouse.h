@@ -9,6 +9,16 @@
 #include <X11/Xlib.h>
 #include "client.h"
 
+extern Bool keyboard_is_lock[8];
+
+extern unsigned int MetaMask, SuperMask, HyperMask, AltMask, ModeMask;
+
+extern unsigned int AllLocksMask;
+
+void keyboard_init();
+
+KeySym keyboard_event_to_keysym(XKeyEvent *);
+
 /* Functions which are called in response to keyboard events: */
 
 typedef void (*key_fn)(XEvent *, void *);

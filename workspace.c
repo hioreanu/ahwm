@@ -126,66 +126,6 @@ void workspace_client_moveto(XEvent *xevent, void *v)
     focus_add(client, event_timestamp);
 }
 
-/*
- * OK, so we have a problem:
- * 
- * When we change workspaces, we map all the windows in the workspace,
- * then we try to set the input focus to the window which should be
- * focused for that workspace.  HOWEVER, in most cases, the window
- * which we need to focus has NOT been mapped by the server (we just
- * made the request, server still has to process it).  The window is
- * not yet viewable and we get a BadMatch on XSetInputFocus (see the
- * manpage).  This screws up everything since we won't have a focused
- * window when we change workspaces (and this is not superfluous, this
- * is absolutely CRITICAL as it interrupts my work).  I've not seen a
- * window manager that correctly deals with this, they'll just force
- * you to refocus (or they'll map the window to be focused before
- * anything else, hoping to avoid the X error, which doesn't always
- * work).
- * 
- * So we postpone the XSetInputFocus call until our window is actually
- * mapped.
- */
-
-static void must_focus_this_client(client_t *client)
-{
-    XEvent event;
-    Bool changed_mask;
-
-    if (client == NULL) {
-        focus_set(NULL, CurrentTime);
-        return;
-    }
-    if (!(client->frame_event_mask & StructureNotifyMask)) {
-        changed_mask = True;
-        client->frame_event_mask |= StructureNotifyMask;
-        XSelectInput(dpy, client->frame, client->frame_event_mask);
-    } else {
-        changed_mask = False;
-    }
-
-    for (;;) {
-        event_get(ConnectionNumber(dpy), &event);
-        if (event.type == EnterNotify
-            || event.type == FocusIn
-            || event.type == FocusOut)
-            continue;
-        if (event.type == MapNotify && event.xmap.window == client->frame) {
-            debug(("ATTEMPTING TO FOCUS %s\n", client->name));
-            focus_set(client, CurrentTime); /* XMapEvent has no time stamp */
-            focus_ensure(CurrentTime);
-            break;
-        } else {
-            event_dispatch(&event);
-        }
-    }
-
-    if (changed_mask) {
-        client->frame_event_mask &= ~StructureNotifyMask;
-        XSelectInput(dpy, client->frame, client->frame_event_mask);
-    }
-}
-
 /* addition and subtraction without overflow */
 #define SUB(x,y) ((x) < (y) ? 0 : ((x) - (y)))
 #define ADD(x,y) (((((x) + (y)) > 0xFFFF) || ((x) + (y) < (x))) ? \

@@ -204,6 +204,7 @@ int main(int argc, char **argv)
 
     icccm_set_WM_Sn();
     ewmh_init();
+    keyboard_init();
 
     keyboard_set_function("Control | Alt | Shift | l", KEYBOARD_DEPRESS,
                           mark, NULL);

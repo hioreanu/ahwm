@@ -27,8 +27,6 @@ static void permute(client_t *, client_t *);
  * focus_current == focus_stacks[workspace_current - 1]
  * 
  * This should hold whenever we enter or leave the window manager.
- * Call focus_ensure() whenever leaving the window manager (and the
- * invariant may not hold) to update 'focus_current'.
  */
 
 void focus_add(client_t *client, Time timestamp)
@@ -48,6 +46,7 @@ void focus_add(client_t *client, Time timestamp)
         client->prev_focus = old->prev_focus;
         old->prev_focus->next_focus = client;
         old->prev_focus = client;
+        focus_stacks[client->workspace - 1] = client;
     }
     if (client->workspace == workspace_current) {
         focus_change_current(client, timestamp);

@@ -284,6 +284,8 @@ static void event_enter(XCrossingEvent *xevent)
     if (client != NULL && client->state == NormalState) {
         if (client->ignore_enternotify == 1) {
             debug(("\tclient has ignore_enternotify\n"));
+            /* FIXME:  don't we need to deal with the LeaveNotify
+             * thing?  perhaps remove it altogether */
             client->ignore_enternotify = 0;
         } else if (client->workspace == workspace_current) {
             debug(("\tSetting focus in response to EnterNotify\n"));
@@ -311,6 +313,10 @@ static void event_enter(XCrossingEvent *xevent)
  * If we get a LeaveNotify, however, we know we won't be getting a
  * stray EnterNotify, so we reset the flag.  That's the only reason we
  * would even listen for LeaveNotify events.
+ * 
+ * FIXME:  don't we need to start listening for these whenever we set
+ * ignore_enternotify?  Also, shouldn't the event mask be reset when
+ * we get the EnterNotify?
  */
 
 static void event_leave(XCrossingEvent *xevent)
@@ -820,7 +826,9 @@ static void event_map(XMapEvent *xevent)
     client_t *client;
 
     client = client_find(xevent->window);
-    if (client != NULL && client->frame == xevent->window) {
+    if (client != NULL
+        && xevent->window == xevent->event
+        && client->frame == xevent->window) {
         ewmh_client_list_add(client);
     }
     if (client != NULL
@@ -829,7 +837,7 @@ static void event_map(XMapEvent *xevent)
         debug(("\tCalling XSetInputFocus\n"));
         XSetInputFocus(dpy, client->window, RevertToPointerRoot, CurrentTime);
     } else {
-        debug(("\tNot doing anything\n"));
+        debug(("\tNot calling XSetInputFocus\n"));
     }
 }
 
