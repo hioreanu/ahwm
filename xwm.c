@@ -86,6 +86,7 @@ static int error_handler(Display *dpy, XErrorEvent *error)
         || (error->request_code == X_SetInputFocus
             && error->error_code == BadValue))
         return 0;
+    fprintf(stderr, "XWM: ");
     return error_default_handler(dpy, error);
 }
 
