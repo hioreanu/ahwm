@@ -124,7 +124,7 @@ void event_dispatch(XEvent *event)
     if (event->type > MappingNotify)
         debug(("%-19s unknown (%d)\n", "received event:", event->type));
     else
-        debug(("%-19s %s (%d))\n", "received event:",
+        debug(("%-19s %s (%d)\n", "received event:",
                xevent_names[event->type], event->type));
     xev_print(event);
 #endif /* DEBUG */

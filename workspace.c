@@ -81,7 +81,7 @@ void workspace_goto(XEvent *xevent, void *v)
 void workspace_client_moveto(XEvent *xevent, void *v)
 {
     int ws = (int)v;
-    client_t *client;
+    client_t *client, *tmp;
 
     client = client_find(event_window(xevent));
     if (client == NULL) {
@@ -101,6 +101,31 @@ void workspace_client_moveto(XEvent *xevent, void *v)
     debug(("\tMoving client 0x%08X (%s) to workspace %d\n",
            (unsigned int)client, client->name, ws));
 #endif /* DEBUG */
+
+    /* we now move the client's transients and leader to the new
+     * workspace; we can't use client_foreach because we want
+     * the order of the transients in the focus list to remain
+     * somewhat intact as it moves to the new workspace */
+
+    if (client->transient_for != None) {
+        tmp = client_find(client->transient_for);
+        if (tmp != NULL) {
+            focus_remove(tmp, event_timestamp);
+            XUnmapWindow(dpy, tmp->frame);
+            tmp->workspace = ws;
+            focus_add(tmp, event_timestamp);
+        }
+    }
+    tmp = focus_stacks[client->workspace - 1];
+    do {
+        if (tmp->transient_for == client->window) {
+            focus_remove(tmp, event_timestamp);
+            XUnmapWindow(dpy, tmp->frame);
+            client->workspace = ws;
+            focus_add(tmp, event_timestamp);
+        }
+        tmp = tmp->next_focus;
+    } while (tmp != focus_stacks[client->workspace - 1]);
     
     focus_remove(client, event_timestamp);
     XUnmapWindow(dpy, client->frame);

@@ -209,9 +209,9 @@ int main(int argc, char **argv)
                           run_program, "konqueror");
     keyboard_set_function("Control | Alt | Shift | e", KEYBOARD_DEPRESS,
                           run_program, "emacs");
-    keyboard_set_function("Alt | Tab", KEYBOARD_DEPRESS, alt_tab, NULL);
+    keyboard_set_function("Alt | Tab", KEYBOARD_DEPRESS, focus_alt_tab, NULL);
     keyboard_set_function("Alt | Shift | Tab", KEYBOARD_DEPRESS,
-                          alt_shift_tab, NULL);
+                          focus_alt_tab, NULL);
     keyboard_set_function("Control | Alt | Shift | m", KEYBOARD_DEPRESS,
                           move_client, NULL);
     keyboard_set_function("Control | Alt | Shift | r", KEYBOARD_DEPRESS,
@@ -302,22 +302,9 @@ static void scan_windows()
     if (wins != NULL) XFree(wins);
 }
 
-void alt_tab(XEvent *e, void *arg)
-{
-    focus_alt_tab(e, arg);
-//    XUngrabKeyboard(dpy, event_timestamp);
-//    focus_next(event_timestamp);
-}
-
-void alt_shift_tab(XEvent *e, void *arg)
-{
-    focus_alt_tab(e, arg);
-//    XUngrabKeyboard(dpy, event_timestamp);
-//    focus_prev(event_timestamp);
-}
-
 void run_program(XEvent *e, void *arg)
 {
+    /* FIXME: reap children */
     if (fork() == 0) {
 /*        execlp(arg, arg, NULL); */
         system((char *)arg);

@@ -634,16 +634,33 @@ void client_sendmessage(client_t *client, Atom data0, Time timestamp,
 
 static int raise_transients(client_t *client, void *v)
 {
-    Window w = (Window)v;
+    client_t *leader = (Window)v;
 
-    /* might be in different workspace, but oh well */
-    if (client->transient_for == w && client->state == NormalState)
+    if (client->transient_for == leader->window
+        && client->state == NormalState) {
         XMapRaised(dpy, client->frame);
+        if (client->workspace != workspace_current) {
+            /* Move it to the current workspace without
+             * all the fanfare of workspace_client_moveto().
+             * workspace_client_moveto() always keeps transients
+             * in the same workspace as the leader, but since
+             * we always map all windows into the current workspace,
+             * it may be the case that this transient window is
+             * in a different window from its leader */
+            focus_remove(client, event_timestamp);
+            client->workspace = workspace_current;
+            client->next_focus = leader->next_focus;
+            client->prev_focus = leader;
+            leader->next_focus = client;
+            client->next_focus->prev_focus = client;
+            client_paint_titlebar(client);
+        }
+    }
     return 1;
 }
 
 void client_raise(client_t *client)
 {
     XMapRaised(dpy, client->frame);
-    client_foreach(raise_transients, (void *)client->window);
+    client_foreach(raise_transients, (void *)client);
 }
