@@ -38,12 +38,12 @@
  * Color allocation only happens on startup, so we don't have to be
  * too clever here.  Just use a simple array, realloc() when needed
  * and do linear search to look up entries.  When it matters, each
- * color is only a couple pointer inderections away.  Hilights are
+ * color is only a couple pointer indirections away.  Hilights are
  * calculated using a fixed offset.
  */
 
 enum {
-    NORMAL,
+    NORMAL = 0,
     HILIGHT,
     LOLIGHT,
     FOCUSED,
@@ -124,17 +124,16 @@ static unsigned long calc(unsigned long orig, XColor exact, long offset,
                           char *color_text)
 {
     XColor usable;
-    
-    usable.pixel = orig;
+
     usable.flags = DoRed | DoBlue | DoGreen;
     if (offset < 0) {
-        usable.red = SUB(exact.red, 4096);
-        usable.green = SUB(exact.green, 4096);
-        usable.blue = SUB(exact.blue, 4096);
+        usable.red = SUB(exact.red, OFFSET);
+        usable.green = SUB(exact.green, OFFSET);
+        usable.blue = SUB(exact.blue, OFFSET);
     } else {
-        usable.red = ADD(exact.red, 4096);
-        usable.green = ADD(exact.green, 4096);
-        usable.blue = ADD(exact.blue, 4096);
+        usable.red = ADD(exact.red, OFFSET);
+        usable.green = ADD(exact.green, OFFSET);
+        usable.blue = ADD(exact.blue, OFFSET);
     }
     if (XAllocColor(dpy, DefaultColormap(dpy, scr), &usable) == 0) {
         fprintf(stderr,
@@ -165,7 +164,7 @@ void paint_calculate_colors(client_t *client, char *normal,
     xc_focused.blue = 0;
     xc_focused.green = 0;
 
-    printf("%s, %s, %s, %s\n", normal, focused, text, focused_text);
+    debug(("%s, %s, %s, %s\n", normal, focused, text, focused_text));
     
     /* parse four given colors, save "exact" representation */
     if (normal != NULL) {
@@ -208,6 +207,7 @@ void paint_calculate_colors(client_t *client, char *normal,
              new_dquad[TEXT], new_dquad[FOCUSED_TEXT]);
     if (i != -1) {
         client->color_index = i;
+        debug(("Found it: %d\n", i));
         return;
     }
 
@@ -228,8 +228,11 @@ void paint_calculate_colors(client_t *client, char *normal,
     new_dquad[FOCUSED_LOLIGHT] = calc(new_dquad[FOCUSED], xc_focused,
                                       -OFFSET, focused);
 
-    memcpy(&colors[nallocated], &new_dquad, NCOLORS * sizeof(unsigned long));
+    memcpy(&colors[nallocated * NCOLORS],
+           &new_dquad,
+           NCOLORS * sizeof(unsigned long));
     client->color_index = nallocated++;
+    debug(("Allocated new entry: %d\n", nallocated-1));
     /* FIXME:  should investigate changing window's background
      * color in case X decides to show that at some point */
 }
@@ -243,7 +246,7 @@ void paint_titlebar(client_t *client)
     if (client == NULL || client->titlebar == None) return;
 
     ndx = client->color_index;
-    printf("index = %d\n", ndx);
+    debug(("index = %d, nallocated = %d\n", ndx, nallocated));
     if (ndx >= nallocated) {
         fprintf(stderr,
                 "XWM:  Assertion failed: client->color_index >= nallocated\n");
@@ -262,8 +265,6 @@ void paint_titlebar(client_t *client)
         lowlight = colors[ndx * NCOLORS + LOLIGHT];
         text = colors[ndx * NCOLORS + TEXT];
     }
-    printf("main = #%06X, hilight = #%06X, lolight = #%06X\n",
-           middle, hilight, lowlight);
 
     /* using three different GCs instead of using one and
      * continually changing its values may or may not be faster
