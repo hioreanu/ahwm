@@ -57,10 +57,29 @@
 
 #line 1 "parser.y"
 
-/* $Id$
- * This was written by Alex Hioreanu in 2001.
- * This code is in the public domain and the author disclaims all
- * copyright privileges.
+/* $Id$ */
+/* Copyright (c) 2001 Alex Hioreanu.  All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+ * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+ * SUCH DAMAGE.
  */
 /*
  * Parser definition file for use with bison (not tested with yacc).
@@ -74,15 +93,16 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #define parse_debug(x) printf(x)
 
-#line 81 "parser.y"
+#line 101 "parser.y"
 
 #include "prefs.h"
 line *make_line(int type, void *dollar_one);
 
-#line 86 "parser.y"
+#line 106 "parser.y"
 typedef union {
     int value_int;
     float value_float;
@@ -180,12 +200,12 @@ static const short yyrhs[] = {    54,
 
 #if YYDEBUG != 0
 static const short yyrline[] = { 0,
-   121,   123,   124,   138,   139,   140,   141,   142,   143,   144,
-   151,   163,   164,   165,   167,   177,   188,   199,   200,   202,
-   215,   216,   217,   218,   219,   221,   222,   223,   224,   226,
-   236,   247,   256,   267,   268,   269,   271,   280,   290,   291,
-   292,   293,   294,   295,   296,   297,   298,   299,   300,   301,
-   302,   303,   304,   305,   306,   307,   309,   326
+   141,   143,   144,   158,   159,   160,   161,   162,   163,   164,
+   171,   183,   184,   185,   187,   197,   208,   219,   220,   222,
+   235,   236,   237,   238,   239,   241,   242,   243,   244,   246,
+   256,   267,   276,   287,   288,   289,   291,   300,   310,   311,
+   312,   313,   314,   315,   316,   317,   318,   319,   320,   321,
+   322,   323,   324,   325,   326,   327,   329,   346
 };
 #endif
 
@@ -835,15 +855,15 @@ yyreduce:
   switch (yyn) {
 
 case 1:
-#line 121 "parser.y"
+#line 141 "parser.y"
 { preferences = yyvsp[0].value_line; ;
     break;}
 case 2:
-#line 123 "parser.y"
+#line 143 "parser.y"
 { yyval.value_line = NULL; ;
     break;}
 case 3:
-#line 125 "parser.y"
+#line 145 "parser.y"
 {
            line *tmp;
            parse_debug("CONFIG\n");
@@ -858,31 +878,31 @@ case 3:
        ;
     break;}
 case 4:
-#line 138 "parser.y"
+#line 158 "parser.y"
 { yyval.value_line = make_line(OPTION, yyvsp[-1].value_option); ;
     break;}
 case 5:
-#line 139 "parser.y"
+#line 159 "parser.y"
 { yyval.value_line = make_line(CONTEXT, yyvsp[-1].value_context); ;
     break;}
 case 6:
-#line 140 "parser.y"
+#line 160 "parser.y"
 { yyval.value_line = make_line(KEYBINDING, yyvsp[-1].value_keybinding); ;
     break;}
 case 7:
-#line 141 "parser.y"
+#line 161 "parser.y"
 { yyval.value_line = make_line(KEYUNBINDING, yyvsp[-1].value_keyunbinding); ;
     break;}
 case 8:
-#line 142 "parser.y"
+#line 162 "parser.y"
 { yyval.value_line = make_line(MOUSEBINDING, yyvsp[-1].value_mousebinding); ;
     break;}
 case 9:
-#line 143 "parser.y"
+#line 163 "parser.y"
 { yyval.value_line = make_line(MOUSEUNBINDING, yyvsp[-1].value_mouseunbinding); ;
     break;}
 case 10:
-#line 145 "parser.y"
+#line 165 "parser.y"
 {
           extern int line_number;
           fprintf(stderr, "XWM: parse error on line %d.  Ignoring statement.\n",
@@ -891,7 +911,7 @@ case 10:
       ;
     break;}
 case 11:
-#line 152 "parser.y"
+#line 172 "parser.y"
 {
             option *opt;
             parse_debug("OPTION\n");
@@ -904,19 +924,19 @@ case 11:
         ;
     break;}
 case 12:
-#line 163 "parser.y"
+#line 183 "parser.y"
 { yyval.value_int = DISPLAYTITLEBAR; ;
     break;}
 case 13:
-#line 164 "parser.y"
+#line 184 "parser.y"
 { yyval.value_int = DEFAULTWORKSPACE; ;
     break;}
 case 14:
-#line 165 "parser.y"
+#line 185 "parser.y"
 { yyval.value_int = NUMBEROFWORKSPACES; ;
     break;}
 case 15:
-#line 168 "parser.y"
+#line 188 "parser.y"
 {
           type *typ;
           typ = malloc(sizeof(type));
@@ -928,7 +948,7 @@ case 15:
       ;
     break;}
 case 16:
-#line 178 "parser.y"
+#line 198 "parser.y"
 {
           type *typ;
           typ = malloc(sizeof(type));
@@ -941,7 +961,7 @@ case 16:
       ;
     break;}
 case 17:
-#line 189 "parser.y"
+#line 209 "parser.y"
 {
           type *typ;
           typ = malloc(sizeof(type));
@@ -953,15 +973,15 @@ case 17:
       ;
     break;}
 case 18:
-#line 199 "parser.y"
+#line 219 "parser.y"
 { yyval.value_int = 1; ;
     break;}
 case 19:
-#line 200 "parser.y"
+#line 220 "parser.y"
 { yyval.value_int = 0; ;
     break;}
 case 20:
-#line 203 "parser.y"
+#line 223 "parser.y"
 {
              context *cntxt;
              parse_debug("CONTEXT\n");
@@ -975,43 +995,43 @@ case 20:
          ;
     break;}
 case 21:
-#line 215 "parser.y"
+#line 235 "parser.y"
 { yyval.value_int = SEL_ISSHAPED; ;
     break;}
 case 22:
-#line 216 "parser.y"
+#line 236 "parser.y"
 { yyval.value_int = SEL_INWORKSPACE; ;
     break;}
 case 23:
-#line 217 "parser.y"
+#line 237 "parser.y"
 { yyval.value_int = SEL_WINDOWNAME; ;
     break;}
 case 24:
-#line 218 "parser.y"
+#line 238 "parser.y"
 { yyval.value_int = SEL_WINDOWCLASS; ;
     break;}
 case 25:
-#line 219 "parser.y"
+#line 239 "parser.y"
 { yyval.value_int = SEL_WINDOWINSTANCE; ;
     break;}
 case 26:
-#line 221 "parser.y"
+#line 241 "parser.y"
 { yyval.value_int = 0; ;
     break;}
 case 27:
-#line 222 "parser.y"
+#line 242 "parser.y"
 { yyval.value_int = SEL_NOT; ;
     break;}
 case 28:
-#line 223 "parser.y"
+#line 243 "parser.y"
 { yyval.value_int = SEL_TRANSIENTFOR; ;
     break;}
 case 29:
-#line 224 "parser.y"
+#line 244 "parser.y"
 { yyval.value_int = SEL_HASTRANSIENT; ;
     break;}
 case 30:
-#line 227 "parser.y"
+#line 247 "parser.y"
 {
                 keybinding *kb;
                 kb = malloc(sizeof(keybinding));
@@ -1023,7 +1043,7 @@ case 30:
             ;
     break;}
 case 31:
-#line 237 "parser.y"
+#line 257 "parser.y"
 {
                   mousebinding *mb;
                   mb = malloc(sizeof(mousebinding));
@@ -1036,7 +1056,7 @@ case 31:
               ;
     break;}
 case 32:
-#line 248 "parser.y"
+#line 268 "parser.y"
 {
                   keyunbinding *kub;
                   kub = malloc(sizeof(keyunbinding));
@@ -1047,7 +1067,7 @@ case 32:
               ;
     break;}
 case 33:
-#line 257 "parser.y"
+#line 277 "parser.y"
 {
                     mouseunbinding *mub;
                     mub = malloc(sizeof(mouseunbinding));
@@ -1059,19 +1079,19 @@ case 33:
                 ;
     break;}
 case 34:
-#line 267 "parser.y"
+#line 287 "parser.y"
 { yyval.value_int = ROOT; ;
     break;}
 case 35:
-#line 268 "parser.y"
+#line 288 "parser.y"
 { yyval.value_int = FRAME; ;
     break;}
 case 36:
-#line 269 "parser.y"
+#line 289 "parser.y"
 { yyval.value_int = TITLEBAR; ;
     break;}
 case 37:
-#line 272 "parser.y"
+#line 292 "parser.y"
 {
               function *f = malloc(sizeof(function));
               if (f != NULL) {
@@ -1082,7 +1102,7 @@ case 37:
           ;
     break;}
 case 38:
-#line 281 "parser.y"
+#line 301 "parser.y"
 {
               function *f = malloc(sizeof(function));
               if (f != NULL) {
@@ -1093,79 +1113,79 @@ case 38:
           ;
     break;}
 case 39:
-#line 290 "parser.y"
+#line 310 "parser.y"
 { yyval.value_int = MOVETOWORKSPACE; ;
     break;}
 case 40:
-#line 291 "parser.y"
+#line 311 "parser.y"
 { yyval.value_int = GOTOWORKSPACE; ;
     break;}
 case 41:
-#line 292 "parser.y"
+#line 312 "parser.y"
 { yyval.value_int = ALTTAB; ;
     break;}
 case 42:
-#line 293 "parser.y"
+#line 313 "parser.y"
 { yyval.value_int = KILLNICELY; ;
     break;}
 case 43:
-#line 294 "parser.y"
+#line 314 "parser.y"
 { yyval.value_int = KILLWITHEXTREMEPREJUDICE; ;
     break;}
 case 44:
-#line 295 "parser.y"
+#line 315 "parser.y"
 { yyval.value_int = LAUNCH; ;
     break;}
 case 45:
-#line 296 "parser.y"
+#line 316 "parser.y"
 { yyval.value_int = FOCUS; ;
     break;}
 case 46:
-#line 297 "parser.y"
+#line 317 "parser.y"
 { yyval.value_int = MAXIMIZE; ;
     break;}
 case 47:
-#line 298 "parser.y"
+#line 318 "parser.y"
 { yyval.value_int = NOP; ;
     break;}
 case 48:
-#line 299 "parser.y"
+#line 319 "parser.y"
 { yyval.value_int = QUOTE; ;
     break;}
 case 49:
-#line 300 "parser.y"
+#line 320 "parser.y"
 { yyval.value_int = MOVEINTERACTIVELY; ;
     break;}
 case 50:
-#line 301 "parser.y"
+#line 321 "parser.y"
 { yyval.value_int = RESIZEINTERACTIVELY; ;
     break;}
 case 51:
-#line 302 "parser.y"
+#line 322 "parser.y"
 { yyval.value_int = MOVERESIZE; ;
     break;}
 case 52:
-#line 303 "parser.y"
+#line 323 "parser.y"
 { yyval.value_int = QUIT; ;
     break;}
 case 53:
-#line 304 "parser.y"
+#line 324 "parser.y"
 { yyval.value_int = BEEP; ;
     break;}
 case 54:
-#line 305 "parser.y"
+#line 325 "parser.y"
 { yyval.value_int = INVOKE; ;
     break;}
 case 55:
-#line 306 "parser.y"
+#line 326 "parser.y"
 { yyval.value_int = SHOWMENU; ;
     break;}
 case 56:
-#line 307 "parser.y"
+#line 327 "parser.y"
 { yyval.value_int = REFRESH; ;
     break;}
 case 57:
-#line 310 "parser.y"
+#line 330 "parser.y"
 {
              arglist *tmp;
              arglist *al;
@@ -1184,7 +1204,7 @@ case 57:
          ;
     break;}
 case 58:
-#line 327 "parser.y"
+#line 347 "parser.y"
 {
              arglist *al = malloc(sizeof(arglist));
              if (al != NULL) {
@@ -1416,7 +1436,7 @@ yyerrhandle:
     }
   return 1;
 }
-#line 336 "parser.y"
+#line 356 "parser.y"
 
 
 line *make_line(int type, void *dollar_one)

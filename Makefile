@@ -16,12 +16,15 @@ all: xwm
 xwm: $(OBJS)
 	$(CC) $(CFLAGS) $(LDFLAGS) $(OBJS) -o $@ $(LIBS)
 
-parsing: parser.y lexer.l prefs.h prefs.c
-	flex -i -olexer.c lexer.l
+parser.h: parser.c
+parser.c: parser.y
 	bison -d -o parser.c parser.y
+lexer.c: lexer.l
+	flex -i -olexer.c lexer.l
 
 install: xwm
 	@echo Still need to figure out this part
+
 .SUFFIXES:
 .SUFFIXES: .c .o
 .c.o:
@@ -38,8 +41,9 @@ wordcount:
 wc: wordcount
 
 clean:
-	@rm -f *.o *~ *core xwm # TAGS
+	@rm -f parser.c parser.h lexer.c *.o *~ *core xwm # TAGS
 
+# FIXME:  need to figure out how to integrate this with Makefile.in
 # DO NOT DELETE
 
 client.o: client.h xwm.h workspace.h keyboard-mouse.h cursor.h focus.h

@@ -582,9 +582,29 @@ char *yytext;
 #line 1 "lexer.l"
 #define INITIAL 0
 #line 2 "lexer.l"
-/*
- * $Id$
- * Flex-based lexical analyzer.
+/* $Id$ */
+/* Copyright (c) 2001 Alex Hioreanu.  All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+ * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+ * SUCH DAMAGE.
  */
 
 /* 
@@ -616,7 +636,7 @@ char *yytext;
 
 extern int line_number;
   
-#line 620 "lexer.c"
+#line 640 "lexer.c"
 
 /* Macros after this point can all be overridden by user definitions in
  * section 1.
@@ -767,10 +787,10 @@ YY_DECL
 	register char *yy_cp, *yy_bp;
 	register int yy_act;
 
-#line 40 "lexer.l"
+#line 60 "lexer.l"
 
 
-#line 774 "lexer.c"
+#line 794 "lexer.c"
 
 	if ( yy_init )
 		{
@@ -855,12 +875,12 @@ do_action:	/* This label is used only to access EOF actions. */
 
 case 1:
 YY_RULE_SETUP
-#line 42 "lexer.l"
+#line 62 "lexer.l"
 { line_number++; }
 	YY_BREAK
 case 2:
 YY_RULE_SETUP
-#line 44 "lexer.l"
+#line 64 "lexer.l"
 {
     int c;
 
@@ -880,242 +900,242 @@ YY_RULE_SETUP
 	YY_BREAK
 case 3:
 YY_RULE_SETUP
-#line 61 "lexer.l"
+#line 81 "lexer.l"
 { return TOK_DISPLAYTITLEBAR; }
 	YY_BREAK
 case 4:
 YY_RULE_SETUP
-#line 62 "lexer.l"
+#line 82 "lexer.l"
 { return TOK_DEFAULTWORKSPACE; }
 	YY_BREAK
 case 5:
 YY_RULE_SETUP
-#line 63 "lexer.l"
+#line 83 "lexer.l"
 { return TOK_NUMBEROFWORKSPACES; }
 	YY_BREAK
 case 6:
 YY_RULE_SETUP
-#line 65 "lexer.l"
+#line 85 "lexer.l"
 { return TOK_TRUE; }
 	YY_BREAK
 case 7:
 YY_RULE_SETUP
-#line 66 "lexer.l"
+#line 86 "lexer.l"
 { return TOK_FALSE; }
 	YY_BREAK
 case 8:
 YY_RULE_SETUP
-#line 68 "lexer.l"
+#line 88 "lexer.l"
 { return TOK_TRANSIENTFOR; }
 	YY_BREAK
 case 9:
 YY_RULE_SETUP
-#line 69 "lexer.l"
+#line 89 "lexer.l"
 { return TOK_HASTRANSIENT; }
 	YY_BREAK
 case 10:
 YY_RULE_SETUP
-#line 70 "lexer.l"
+#line 90 "lexer.l"
 { return TOK_NOT; }
 	YY_BREAK
 case 11:
 YY_RULE_SETUP
-#line 72 "lexer.l"
+#line 92 "lexer.l"
 { return TOK_ISSHAPED; }
 	YY_BREAK
 case 12:
 YY_RULE_SETUP
-#line 73 "lexer.l"
+#line 93 "lexer.l"
 { return TOK_INWORKSPACE; }
 	YY_BREAK
 case 13:
 YY_RULE_SETUP
-#line 74 "lexer.l"
+#line 94 "lexer.l"
 { return TOK_WINDOWNAME; }
 	YY_BREAK
 case 14:
 YY_RULE_SETUP
-#line 75 "lexer.l"
+#line 95 "lexer.l"
 { return TOK_WINDOWCLASS; }
 	YY_BREAK
 case 15:
 YY_RULE_SETUP
-#line 76 "lexer.l"
+#line 96 "lexer.l"
 { return TOK_WINDOWINSTANCE; }
 	YY_BREAK
 case 16:
 YY_RULE_SETUP
-#line 78 "lexer.l"
+#line 98 "lexer.l"
 { return TOK_FUNCTION; }
 	YY_BREAK
 case 17:
 YY_RULE_SETUP
-#line 80 "lexer.l"
+#line 100 "lexer.l"
 { return TOK_MENU; }
 	YY_BREAK
 case 18:
 YY_RULE_SETUP
-#line 82 "lexer.l"
+#line 102 "lexer.l"
 { return TOK_BINDKEY; }
 	YY_BREAK
 case 19:
 YY_RULE_SETUP
-#line 83 "lexer.l"
+#line 103 "lexer.l"
 { return TOK_BINDBUTTON; }
 	YY_BREAK
 case 20:
 YY_RULE_SETUP
-#line 84 "lexer.l"
+#line 104 "lexer.l"
 { return TOK_UNBINDKEY; }
 	YY_BREAK
 case 21:
 YY_RULE_SETUP
-#line 85 "lexer.l"
+#line 105 "lexer.l"
 { return TOK_UNBINDBUTTON; }
 	YY_BREAK
 case 22:
 YY_RULE_SETUP
-#line 87 "lexer.l"
+#line 107 "lexer.l"
 { return TOK_ROOT; }
 	YY_BREAK
 case 23:
 YY_RULE_SETUP
-#line 88 "lexer.l"
+#line 108 "lexer.l"
 { return TOK_FRAME; }
 	YY_BREAK
 case 24:
 YY_RULE_SETUP
-#line 89 "lexer.l"
+#line 109 "lexer.l"
 { return TOK_TITLEBAR; }
 	YY_BREAK
 case 25:
 YY_RULE_SETUP
-#line 91 "lexer.l"
+#line 111 "lexer.l"
 { return TOK_MOVETOWORKSPACE; }
 	YY_BREAK
 case 26:
 YY_RULE_SETUP
-#line 92 "lexer.l"
+#line 112 "lexer.l"
 { return TOK_GOTOWORKSPACE; }
 	YY_BREAK
 case 27:
 YY_RULE_SETUP
-#line 93 "lexer.l"
+#line 113 "lexer.l"
 { return TOK_ALTTAB; }
 	YY_BREAK
 case 28:
 YY_RULE_SETUP
-#line 94 "lexer.l"
+#line 114 "lexer.l"
 { return TOK_KILLNICELY; }
 	YY_BREAK
 case 29:
 YY_RULE_SETUP
-#line 95 "lexer.l"
+#line 115 "lexer.l"
 { return TOK_KILLWITHEXTREMEPREJUDICE; }
 	YY_BREAK
 case 30:
 YY_RULE_SETUP
-#line 96 "lexer.l"
+#line 116 "lexer.l"
 { return TOK_LAUNCH; }
 	YY_BREAK
 case 31:
 YY_RULE_SETUP
-#line 97 "lexer.l"
+#line 117 "lexer.l"
 { return TOK_FOCUS; }
 	YY_BREAK
 case 32:
 YY_RULE_SETUP
-#line 98 "lexer.l"
+#line 118 "lexer.l"
 { return TOK_MAXIMIZE; }
 	YY_BREAK
 case 33:
 YY_RULE_SETUP
-#line 99 "lexer.l"
+#line 119 "lexer.l"
 { return TOK_NOP; }
 	YY_BREAK
 case 34:
 YY_RULE_SETUP
-#line 100 "lexer.l"
+#line 120 "lexer.l"
 { return TOK_QUOTE; }
 	YY_BREAK
 case 35:
 YY_RULE_SETUP
-#line 101 "lexer.l"
+#line 121 "lexer.l"
 { return TOK_MOVEINTERACTIVELY; }
 	YY_BREAK
 case 36:
 YY_RULE_SETUP
-#line 102 "lexer.l"
+#line 122 "lexer.l"
 { return TOK_RESIZEINTERACTIVELY; }
 	YY_BREAK
 case 37:
 YY_RULE_SETUP
-#line 103 "lexer.l"
+#line 123 "lexer.l"
 { return TOK_MOVERESIZE; }
 	YY_BREAK
 case 38:
 YY_RULE_SETUP
-#line 104 "lexer.l"
+#line 124 "lexer.l"
 { return TOK_QUIT; }
 	YY_BREAK
 case 39:
 YY_RULE_SETUP
-#line 105 "lexer.l"
+#line 125 "lexer.l"
 { return TOK_BEEP; }
 	YY_BREAK
 case 40:
 YY_RULE_SETUP
-#line 106 "lexer.l"
+#line 126 "lexer.l"
 { return TOK_INVOKE; }
 	YY_BREAK
 case 41:
 YY_RULE_SETUP
-#line 107 "lexer.l"
+#line 127 "lexer.l"
 { return TOK_SHOWMENU; }
 	YY_BREAK
 case 42:
 YY_RULE_SETUP
-#line 108 "lexer.l"
+#line 128 "lexer.l"
 { return TOK_REFRESH; }
 	YY_BREAK
 case 43:
 YY_RULE_SETUP
-#line 110 "lexer.l"
+#line 130 "lexer.l"
 { return TOK_SEMI; }
 	YY_BREAK
 case 44:
 YY_RULE_SETUP
-#line 111 "lexer.l"
+#line 131 "lexer.l"
 { return TOK_EQUALS; }
 	YY_BREAK
 case 45:
 YY_RULE_SETUP
-#line 112 "lexer.l"
+#line 132 "lexer.l"
 { return TOK_LBRACE; }
 	YY_BREAK
 case 46:
 YY_RULE_SETUP
-#line 113 "lexer.l"
+#line 133 "lexer.l"
 { return TOK_RBRACE; }
 	YY_BREAK
 case 47:
 YY_RULE_SETUP
-#line 114 "lexer.l"
+#line 134 "lexer.l"
 { return TOK_COMMA; }
 	YY_BREAK
 case 48:
 YY_RULE_SETUP
-#line 115 "lexer.l"
+#line 135 "lexer.l"
 { return TOK_LPAREN; }
 	YY_BREAK
 case 49:
 YY_RULE_SETUP
-#line 116 "lexer.l"
+#line 136 "lexer.l"
 { return TOK_RPAREN; }
 	YY_BREAK
 case 50:
 YY_RULE_SETUP
-#line 118 "lexer.l"
+#line 138 "lexer.l"
 {
     yylval.value_string = yytext;
     return TOK_STRING;
@@ -1123,7 +1143,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 51:
 YY_RULE_SETUP
-#line 123 "lexer.l"
+#line 143 "lexer.l"
 {
     yylval.value_int = atoi(yytext);
     return TOK_INTEGER;
@@ -1131,7 +1151,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 52:
 YY_RULE_SETUP
-#line 128 "lexer.l"
+#line 148 "lexer.l"
 {
     yylval.value_float = (float)atof(yytext);
     return TOK_FLOAT;
@@ -1139,37 +1159,37 @@ YY_RULE_SETUP
 	YY_BREAK
 case 53:
 YY_RULE_SETUP
-#line 133 "lexer.l"
+#line 153 "lexer.l"
 {;}
 	YY_BREAK
 case 54:
 YY_RULE_SETUP
-#line 134 "lexer.l"
+#line 154 "lexer.l"
 {;}
 	YY_BREAK
 case 55:
 YY_RULE_SETUP
-#line 136 "lexer.l"
+#line 156 "lexer.l"
 {;}
 	YY_BREAK
 case 56:
 YY_RULE_SETUP
-#line 138 "lexer.l"
+#line 158 "lexer.l"
 {
     fprintf(stderr, "XWM: Unrecognized keyword '%s'\n", yytext);
 }
 	YY_BREAK
 case 57:
 YY_RULE_SETUP
-#line 141 "lexer.l"
+#line 161 "lexer.l"
 { fprintf(stderr, "XWM: Unrecognized character '%s'\n", yytext); }
 	YY_BREAK
 case 58:
 YY_RULE_SETUP
-#line 143 "lexer.l"
+#line 163 "lexer.l"
 ECHO;
 	YY_BREAK
-#line 1173 "lexer.c"
+#line 1193 "lexer.c"
 case YY_STATE_EOF(INITIAL):
 	yyterminate();
 
@@ -2055,7 +2075,7 @@ int main()
 	return 0;
 	}
 #endif
-#line 143 "lexer.l"
+#line 163 "lexer.l"
 
 
 int line_number = 1;
