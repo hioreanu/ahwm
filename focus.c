@@ -68,8 +68,8 @@ void focus_remove(client_t *client, Time timestamp)
             /* if was focused for workspace, update workspace pointer */
             if (focus_stacks[client->workspace - 1] == client) {
                 debug(("\tsetting focus stack of workspace %d to %s\n",
-                       client->workspace, client->prev_focus->name));
-                focus_stacks[client->workspace - 1] = client->prev_focus;
+                       client->workspace, client->next_focus->name));
+                focus_stacks[client->workspace - 1] = client->next_focus;
             }
             /* if only client left on workspace, set to NULL */
             if (client->next_focus == client) {
@@ -81,7 +81,7 @@ void focus_remove(client_t *client, Time timestamp)
             }
             /* if removed was focused window, refocus now */
             if (client == focus_current) {
-                focus_change_current(client->prev_focus, timestamp);
+                focus_change_current(client->next_focus, timestamp);
             }
             return;
         }
@@ -166,6 +166,7 @@ void focus_ensure(Time timestamp)
     client_raise(focus_current);
 }
 
+#ifdef DEBUG
 void dump_focus_list()
 {
     client_t *client, *orig;
@@ -179,6 +180,9 @@ void dump_focus_list()
     } while (client != orig);
     printf("\n");
 }
+#else
+#define dump_focus_list() /* */
+#endif
 
 void focus_alt_tab(XEvent *xevent, void *v)
 {
