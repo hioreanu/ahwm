@@ -870,7 +870,9 @@ void resize_client(XEvent *xevent, arglist *al)
                                 x_start = client->x + client->width;
                                 y_start = client->y + client->height;
                                 break;
-                            default: /* shuts up compiler warning */
+                            default:
+								/* nothing */
+								;
                         }
                     }
                     xrefresh();
@@ -1132,6 +1134,8 @@ static void cycle_resize_direction_mouse(resize_direction_t *current,
             *old = WEST;
             break;
         default:
+			/* nothing */
+			;
     }
 }
 
@@ -1276,6 +1280,8 @@ static void process_resize(client_t *client, int new_x, int new_y,
                 }
                 break;
             default:
+				/* nothing */
+				;
         }
     }
     
@@ -1312,6 +1318,8 @@ static void process_resize(client_t *client, int new_x, int new_y,
                 }
                 break;
             default:
+				/* nothing */
+				;
         }
     }
     

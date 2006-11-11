@@ -761,6 +761,7 @@ static void prefs_apply_internal(client_t *client, line *block, prefs *p)
                 break;
             default:
                 /* nothing */
+				;
         }
     }
 }
@@ -970,6 +971,7 @@ static void option_apply(client_t *client, option *opt, prefs *p)
             break;
         default:
             /* nothing */
+			;
     }
 }
 
