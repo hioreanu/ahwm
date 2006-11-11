@@ -131,19 +131,14 @@
 #endif
 
 #ifndef HAVE_LIMITS_H
-# error "AHWM needs porting to your system (need PATH_MAX in limits.h); please contact
-the auth
-or."
+# error "AHWM needs porting to your system (need PATH_MAX in limits.h); please contact the author."
 #endif
 
 #ifndef HAVE_SELECT
 # ifdef HAVE_POLL
-#  error "AHWM needs porting to your system (use poll instead of select); please
-contact the au
-thor."
+#  error "AHWM needs porting to your system (use poll instead of select); please contact the author."
 # else
-#  error "AHWM needs porting to your system (no poll or select); please contact the
-author."
+#  error "AHWM needs porting to your system (no poll or select); please contact the author."
 # endif
 #endif
 
