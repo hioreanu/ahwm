@@ -108,7 +108,7 @@ void colormap_update_windows_property(client_t *client)
 {
     Atom actual;
     int fmt;
-    long bytes_after_return;
+    unsigned long bytes_after_return;
     
     if (client == NULL)
         return;
@@ -118,7 +118,7 @@ void colormap_update_windows_property(client_t *client)
                            sizeof(Window), False, XA_WINDOW,
                            &actual, &fmt, &client->ncolormap_windows,
                            &bytes_after_return,
-                           (unsigned char **)&client->colormap_windows) == 0) {
+                           (void *)&client->colormap_windows) == 0) {
         if (client->colormap_windows != NULL)
             XFree(client->colormap_windows);
         client->ncolormap_windows = 0;
