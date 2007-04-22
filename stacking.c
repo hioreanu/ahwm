@@ -53,8 +53,8 @@
  * be clients (and are kept respectively on top or bottom of all
  * clients).  "nused" indicates the size of the "clients" array.
  * 
- * client->stacking is an index into the "clients" array.
- * If client->stacking == -1, client is not in arrays.
+ * client->stacking_order is an index into the "clients" array.
+ * If client->stacking_order == -1, client is not in arrays.
  * 
  * An additional problem arises in that XRestackWindows wants windows
  * in top-to-bottom order and EWMH wants windows in bottom-to-top
@@ -97,15 +97,13 @@ static void restack(client_t *client, Bool move_up);
 static void commit();
 static void raise_tree(client_t *client, client_t *ignore, Bool go_up);
 
-#if 0
 static void dump(); /* defined out to get rid of warning */
-#endif
 
 /* easy way to maintain invariants */
 static void set(client_t *client, int index)
 {
     clients[index] = client;
-    clients[index]->stacking = index;
+    clients[index]->stacking_order = index;
     windows[index + 1] = client->window;
     frames[nused - index] = client->frame;
 }
@@ -116,7 +114,7 @@ void stacking_add(client_t *client)
     
     if (grow() == False) {
         perror("AHWM: stacking_add: grow");
-        client->stacking = -1;
+        client->stacking_order = -1;
     }
 
     /* add to backwards "frames" array */
@@ -132,11 +130,11 @@ void stacking_add(client_t *client)
         if (order(clients[i], client) == 0)
             break;
         clients[i + 1] = clients[i];
-        clients[i + 1]->stacking = i + 1;
+        clients[i + 1]->stacking_order = i + 1;
         windows[i + 2] = windows[i + 2];
     }
     clients[i + 1] = client;
-    clients[i + 1]->stacking = i + 1;
+    clients[i + 1]->stacking_order = i + 1;
 
     nused++;
     commit();
@@ -151,15 +149,18 @@ void stacking_remove(client_t *client)
 {
     int i;
 
-    for (i = client->stacking + 1; i < nused; i++) {
+	if (client->stacking_order == -1) return;
+    for (i = client->stacking_order + 1; i < nused; i++) {
+        debug(("Moving %d (%s) to %d (%s), nused = %d\n",
+               i, clients[i]->name, i - 1, clients[i - 1]->name, nused));
         clients[i - 1] = clients[i];
-        clients[i - 1]->stacking = i - 1;
+        clients[i - 1]->stacking_order = i - 1;
         windows[i] = windows[i + 1];
     }
-    for (i = nused - client->stacking; i <= nused; i++) {
+    for (i = nused - client->stacking_order; i <= nused; i++) {
         frames[i] = frames[i + 1];
     }
-    client->stacking = -1;
+    client->stacking_order = -1;
     nused--;
     commit();
 }
@@ -175,16 +176,16 @@ client_t *stacking_prev(client_t *client)
 {
     if (client == NULL)
         return NULL;
-    if (client->stacking <= 0) return NULL;
-    else return clients[client->stacking - 1];
+    if (client->stacking_order <= 0) return NULL;
+    else return clients[client->stacking_order - 1];
 }
 
 client_t *stacking_next(client_t *client)
 {
     if (client == NULL)
         return NULL;
-    if (client->stacking >= nused - 1) return NULL;
-    else return clients[client->stacking + 1];
+    if (client->stacking_order >= nused - 1) return NULL;
+    else return clients[client->stacking_order + 1];
 }
 
 void stacking_raise(client_t *client)
@@ -203,10 +204,10 @@ void stacking_restack(client_t *client)
     commit();
 }
 
-#if 0
 /* defined out to get rid of warning */
 static void dump()
 {
+#ifdef DEBUG
     int i;
     client_t *client;
 
@@ -225,8 +226,17 @@ static void dump()
         fprintf(stderr, "\n");
     }
     fprintf(stderr, "----\n");
-}
+	fprintf(stderr, "windows:\n");
+	for (i = 0; i < nused; i++) {
+        client = client_find(frames[i]);
+        fprintf(stderr, "% 2d. %#lx ", i, frames[i]);
+        if (client != NULL)
+            fprintf(stderr, "%s", client->name);
+        fprintf(stderr, "\n");
+	}
+    fprintf(stderr, "----\n");
 #endif
+}
 
 /*
  * Ensures arrays have room enough for one more member.  Returns True
@@ -273,9 +283,9 @@ static Bool grow()
 
 static void commit()
 {
-    int start, nitems, e_start, e_nitems;
+    int start, nitems, e_start, e_nitems, i;
 
-    e_nitems = nitems = nused;
+    nitems = nused;
     if (stacking_hiding_window != None) {
         frames[0] = stacking_hiding_window;
         start = 0;
@@ -287,17 +297,22 @@ static void commit()
         frames[start + nitems] = stacking_desktop_frame;
         nitems++;
     }
+    XRestackWindows(dpy, &frames[start], nitems);
+
+    /* we ignore stacking_hiding_window for EWMH */
     if (stacking_desktop_window != None) {
         windows[0] = stacking_desktop_window;
         e_start = 0;
-        e_nitems++;
+        e_nitems = nitems + 1;
     } else {
         e_start = 1;
+		e_nitems = nitems;
     }
-    /* we ignore stacking_hiding_window for EWMH */
-    
-    XRestackWindows(dpy, &frames[start], nitems);
-    ewmh_stacking_list_update(&windows[e_start], e_nitems);
+	for (i = 0; i < nused; i++) {
+		windows[1 + i] = clients[i]->window;
+	}
+	ewmh_stacking_list_update(&windows[e_start], e_nitems);
+	dump();
 }
 
 /* defines partial ordering on clients
@@ -335,7 +350,7 @@ static void restack(client_t *client, Bool move_up)
     client_t *ctmp;
     int c;
 
-    i = client->stacking;
+    i = client->stacking_order;
 
     if (i < 0) {
         return;
@@ -365,7 +380,7 @@ static void restack(client_t *client, Bool move_up)
         i++;
     }
 
-    i = client->stacking;
+    i = client->stacking_order;
     
     /* move down if absolutely needed */
     while (i > 0 && order(clients[i], clients[i - 1]) < 0) {
