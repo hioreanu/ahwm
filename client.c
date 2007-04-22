@@ -442,7 +442,7 @@ void client_remove_titlebar(client_t *client)
     position_size ps;
     Bool reparented;
     Window junk1, *junk2;
-    int n;
+    unsigned int n;
 
     client->has_titlebar = 0;
     if (client->titlebar == None)
@@ -549,7 +549,7 @@ void client_set_name(client_t *client)
     } else {
         if (xtp.encoding == XA_STRING) {
             /* usual case */
-            client->name = Strdup(xtp.value);
+            client->name = Strdup((char *)xtp.value);
         } else {
             /* client is using UTF-16 or something equally stupid */
             /* haven't seen this block actually run yet */
