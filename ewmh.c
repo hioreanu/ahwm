@@ -125,7 +125,7 @@ static client_t **left_client, **right_client, **top_client, **bottom_client;
 unsigned long *top, *left, *right, *bottom, *width, *height;
 
 static void no_titlebar(client_t *client);
-static void click_to_focus(client_t *client);
+static void unfocusable(client_t *client);
 static void skip_cycle(client_t *client);
 static void sticky(client_t *client);
 static void on_top(client_t *client);
@@ -656,13 +656,13 @@ static void no_titlebar(client_t *client)
     }
 }
 
-static void click_to_focus(client_t *client)
+static void unfocusable(client_t *client)
 {
     if (client->focus_policy_set <= HintSet) {
-        if (client->focus_policy != ClickToFocus) {
-            focus_policy_to_click(client);
-        }
-        client->focus_policy = ClickToFocus;
+        if (client->focus_policy == ClickToFocus) {
+			focus_policy_from_click(client);
+		}
+        client->focus_policy = DontFocus;
         client->focus_policy_set = HintSet;
     }
     if (client->pass_focus_click_set <= HintSet) {
@@ -724,7 +724,7 @@ void ewmh_to_desktop(client_t *client)
 {
     no_titlebar(client);
     skip_cycle(client);
-    click_to_focus(client);
+    unfocusable(client);
     sticky(client);
     on_bottom(client);
     if (client->omnipresent_set <= HintSet) {
@@ -756,7 +756,7 @@ void ewmh_to_desktop(client_t *client)
 void ewmh_to_dock(client_t *client)
 {
     no_titlebar(client);
-    click_to_focus(client);
+	unfocusable(client);
     skip_cycle(client);
     sticky(client);
     on_top(client);
@@ -789,12 +789,11 @@ void ewmh_to_dialog(client_t *client)
     /* do nothing */
 }
 
-/* these two might be better with no focus: need experimentation, examples */
 void ewmh_to_menu(client_t *client)
 {
     no_titlebar(client);
     skip_cycle(client);
-    click_to_focus(client);
+	unfocusable(client);
     on_top(client);
 }
 
@@ -802,7 +801,7 @@ void ewmh_to_toolbar(client_t *client)
 {
     no_titlebar(client);
     skip_cycle(client);
-    click_to_focus(client);
+	unfocusable(client);
 }
 
 Bool ewmh_handle_clientmessage(XClientMessageEvent *xevent)
