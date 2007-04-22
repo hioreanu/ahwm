@@ -49,10 +49,7 @@
  * - _NET_WM_PING, _NET_WM_PID
  * - some properties must be updated on window if set by ahwm:
  *   x _NET_WM_DESKTOP
- *   x _WIN_WORKSPACE
  *   - _NET_WM_STATE
- *   - _WIN_STATE
- *   - _WIN_LAYER
  * x kicker has a KEEP_ON_TOP WM_STATE not mentioned in EWMH 1.1
  * x proxy clicks for GNOME
  * x figure out if _NET_CLIENT_LIST[_STACKING] has windows on all workspaces
@@ -75,34 +72,6 @@
  *   SKIP_PAGER:  nothing special
  * x add horiz, and vert max.
  */
-
-/* bitmasks for _WIN_STATE: */
-#define WIN_STATE_STICKY          (1<<0) /*everyone knows sticky*/
-#define WIN_STATE_MINIMIZED       (1<<1) /*Reserved - definition is unclear*/
-#define WIN_STATE_MAXIMIZED_VERT  (1<<2) /*window in maximized V state*/
-#define WIN_STATE_MAXIMIZED_HORIZ (1<<3) /*window in maximized H state*/  
-#define WIN_STATE_HIDDEN          (1<<4) /*not on taskbar but window visible*/
-#define WIN_STATE_SHADED          (1<<5) /*shaded (MacOS / Afterstep style)*/
-#define WIN_STATE_HID_WORKSPACE   (1<<6) /*not on current desktop*/
-#define WIN_STATE_HID_TRANSIENT   (1<<7) /*owner of transient is hidden*/
-#define WIN_STATE_FIXED_POSITION  (1<<8) /*window is fixed in position even*/
-#define WIN_STATE_ARRANGE_IGNORE  (1<<9) /*ignore for auto arranging*/
-
-/* bitmasks for _WIN_HINTS: */
-#define WIN_HINTS_SKIP_FOCUS      (1<<0) /*"alt-tab" skips this win*/
-#define WIN_HINTS_SKIP_WINLIST    (1<<1) /*do not show in window list*/
-#define WIN_HINTS_SKIP_TASKBAR    (1<<2) /*do not show on taskbar*/
-#define WIN_HINTS_GROUP_TRANSIENT (1<<3) /*Reserved - definition is unclear*/
-#define WIN_HINTS_FOCUS_ON_CLICK  (1<<4) /*app only accepts focus if clicked*/
-
-/* values for _WIN_LAYER: */
-#define WIN_LAYER_DESKTOP                0
-#define WIN_LAYER_BELOW                  2
-#define WIN_LAYER_NORMAL                 4
-#define WIN_LAYER_ONTOP                  6
-#define WIN_LAYER_DOCK                   8
-#define WIN_LAYER_ABOVE_DOCK             10 
-#define WIN_LAYER_MENU                   12
 
 /* move/resize direction for _NET_WM_MOVERESIZE */
 #define _NET_WM_MOVERESIZE_SIZE_TOPLEFT      0
@@ -140,12 +109,6 @@ static Atom _NET_WM_STATE_SHADED, _NET_WM_STATE_SKIP_TASKBAR;
 static Atom _NET_WM_STATE_SKIP_PAGER, _NET_WM_STATE_REMOVE;
 static Atom _NET_WM_STATE_ADD, _NET_WM_STATE_TOGGLE;
 static Atom _NET_WM_PING, _NET_WM_STATE_STAYS_ON_TOP;
-
-static Atom _WIN_SUPPORTING_WM_CHECK, _WIN_PROTOCOLS, _WIN_LAYER;
-static Atom _WIN_HINTS, _WIN_APP_STATE, _WIN_EXPANDED_SIZE, _WIN_ICONS;
-static Atom _WIN_WORKSPACE, _WIN_WORKSPACE_COUNT, _WIN_STATE;
-static Atom _WIN_WORKSPACE_NAMES, _WIN_CLIENT_LIST, _WIN_SUPPORTED;
-static Atom _WIN_DESKTOP_BUTTON_PROXY;
 
 Atom _NET_WM_STRUT, _NET_WM_STATE, _NET_WM_WINDOW_TYPE, _NET_WM_DESKTOP;
 
@@ -242,25 +205,6 @@ void ewmh_init()
     _NET_DESKTOP_NAMES = XInternAtom(dpy, "_NET_DESKTOP_NAMES", False);
     _NET_WM_WINDOW_TYPE = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE", False);
     _NET_WM_STATE = XInternAtom(dpy, "_NET_WM_STATE", False);
-
-    _WIN_SUPPORTING_WM_CHECK =
-        XInternAtom(dpy, "_WIN_SUPPORTING_WM_CHECK", False);
-    _WIN_SUPPORTING_WM_CHECK =
-        XInternAtom(dpy, "_WIN_SUPPORTING_WM_CHECK", False);
-    _WIN_PROTOCOLS = XInternAtom(dpy, "_WIN_PROTOCOLS", False);
-    _WIN_LAYER = XInternAtom(dpy, "_WIN_LAYER", False);
-    _WIN_HINTS = XInternAtom(dpy, "_WIN_HINTS", False);
-    _WIN_APP_STATE = XInternAtom(dpy, "_WIN_APP_STATE", False);
-    _WIN_EXPANDED_SIZE = XInternAtom(dpy, "_WIN_EXPANDED_SIZE", False);
-    _WIN_ICONS = XInternAtom(dpy, "_WIN_ICONS", False);
-    _WIN_WORKSPACE = XInternAtom(dpy, "_WIN_WORKSPACE", False);
-    _WIN_WORKSPACE_COUNT = XInternAtom(dpy, "_WIN_WORKSPACE_COUNT", False);
-    _WIN_STATE = XInternAtom(dpy, "_WIN_STATE", False);
-    _WIN_WORKSPACE_NAMES = XInternAtom(dpy, "_WIN_WORKSPACE_NAMES", False);
-    _WIN_CLIENT_LIST = XInternAtom(dpy, "_WIN_CLIENT_LIST", False);
-    _WIN_SUPPORTED = XInternAtom(dpy, "_WIN_SUPPORTED", False);
-    _WIN_DESKTOP_BUTTON_PROXY =
-        XInternAtom(dpy, "_WIN_DESKTOP_BUTTON_PROXY", False);
     _NET_WM_STATE_STAYS_ON_TOP =
         XInternAtom(dpy, "_NET_WM_STATE_STAYS_ON_TOP", False);
 
@@ -304,21 +248,6 @@ void ewmh_init()
                     XA_ATOM, 32, PropModeReplace,
                     (unsigned char *)supported, NO_SUPPORTED_HINTS);
 
-    supported[0] = _WIN_LAYER;
-    supported[1] = _WIN_STATE;
-    supported[2] = _WIN_HINTS;
-    supported[3] = _WIN_APP_STATE;
-    supported[4] = _WIN_EXPANDED_SIZE;
-    supported[5] = _WIN_ICONS;
-    supported[6] = _WIN_WORKSPACE;
-    supported[7] = _WIN_WORKSPACE_COUNT;
-    supported[8] = _WIN_WORKSPACE_NAMES;
-    supported[9] = _WIN_CLIENT_LIST;
-
-    XChangeProperty(dpy, root_window, _WIN_SUPPORTED,
-                    XA_ATOM, 32, PropModeReplace,
-                    (unsigned char *)supported, 10);
-    
     xswa.override_redirect = True;
     ewmh_window = XCreateWindow(dpy, root_window, 0, 0, 1, 1, 0,
                                 DefaultDepth(dpy, scr), InputOutput,
@@ -327,29 +256,14 @@ void ewmh_init()
     XChangeProperty(dpy, root_window, _NET_SUPPORTING_WM_CHECK,
                     XA_WINDOW, 32, PropModeReplace,
                     (unsigned char *)&ewmh_window, 1);
-    XChangeProperty(dpy, root_window, _WIN_SUPPORTING_WM_CHECK,
-                    XA_CARDINAL, 32, PropModeReplace,
-                    (unsigned char *)&ewmh_window, 1);
     XChangeProperty(dpy, ewmh_window, _NET_SUPPORTING_WM_CHECK,
                     XA_WINDOW, 32, PropModeReplace,
-                    (unsigned char *)&ewmh_window, 1);
-    XChangeProperty(dpy, ewmh_window, _WIN_SUPPORTING_WM_CHECK,
-                    XA_CARDINAL, 32, PropModeReplace,
                     (unsigned char *)&ewmh_window, 1);
     XChangeProperty(dpy, ewmh_window, _NET_WM_NAME,
                     UTF8_STRING, 8, PropModeReplace,
                     (unsigned char *)"AHWM", 4);
-    XChangeProperty(dpy, root_window, _WIN_DESKTOP_BUTTON_PROXY,
-                    XA_CARDINAL, 32, PropModeReplace,
-                    (unsigned char *)&ewmh_window, 1);
-    XChangeProperty(dpy, ewmh_window, _WIN_DESKTOP_BUTTON_PROXY,
-                    XA_CARDINAL, 32, PropModeReplace,
-                    (unsigned char *)&ewmh_window, 1);
     l[0] = nworkspaces;
     XChangeProperty(dpy, root_window, _NET_NUMBER_OF_DESKTOPS,
-                    XA_CARDINAL, 32, PropModeReplace,
-                    (unsigned char *)l, 1);
-    XChangeProperty(dpy, root_window, _WIN_WORKSPACE_COUNT,
                     XA_CARDINAL, 32, PropModeReplace,
                     (unsigned char *)l, 1);
     l[0] = scr_width;
@@ -387,11 +301,6 @@ void ewmh_init()
                         i == 0 ? PropModeReplace : PropModeAppend,
                         (unsigned char *)workspace_name,
                         strlen(workspace_name) + 1);
-        XChangeProperty(dpy, root_window, _WIN_WORKSPACE_NAMES,
-                        XA_STRING, 8,
-                        i == 0 ? PropModeReplace : PropModeAppend,
-                        (unsigned char *)workspace_name,
-                        strlen(workspace_name) + 1);
     }
     /*
      * This function is called whenever AHWM is started.  We try to
@@ -415,9 +324,6 @@ void ewmh_init()
     
     l[0] = workspace_current - 1;
     XChangeProperty(dpy, root_window, _NET_CURRENT_DESKTOP,
-                    XA_CARDINAL, 32, PropModeReplace,
-                    (unsigned char *)l, 1);
-    XChangeProperty(dpy, root_window, _WIN_WORKSPACE,
                     XA_CARDINAL, 32, PropModeReplace,
                     (unsigned char *)l, 1);
 
@@ -662,142 +568,6 @@ void ewmh_wm_strut_apply(client_t *client)
     if (changed)
         update_wm_workarea();
 #endif
-}
-
-/* _WIN_HINTS is only changed by the application.  Thus, the
- * application tells us to change something by just doing an
- * XChangeProperty instead of using a ClientMessage */
-void ewmh_win_hints_apply(client_t *client)
-{
-    Atom actual;
-    int fmt;
-    unsigned long *hint, bytes_after_return, nitems;
-
-    hint = NULL;
-    if (XGetWindowProperty(dpy, client->window, _WIN_HINTS, 0,
-                           sizeof(Atom), False, XA_CARDINAL,
-                           &actual, &fmt, &nitems, &bytes_after_return,
-                           (void *)&hint) != Success) {
-        debug(("\tXGetWindowProperty(_WIN_HINTS) failed\n"));
-        return;
-    }
-    if (nitems == 0 || fmt != 32 || actual != XA_CARDINAL) {
-        debug(("\tnitems = %d, fmt = %d\n", nitems, fmt));
-        if (hint != NULL) XFree(hint);
-        return;
-    }
-    if (*hint & WIN_HINTS_SKIP_FOCUS) {
-        skip_cycle(client);
-    }
-    if (*hint & WIN_HINTS_FOCUS_ON_CLICK) {
-        click_to_focus(client);
-    }
-    if (hint != NULL) XFree(hint);
-}
-
-void ewmh_win_state_apply(client_t *client)
-{
-    Atom actual;
-    int fmt;
-    unsigned long *hint, bytes_after_return, nitems;
-
-    if (client->state != WithdrawnState) return;
-
-    hint = NULL;
-    if (XGetWindowProperty(dpy, client->window, _WIN_STATE, 0,
-                           sizeof(Atom), False, XA_CARDINAL,
-                           &actual, &fmt, &nitems, &bytes_after_return,
-                           (void *)&hint) != Success) {
-        debug(("\tXGetWindowProperty(_WIN_STATE) failed\n"));
-        return;
-    }
-    if (nitems == 0 || fmt != 32 || actual != XA_CARDINAL) {
-        debug(("\tnitems = %d, fmt = %d\n", nitems, fmt));
-        if (hint != NULL) XFree(hint);
-        return;
-    }
-    
-    if ((*hint & WIN_STATE_MAXIMIZED_HORIZ) &&
-        (*hint & WIN_STATE_MAXIMIZED_VERT)) {
-        
-        resize_maximize_client(client, MAX_BOTH, MAX_MAXED);
-    } else {
-        if (*hint & WIN_STATE_MAXIMIZED_VERT) {
-            resize_maximize_client(client, MAX_VERT, MAX_MAXED);
-        }
-        if (*hint & WIN_STATE_MAXIMIZED_HORIZ) {
-            resize_maximize_client(client, MAX_HORIZ, MAX_MAXED);
-        }
-    }
-    if (*hint & WIN_STATE_FIXED_POSITION) {
-        sticky(client);
-    }
-    if (hint != NULL) XFree(hint);
-}
-
-void ewmh_win_workspace_apply(client_t *client)
-{
-    Atom actual;
-    int fmt;
-    unsigned long *hint, bytes_after_return, nitems;
-
-    if (client->state != WithdrawnState) return;
-
-    hint = NULL;
-    if (XGetWindowProperty(dpy, client->window, _WIN_WORKSPACE, 0,
-                           sizeof(Atom), False, XA_CARDINAL,
-                           &actual, &fmt, &nitems, &bytes_after_return,
-                           (void *)&hint) != Success) {
-        debug(("\tXGetWindowProperty(_WIN_STATE) failed\n"));
-        return;
-    }
-    if (nitems == 0 || fmt != 32 || actual != XA_CARDINAL) {
-        debug(("\tnitems = %d, fmt = %d\n", nitems, fmt));
-        if (hint != NULL) XFree(hint);
-        return;
-    }
-    if (client->workspace_set <= HintSet) {
-        client->workspace = (*hint) + 1;
-        client->workspace_set = HintSet;
-        ewmh_desktop_update(client);
-        prefs_apply(client);
-    }
-    if (hint != NULL) XFree(hint);
-}
-
-void ewmh_win_layer_apply(client_t *client)
-{
-    Atom actual;
-    int fmt;
-    unsigned long *hint, bytes_after_return, nitems;
-
-    if (client->state != WithdrawnState) return;
-
-    hint = NULL;
-    if (XGetWindowProperty(dpy, client->window, _WIN_LAYER, 0,
-                           sizeof(Atom), False, XA_CARDINAL,
-                           &actual, &fmt, &nitems, &bytes_after_return,
-                           (void *)&hint) != Success) {
-        debug(("\tXGetWindowProperty(_WIN_STATE) failed\n"));
-        return;
-    }
-    if (nitems == 0 || fmt != 32 || actual != XA_CARDINAL) {
-        debug(("\tnitems = %d, fmt = %d\n", nitems, fmt));
-        if (hint != NULL) XFree(hint);
-        return;
-    }
-    if (*hint == 0) {
-        ewmh_to_desktop(client);
-    } else if (*hint == 12) {
-        ewmh_to_menu(client);
-    } else if (*hint < 4) {
-        on_bottom(client);
-    } else if (*hint > 8) {
-        ewmh_to_dock(client);
-    } else if (*hint > 4) {
-        on_top(client);
-    }
-    if (hint != NULL) XFree(hint);
 }
 
 void ewmh_wm_desktop_apply(client_t *client)
@@ -1148,82 +918,7 @@ Bool ewmh_handle_clientmessage(XClientMessageEvent *xevent)
                 }
             }
         }
-        
-        return True;
-    } else if (xevent->message_type == _WIN_LAYER) {
-        if (data == 0) {
-            ewmh_to_desktop(client);
-        } else if (data == 12) {
-            ewmh_to_menu(client);
-        } else if (data < 4) {            /* 0 < data < 4 */
-            on_bottom(client);
-        } else if (data > 8) {            /* 12 > data > 8 */
-            ewmh_to_dock(client);
-        } else if (data > 4) {            /* 8 >= data > 4 */
-            on_top(client);
-        } else {                          /* data == 4, normal layer */
-            if (client->always_on_top_set <= HintSet) {
-                client->always_on_top = 0;
-                client->always_on_top_set = HintSet;
-            }
-            if (client->always_on_bottom_set <= HintSet) {
-                client->always_on_bottom = 0;
-                client->always_on_bottom_set = HintSet;
-            }
-            stacking_restack(client);
-        }
-        return True;
-    } else if (xevent->message_type == _WIN_STATE) {
-        /* "data" is mask of which members of "data2" have changed
-         * "data2" is mask - bit i is on means state i is on
-         * we also want to ensure maximizing both horizontally
-         * and vertically at the same time is an atomic operation,
-         * so this gets a little ugly */
-        if (data & WIN_STATE_FIXED_POSITION) {
-            if (data2 & WIN_STATE_FIXED_POSITION) {
-                sticky(client);
-            } else {
-                if (client->sticky_set <= HintSet) {
-                    client->sticky = 0;
-                    client->sticky_set = HintSet;
-                }
-            }
-        }
-        if (data & WIN_STATE_MAXIMIZED_VERT) {
-            if (data & WIN_STATE_MAXIMIZED_HORIZ) {
-                if ((data2 & WIN_STATE_MAXIMIZED_VERT) &&
-                    (data2 & WIN_STATE_MAXIMIZED_HORIZ)) {
-                    
-                    resize_maximize_client(client, MAX_BOTH, MAX_MAXED);
-                    return True;
-                } else if (!(data2 & WIN_STATE_MAXIMIZED_VERT) &&
-                           !(data2 & WIN_STATE_MAXIMIZED_HORIZ)) {
-                    resize_maximize_client(client, MAX_BOTH, MAX_UNMAXED);
-                    return True;
-                }
-                if (data2 & WIN_STATE_MAXIMIZED_HORIZ)
-                    resize_maximize_client(client, MAX_HORIZ, MAX_MAXED);
-                else
-                    resize_maximize_client(client, MAX_HORIZ, MAX_UNMAXED);
-            }
-            if (data2 & WIN_STATE_MAXIMIZED_VERT)
-                resize_maximize_client(client, MAX_VERT, MAX_MAXED);
-            else
-                resize_maximize_client(client, MAX_VERT, MAX_UNMAXED);
-        } else if (data & WIN_STATE_MAXIMIZED_HORIZ) {
-            if (data2 & WIN_STATE_MAXIMIZED_HORIZ)
-                resize_maximize_client(client, MAX_HORIZ, MAX_MAXED);
-            else
-                resize_maximize_client(client, MAX_HORIZ, MAX_UNMAXED);
-        }
-        return True;
-    } else if (xevent->message_type == _WIN_WORKSPACE) {
-        if (client->workspace_set <= HintSet) {
-            debug(("\tMoving client %s to workspace %d due to GNOME message\n",
-                   client_dbg(client), (unsigned int)(data + 1)));
-            client->workspace_set = HintSet;
-            workspace_client_moveto(client, (unsigned int)(data + 1));
-        }
+
         return True;
     } else if (xevent->message_type == _NET_WM_MOVERESIZE) {
         /* We create a fake XEvent and send that off to the
@@ -1265,9 +960,6 @@ void ewmh_current_desktop_update()
     XChangeProperty(dpy, root_window, _NET_CURRENT_DESKTOP,
                     XA_CARDINAL, 32, PropModeReplace,
                     (unsigned char *)&l, 1);
-    XChangeProperty(dpy, root_window, _WIN_WORKSPACE,
-                    XA_CARDINAL, 32, PropModeReplace,
-                    (unsigned char *)&l, 1);
 }
 
 void ewmh_active_window_update()
@@ -1285,9 +977,6 @@ void ewmh_desktop_update(client_t *client)
     i = client->workspace - 1;
     
     XChangeProperty(dpy, client->window, _NET_WM_DESKTOP,
-                    XA_CARDINAL, 32, PropModeReplace,
-                    (unsigned char *)&i, 1);
-    XChangeProperty(dpy, client->window, _WIN_WORKSPACE,
                     XA_CARDINAL, 32, PropModeReplace,
                     (unsigned char *)&i, 1);
 }
