@@ -47,6 +47,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <signal.h>
+#include <string.h>
 
 #include "ahwm.h"
 #include "event.h"
