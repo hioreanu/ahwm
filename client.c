@@ -111,7 +111,7 @@ client_t *client_create(Window w)
     client->prev_x = client->prev_y = -1;
     client->prev_height = client->prev_width = -1;
     client->orig_border_width = xwa.border_width;
-    client->stacking = -1;
+    client->stacking_order = -1;
     client->reparented = 0;
     client->ignore_unmapnotify = 0;
     client->color_index = 0;

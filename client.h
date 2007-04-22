@@ -123,7 +123,7 @@ typedef struct _client_t {
     struct _client_t *transients;
     struct _client_t *next_transient;
 
-    int stacking;               /* opaque, used by stacking.c, default -1 */
+    int stacking_order;         /* opaque, used by stacking.c, default -1 */
     
     /* hacks, see client.c and event.c */
     unsigned int reparented : 1;
