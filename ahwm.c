@@ -352,7 +352,7 @@ static int error_handler(Display *dpy, XErrorEvent *error)
 
 static void scan_windows()
 {
-    int i, n;
+    unsigned int i, n;
     Window *wins, junk;
     client_t *client;
 
@@ -393,7 +393,7 @@ static void reposition(Window w)
     if (XGetWindowProperty(dpy, w, _AHWM_MOVE_OFFSET, 0, 1, False,
                            XA_INTEGER, &actual, &fmt,
                            &nitems, &bytes_after_return,
-                           (unsigned char **)&offset) != Success) {
+                           (void *)&offset) != Success) {
         return;
     }
     if (offset == NULL || fmt != 32 || actual != XA_INTEGER || nitems != 1
