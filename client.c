@@ -270,7 +270,6 @@ client_t *client_create(Window w)
         client_inform_state(client);
     }
     
-    ewmh_client_list_add(client);
     return client;
 }
 

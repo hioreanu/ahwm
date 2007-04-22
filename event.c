@@ -558,12 +558,6 @@ static void event_maprequest(XMapRequestEvent *xevent)
             debug(("\tCould not create client, ignoring event\n"));
             return;
         }
-        /* FIXME: "kpager" wants _NET_WM_DESKTOP set before window
-         * is added to _NET_CLIENT_LIST */
-        if (client->workspace == 0) {
-            client->workspace = workspace_current;
-            ewmh_desktop_update(client);
-        }
     }
     if (client->state == NormalState) {
         /* This should never happen as XMapWindow on an already-mapped
@@ -607,6 +601,7 @@ static void event_maprequest(XMapRequestEvent *xevent)
         }
     }
 
+    ewmh_client_list_add(client);
     client_inform_state(client);
     /* XFlush(dpy); */               /* FIXME:  remove these two, kicker */
     /* XSync(dpy, False); */
