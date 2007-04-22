@@ -203,16 +203,17 @@ void keyboard_init()
     for (i = 0; i < 8; i++) {
         if (keyboard_is_lock[i]) {
             AllLocksMask |= (1 << i);
-            j *= j + 1;
-            if (j == 0) j = 1;
+			// all previous masks; all previous masks and this bit; this bit.
+            j = (j * 2) + 1;
         }
     }
     if (modifier_combinations != NULL) Free(modifier_combinations);
     modifier_combinations = NULL;
     n_modifier_combinations = j;
-    if (j == 0) return;
+    if (n_modifier_combinations == 0) return;
             
-    modifier_combinations = Malloc(sizeof(unsigned int) * j);
+    modifier_combinations =
+        Malloc(sizeof(unsigned int) * n_modifier_combinations);
     if (modifier_combinations == NULL) {
         n_modifier_combinations = 0;
         return;
@@ -1357,11 +1358,24 @@ static void modifier_combinations_helper(unsigned int state,
                                          int *n, int bit)
 {
     int i;
+	int need_set = 1;
 
     if (!keyboard_is_lock[bit]) return;
 
     state |= (1 << bit);
-    modifier_combinations[(*n)++] = state;
+    for (i = 0; i < *n; i++) {
+        if (modifier_combinations[i] == state) need_set = 0;
+    }
+    if (need_set) {
+        debug(("Set modifier combination %d = 0x%08x\n", *n, state));
+        if (*n >= n_modifier_combinations) {
+			fprintf(stderr,
+                "AHWM: error recording modifier combination %08x "
+                "(combination %d of %d\n", state, *n, n_modifier_combinations);
+            return;
+        }
+        modifier_combinations[(*n)++] = state;
+    }
     for (i = bit + 1; i < 8; i++) {
         modifier_combinations_helper(state, n, i);
     }
