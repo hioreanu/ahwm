@@ -403,6 +403,11 @@ static void event_destroy(XDestroyWindowEvent *xevent)
     /* we will always receive an UnmapNotify before a DestroyNotify (X
      * spec says that's how it has to be) and most of the work is done
      * when the window is unmapped. */
+	/* However, that's not what actually happens.  Apparently, sometimes
+	 * we get a DestroyNotify for a client that never sent an
+	 * UnmapNotify.  To reproduce: start ahwm, launch xterm, launch
+	 * gnome-panel from xterm, focus xterm, Ctrl-C.  */
+	focus_remove(client, event_timestamp);
 
     client_destroy(client);
 }
@@ -761,6 +766,8 @@ static void event_reparentnotify(XReparentEvent *xevent)
            (client2 == NULL ? "(non-client window)" :
             client_dbg(client2))));
     debug(("\tdestroying client\n"));
+	/* see above comment about focus_remove and client_destroy */
+	focus_remove(client, event_timestamp);
     client_destroy(client);
 }
 
