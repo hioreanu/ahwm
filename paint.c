@@ -131,7 +131,7 @@ void paint_init()
 void paint_add_button(char *image, Bool left)
 {
     button *b, *tmp;
-    char *bits;
+    unsigned char *bits;
 
     b = malloc(sizeof(button));
     if (b == NULL) {
@@ -168,7 +168,7 @@ void paint_add_button(char *image, Bool left)
         return;                 /* FIXME */
     }
         
-    b->pixmap = XCreateBitmapFromData(dpy, root_window, bits,
+    b->pixmap = XCreateBitmapFromData(dpy, root_window, (char *)bits,
                                       b->width, b->height);
 
     if (left) {

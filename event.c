@@ -427,7 +427,7 @@ static void event_unmap(XUnmapEvent *xevent)
 {
     client_t *client;
     Window junk, parent, *junk2;
-    int junk3;
+    unsigned int junk3;
     XEvent ev;
 
     client = client_find(xevent->window);

@@ -51,7 +51,7 @@ void mwm_apply(client_t *client)
     if (XGetWindowProperty(dpy, client->window, _MOTIF_WM_HINTS, 0,
                            sizeof(mwm_hints), False, _MOTIF_WM_HINTS,
                            &actual, &fmt, &nitems, &bytes_after_return,
-                           (unsigned char **)&hints) != Success) {
+                           (void *)&hints) != Success) {
         debug(("\tXGetWindowProperty(_MOTIF_WM_HINTS) failed\n"));
         return;
     }
