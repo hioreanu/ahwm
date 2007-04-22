@@ -178,7 +178,7 @@ Bool ewmh_handle_clientmessage(XClientMessageEvent *xevent);
 
 void ewmh_init()
 {
-    long *l, *l2, bytes_after_return, nitems;
+    unsigned long *l, *l2, bytes_after_return, nitems;
     int i, fmt;
     XSetWindowAttributes xswa;
     Atom supported[NO_SUPPORTED_HINTS];
@@ -385,11 +385,13 @@ void ewmh_init()
         XChangeProperty(dpy, root_window, _NET_DESKTOP_NAMES,
                         UTF8_STRING, 8,
                         i == 0 ? PropModeReplace : PropModeAppend,
-                        workspace_name, strlen(workspace_name) + 1);
+                        (unsigned char *)workspace_name,
+                        strlen(workspace_name) + 1);
         XChangeProperty(dpy, root_window, _WIN_WORKSPACE_NAMES,
                         XA_STRING, 8,
                         i == 0 ? PropModeReplace : PropModeAppend,
-                        workspace_name, strlen(workspace_name) + 1);
+                        (unsigned char *)workspace_name,
+                        strlen(workspace_name) + 1);
     }
     /*
      * This function is called whenever AHWM is started.  We try to
@@ -400,7 +402,7 @@ void ewmh_init()
     if (XGetWindowProperty(dpy, root_window, _NET_CURRENT_DESKTOP, 0, 1,
                            False, XA_CARDINAL, &actual, &fmt, &nitems,
                            &bytes_after_return,
-                           (unsigned char **)&l2) == Success) {
+                           (void *)&l2) == Success) {
         if (l2 != NULL) {
             if (nitems == 1 && fmt == 32 && actual == XA_CARDINAL &&
                 *l2 > 0 && *l2 + 1 <= nworkspaces) {
@@ -481,7 +483,7 @@ void ewmh_wm_state_apply(client_t *client)
 {
     Atom actual, *states;
     int fmt, i;
-    long bytes_after_return, nitems;
+    unsigned long bytes_after_return, nitems;
     int max_v, max_h;
 
     if (client->state != WithdrawnState) return;
@@ -490,7 +492,7 @@ void ewmh_wm_state_apply(client_t *client)
     if (XGetWindowProperty(dpy, client->window, _NET_WM_STATE, 0,
                            sizeof(Atom), False, XA_ATOM,
                            &actual, &fmt, &nitems, &bytes_after_return,
-                           (unsigned char **)&states) != Success) {
+                           (void *)&states) != Success) {
         debug(("\tXGetWindowProperty(_NET_WM_STATE) failed\n"));
         return;
     }
@@ -582,7 +584,7 @@ void ewmh_wm_strut_apply(client_t *client)
 {
     Atom actual;
     int fmt, i;
-    long bytes_after_return, nitems;
+    unsigned long bytes_after_return, nitems;
     unsigned long *values;
     Bool changed = False;
 
@@ -602,7 +604,7 @@ void ewmh_wm_strut_apply(client_t *client)
     if (XGetWindowProperty(dpy, client->window, _NET_WM_STRUT, 0,
                            sizeof(Atom), False, XA_ATOM,
                            &actual, &fmt, &nitems, &bytes_after_return,
-                           (unsigned char **)&values) != Success) {
+                           (void *)&values) != Success) {
         debug(("\tXGetWindowProperty(_NET_WM_STRUT) failed\n"));
         if (changed)
             update_wm_workarea();
@@ -675,7 +677,7 @@ void ewmh_win_hints_apply(client_t *client)
     if (XGetWindowProperty(dpy, client->window, _WIN_HINTS, 0,
                            sizeof(Atom), False, XA_CARDINAL,
                            &actual, &fmt, &nitems, &bytes_after_return,
-                           (unsigned char **)&hint) != Success) {
+                           (void *)&hint) != Success) {
         debug(("\tXGetWindowProperty(_WIN_HINTS) failed\n"));
         return;
     }
@@ -705,7 +707,7 @@ void ewmh_win_state_apply(client_t *client)
     if (XGetWindowProperty(dpy, client->window, _WIN_STATE, 0,
                            sizeof(Atom), False, XA_CARDINAL,
                            &actual, &fmt, &nitems, &bytes_after_return,
-                           (unsigned char **)&hint) != Success) {
+                           (void *)&hint) != Success) {
         debug(("\tXGetWindowProperty(_WIN_STATE) failed\n"));
         return;
     }
@@ -745,7 +747,7 @@ void ewmh_win_workspace_apply(client_t *client)
     if (XGetWindowProperty(dpy, client->window, _WIN_WORKSPACE, 0,
                            sizeof(Atom), False, XA_CARDINAL,
                            &actual, &fmt, &nitems, &bytes_after_return,
-                           (unsigned char **)&hint) != Success) {
+                           (void *)&hint) != Success) {
         debug(("\tXGetWindowProperty(_WIN_STATE) failed\n"));
         return;
     }
@@ -775,7 +777,7 @@ void ewmh_win_layer_apply(client_t *client)
     if (XGetWindowProperty(dpy, client->window, _WIN_LAYER, 0,
                            sizeof(Atom), False, XA_CARDINAL,
                            &actual, &fmt, &nitems, &bytes_after_return,
-                           (unsigned char **)&hint) != Success) {
+                           (void *)&hint) != Success) {
         debug(("\tXGetWindowProperty(_WIN_STATE) failed\n"));
         return;
     }
@@ -810,7 +812,7 @@ void ewmh_wm_desktop_apply(client_t *client)
     if (XGetWindowProperty(dpy, client->window, _NET_WM_DESKTOP, 0,
                            sizeof(Atom), False, XA_CARDINAL,
                            &actual, &fmt, &nitems, &bytes_after_return,
-                           (unsigned char **)&ws) != Success) {
+                           (void *)&ws) != Success) {
         debug(("\tXGetWindowProperty(_NET_WM_DESKTOP) failed\n"));
         return;
     }
@@ -852,7 +854,7 @@ void ewmh_window_type_apply(client_t *client)
     if (XGetWindowProperty(dpy, client->window, _NET_WM_WINDOW_TYPE, 0,
                            sizeof(Atom), False, XA_ATOM,
                            &actual, &fmt, &nitems, &bytes_after_return,
-                           (unsigned char **)&types) != Success) {
+                           (void *)&types) != Success) {
         debug(("\tXGetWindowProperty(_NET_WM_WINDOW_TYPE) failed\n"));
         return;
     }

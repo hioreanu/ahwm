@@ -767,7 +767,7 @@ void focus_save_stacks()
         do {
             XChangeProperty(dpy, root_window, atom, XA_WINDOW, 32,
                             node == orig ? PropModeReplace : PropModeAppend,
-                            (char *)&node->client->window, 1);
+                            (void *)&node->client->window, 1);
             node = node->prev;
         } while (node != orig);
     }
@@ -776,7 +776,7 @@ void focus_save_stacks()
 void focus_load_stacks()
 {
     int ws, fmt, i;
-    long nitems, bytes_after_return;
+    unsigned long nitems, bytes_after_return;
     Window *windows;
     focus_node *node;
     client_t *client;
@@ -790,7 +790,7 @@ void focus_load_stacks()
         if (XGetWindowProperty(dpy, root_window, atom, 0,
                                0x7FFFFFFF, False, XA_WINDOW, &actual,
                                &fmt, &nitems, &bytes_after_return,
-                               (unsigned char **)&windows) != Success) {
+                               (void *)&windows) != Success) {
             debug(("XGetWindowProperty(%s) failed\n", buf));
             continue;
         }

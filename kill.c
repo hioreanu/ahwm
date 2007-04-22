@@ -125,7 +125,7 @@ Bool kill_using_net_wm_pid(client_t *client)
     if (XGetWindowProperty(dpy, client->window, _NET_WM_PID, 0,
                            sizeof(CARD32), False, XA_CARDINAL,
                            &actual, &fmt, &nitems, &bytes_after_return,
-                           (unsigned char **)&pid) != Success) {
+                           (void *)&pid) != Success) {
         debug(("\tXGetWindowProperty(_NET_WM_PID) failed\n"));
         return False;
     }
@@ -138,7 +138,7 @@ Bool kill_using_net_wm_pid(client_t *client)
     if (XGetWindowProperty(dpy, client->window, XA_WM_CLIENT_MACHINE, 0,
                            sizeof(char *), False, XA_STRING,
                            &actual, &fmt, &nitems, &bytes_after_return,
-                           (unsigned char **)&their_hostname) != Success) {
+                           (void *)&their_hostname) != Success) {
         debug(("\tXGetWindowProperty(_NET_WM_PID) failed\n"));
         return False;
     }
