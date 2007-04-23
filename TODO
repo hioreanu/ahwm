@@ -1,4 +1,3 @@
-20070422: segfault should also leave core, play with gdb?
 20070422: reserved areas for gnome pager
 20070422: Xft2, UTF-8
 20070422: workspace change hiding window covers gnome-panel, causes flicker
