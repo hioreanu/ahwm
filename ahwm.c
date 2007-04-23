@@ -108,6 +108,7 @@ static void reposition(Window w);
 static void sigterm(int signo);
 static void sigsegv(int signo);
 static void crash_handler();
+static void gcore();
 static void crashwin_draw(GC gc, Window toplevel, Window button1,
                           Window button2, Window button3,
                           int height, int width);
@@ -527,8 +528,26 @@ static void mark(XEvent *e, struct _arglist *ignored)
  */
 static void sigsegv(int signo)
 {
+	gcore();
     /* third arg points into ro-data segment */
     execlp(argv0, argv0, "--segv", NULL);
+}
+
+/*
+ * Attempt to generate a core file.  May fail.
+ * Solaris has a "gcore" command.  Some Linuxes have a "gcore" script
+ * that basically does:
+ * echo generate-core-file | gdb -q -n -batch ./ahwm `pgrep ahwm` -x -
+ */
+static void gcore()
+{
+	char pid[16];
+	
+	snprintf(pid, sizeof(pid), "%d", getpid());
+	if (fork() == 0) {
+		execlp("gcore", "gcore", pid, NULL);
+	}
+	sleep(1); // XXX
 }
 
 /*
