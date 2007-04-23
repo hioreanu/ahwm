@@ -118,6 +118,10 @@
 /* Define if you have the Shape X11 extension. */
 #undef SHAPE
 
+#undef HAVE_SYS_UTSNAME_H
+
+#undef HAVE_SYS_NMLN
+
 #ifndef HAVE_SYS_WAIT_H
 # error "AHWM needs porting to your system (no sys/wait.h); please contact the author."
 #endif

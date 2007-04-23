@@ -29,7 +29,7 @@ fi
                 
 AC_HEADER_STDC
 AC_HEADER_SYS_WAIT
-AC_CHECK_HEADERS(fcntl.h sys/time.h unistd.h limits.h)
+AC_CHECK_HEADERS(fcntl.h sys/time.h unistd.h limits.h sys/utsname.h)
 
 AC_TYPE_PID_T
 AC_TYPE_SIZE_T
@@ -41,6 +41,11 @@ AC_CHECK_FUNCS(select poll strdup snprintf _snprintf strerror atexit gettimeofda
 AC_MSG_CHECKING([syserrlist])
 AC_TRY_LINK([#include <errno.h>], [void foo() {extern char *syserrlist[]; extern int sysnerr; char *c; c = syserrlist[sysnerr - 1]; }],
             AC_DEFINE(HAVE_SYSERRLIST)
+            AC_MSG_RESULT([yes]),
+            AC_MSG_RESULT([no]))
+AC_MSG_CHECKING([SYS_NMLN])
+AC_TRY_LINK([#include <sys/utsname.h>], [char name[SYS_NMLN];],
+            AC_DEFINE(HAVE_SYS_NMLN)
             AC_MSG_RESULT([yes]),
             AC_MSG_RESULT([no]))
 

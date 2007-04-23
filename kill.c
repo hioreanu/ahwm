@@ -26,7 +26,9 @@
 #include "config.h"
 
 #include <stdio.h>
+#ifdef HAVE_SYS_UTSNAME_H
 #include <sys/types.h>
+#endif
 #include <sys/utsname.h>
 #include <signal.h>
 #include <stdlib.h>
@@ -56,6 +58,10 @@ typedef struct _murder_info {
     Window window;
     unsigned long hash;
 } murder_info;
+
+#ifndef HAVE_SYS_NMLN
+#define SYS_NMLN 64
+#endif
 
 static char my_hostname[SYS_NMLN];
 static Atom _NET_WM_PID;
