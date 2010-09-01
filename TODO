@@ -3,6 +3,10 @@
 20070422: workspace change hiding window covers gnome-panel, causes flicker
 20070422: workspaces as virtual root windows?
 
+20070501: minimization does not work
+20070501: ewmh resize assumes MOVERESIZE_TOPLEFT only
+
+
 
 
 ColorTitlebar -> ColorOfTitlebar (currently sounds like verb)

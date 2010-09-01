@@ -884,7 +884,14 @@ static void event_clientmessage(XClientMessageEvent *xevent)
             client->state = IconicState;
             client_inform_state(client);
             focus_remove(client, event_timestamp);
-        }
+        } else if (xevent->format == 32 && xevent->data.l[0] == NormalState) {
+			debug(("\tUniconifying client\n"));
+			XMapWindow(dpy, client->window);
+			XMapWindow(dpy, client->frame);
+			client->state = NormalState;
+			client_inform_state(client);
+			focus_add(client, event_timestamp);
+		}
     } else {
         if (ewmh_handle_clientmessage(xevent) == False) {
             colormap_handle_clientmessage(xevent);

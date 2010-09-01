@@ -923,20 +923,24 @@ Bool ewmh_handle_clientmessage(XClientMessageEvent *xevent)
         /* We create a fake XEvent and send that off to the
          * move/resize code to deal with it as if it were
          * normal button event */
-        /* FIXME: completely untested */
         XEvent ev;
         arglist al;
         type typ;
+
+		/* FIXME: this assumes MOVERESIZE_TOPLEFT */
         
         ev.type = ButtonPress;
         ev.xbutton.window = xevent->window;
-        ev.xbutton.x_root = data;
-        ev.xbutton.y_root = data2;
-        ev.xbutton.x = ev.xbutton.x_root - client->x;
-        ev.xbutton.y = ev.xbutton.y_root - client->y;
+        ev.xbutton.x_root = client->x;
+        ev.xbutton.y_root = client->y;
+        ev.xbutton.x = 0;
+        ev.xbutton.y = 0;
+		ev.xbutton.button = Button1;
+		XWarpPointer(dpy, None, client->frame, 0, 0, 0, 0, 0, 0);
         /* and that's all move/resize code should ever need */
 
         if (data3 == _NET_WM_MOVERESIZE_MOVE) {
+			/* FIXME: untested */
             move_client(&ev, NULL);
         } else {
             al.arglist_next = NULL;
